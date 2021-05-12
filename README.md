@@ -1,4 +1,4 @@
-This is an emulator for the Commander X16 computer system. It only depends on SDL2 and OpenGL and should compile on all modern operating systems.
+This is an emulator for the Commander X16 computer system. Unlike the official emulator, this has a few more dependencies, see the build instructions below. It compiles on Windows and Debian Linux, and probably other Linux-based platforms.
 
 Features
 --------
