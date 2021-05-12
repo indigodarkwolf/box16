@@ -23,8 +23,8 @@ BOX16_OBJDIR := $(OBJDIR)/box16/obj
 
 BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
-BOX16_CFLAGS := $(shell $(SDL2CONFIG) --cflags) --std=c++17 -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORDIR)/mINI/src/mini -include $(BOX16_SRCDIR)/compat/compat.h
-BOX16_LDFLAGS := $(shell $(SDL2CONFIG) --libs) -lGL -lGLEW -lSDL2_image
+BOX16_CFLAGS := $(shell $(SDL2CONFIG) --cflags) --std=c++17 -O3 -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORDIR)/mINI/src/mini -include $(BOX16_SRCDIR)/compat/compat.h
+BOX16_LDFLAGS := $(shell $(SDL2CONFIG) --libs) -lGL -lGLEW -lSDL2_image -O3
 
 .PHONY: all
 

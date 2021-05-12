@@ -8,6 +8,7 @@ resources/r39/*.exe
 resources/r39/*.sym
 resources/r39/*.zip
 
+build/box16
 build/make.out
 build/out
 build/obj
