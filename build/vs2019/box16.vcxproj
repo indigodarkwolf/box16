@@ -1,0 +1,330 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>16.0</VCProjectVersion>
+    <ProjectGuid>{13793342-2966-4F23-864A-04E64CEC82C9}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v142</PlatformToolset>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="box16.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="box16.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="box16.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="box16.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <OutDir>$(ProjectDir)\out\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)\intermediates\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <OutDir>$(ProjectDir)\out\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)\intermediates\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <OutDir>$(ProjectDir)\out\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)\intermediates\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <CustomBuildAfterTargets>
+    </CustomBuildAfterTargets>
+    <OutDir>$(ProjectDir)\out\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)\intermediates\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\SDL2_image-2.0.5\lib\x86\SDL2_image.lib;$(VendorDir)\glew-2.2.0\lib\Release\win32\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+    </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
+xcopy $(ResourceDir)\r39\*.* $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\SDL2_image-2.0.5\lib\x86\*.dll $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\SDL2_image-2.0.5\lib\x86\SDL2_image.lib;$(VendorDir)\glew-2.2.0\lib\Release\win32\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+    </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
+xcopy $(ResourceDir)\r39\*.* $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\SDL2_image-2.0.5\lib\x86\*.dll $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\SDL2_image-2.0.5\lib\x64\SDL2_image.lib;$(VendorDir)\glew-2.2.0\lib\Release\x64\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
+xcopy $(ResourceDir)\r39\*.* $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\SDL2_image-2.0.5\lib\x64\*.dll $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\SDL2_image-2.0.5\lib\x64\SDL2_image.lib;$(VendorDir)\glew-2.2.0\lib\Release\x64\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <SubSystem>Console</SubSystem>
+    </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
+xcopy $(ResourceDir)\r39\*.* $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\SDL2_image-2.0.5\lib\x64\*.dll $(OutDir) /E /I /F /Y
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="..\..\src\audio.cpp" />
+    <ClCompile Include="..\..\src\compat\compat.cpp" />
+    <ClCompile Include="..\..\src\compat\getopt.cpp" />
+    <ClCompile Include="..\..\src\cpu\fake6502.cpp" />
+    <ClCompile Include="..\..\src\debugger.cpp" />
+    <ClCompile Include="..\..\src\display.cpp" />
+    <ClCompile Include="..\..\src\gif_recorder.cpp" />
+    <ClCompile Include="..\..\src\i2c.cpp" />
+    <ClCompile Include="..\..\src\icon.cpp" />
+    <ClCompile Include="..\..\src\imgui\imgui.cpp" />
+    <ClCompile Include="..\..\src\imgui\imgui_demo.cpp" />
+    <ClCompile Include="..\..\src\imgui\imgui_draw.cpp" />
+    <ClCompile Include="..\..\src\imgui\imgui_impl_opengl2.cpp" />
+    <ClCompile Include="..\..\src\imgui\imgui_impl_sdl.cpp" />
+    <ClCompile Include="..\..\src\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="..\..\src\javascript_interface.cpp" />
+    <ClCompile Include="..\..\src\joystick.cpp" />
+    <ClCompile Include="..\..\src\keyboard.cpp" />
+    <ClCompile Include="..\..\src\loadsave.cpp" />
+    <ClCompile Include="..\..\src\main.cpp" />
+    <ClCompile Include="..\..\src\memory.cpp" />
+    <ClCompile Include="..\..\src\options.cpp" />
+    <ClCompile Include="..\..\src\overlay\disasm.cpp" />
+    <ClCompile Include="..\..\src\overlay\memory_dump.cpp" />
+    <ClCompile Include="..\..\src\overlay\overlay.cpp" />
+    <ClCompile Include="..\..\src\overlay\ram_dump.cpp" />
+    <ClCompile Include="..\..\src\overlay\util.cpp" />
+    <ClCompile Include="..\..\src\overlay\vram_dump.cpp" />
+    <ClCompile Include="..\..\src\ps2.cpp" />
+    <ClCompile Include="..\..\src\rtc.cpp" />
+    <ClCompile Include="..\..\src\sdl_events.cpp" />
+    <ClCompile Include="..\..\src\smc.cpp" />
+    <ClCompile Include="..\..\src\symbols.cpp" />
+    <ClCompile Include="..\..\src\timing.cpp" />
+    <ClCompile Include="..\..\src\unicode.cpp" />
+    <ClCompile Include="..\..\src\vera\sdcard.cpp" />
+    <ClCompile Include="..\..\src\vera\vera_pcm.cpp" />
+    <ClCompile Include="..\..\src\vera\vera_psg.cpp" />
+    <ClCompile Include="..\..\src\vera\vera_spi.cpp" />
+    <ClCompile Include="..\..\src\vera\vera_video.cpp" />
+    <ClCompile Include="..\..\src\via.cpp" />
+    <ClCompile Include="..\..\src\ym2151\ym2151.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\src\audio.h" />
+    <ClInclude Include="..\..\src\compat\compat.h" />
+    <ClInclude Include="..\..\src\compat\dirent.h" />
+    <ClInclude Include="..\..\src\compat\getopt.h" />
+    <ClInclude Include="..\..\src\compat\unistd.h" />
+    <ClInclude Include="..\..\src\cpu\fake6502.h" />
+    <ClInclude Include="..\..\src\cpu\instructions_6502.h" />
+    <ClInclude Include="..\..\src\cpu\instructions_65c02.h" />
+    <ClInclude Include="..\..\src\cpu\mnemonics.h" />
+    <ClInclude Include="..\..\src\cpu\modes.h" />
+    <ClInclude Include="..\..\src\cpu\support.h" />
+    <ClInclude Include="..\..\src\cpu\tables.h" />
+    <ClInclude Include="..\..\src\debugger.h" />
+    <ClInclude Include="..\..\src\display.h" />
+    <ClInclude Include="..\..\src\gif\gif.h" />
+    <ClInclude Include="..\..\src\gif_recorder.h" />
+    <ClInclude Include="..\..\src\glue.h" />
+    <ClInclude Include="..\..\src\i2c.h" />
+    <ClInclude Include="..\..\src\icon.h" />
+    <ClInclude Include="..\..\src\imgui\imconfig.h" />
+    <ClInclude Include="..\..\src\imgui\imgui.h" />
+    <ClInclude Include="..\..\src\imgui\imgui_impl_opengl2.h" />
+    <ClInclude Include="..\..\src\imgui\imgui_impl_sdl.h" />
+    <ClInclude Include="..\..\src\imgui\imgui_internal.h" />
+    <ClInclude Include="..\..\src\imgui\imstb_rectpack.h" />
+    <ClInclude Include="..\..\src\imgui\imstb_textedit.h" />
+    <ClInclude Include="..\..\src\imgui\imstb_truetype.h" />
+    <ClInclude Include="..\..\src\joystick.h" />
+    <ClInclude Include="..\..\src\keyboard.h" />
+    <ClInclude Include="..\..\src\loadsave.h" />
+    <ClInclude Include="..\..\src\memory.h" />
+    <ClInclude Include="..\..\src\options.h" />
+    <ClInclude Include="..\..\src\overlay\disasm.h" />
+    <ClInclude Include="..\..\src\overlay\memory_dump.h" />
+    <ClInclude Include="..\..\src\overlay\overlay.h" />
+    <ClInclude Include="..\..\src\overlay\ram_dump.h" />
+    <ClInclude Include="..\..\src\overlay\util.h" />
+    <ClInclude Include="..\..\src\overlay\vram_dump.h" />
+    <ClInclude Include="..\..\src\ps2.h" />
+    <ClInclude Include="..\..\src\ring_buffer.h" />
+    <ClInclude Include="..\..\src\rom_symbols.h" />
+    <ClInclude Include="..\..\src\rtc.h" />
+    <ClInclude Include="..\..\src\sdl_events.h" />
+    <ClInclude Include="..\..\src\smc.h" />
+    <ClInclude Include="..\..\src\symbols.h" />
+    <ClInclude Include="..\..\src\timing.h" />
+    <ClInclude Include="..\..\src\unicode.h" />
+    <ClInclude Include="..\..\src\utf8.h" />
+    <ClInclude Include="..\..\src\utf8_encode.h" />
+    <ClInclude Include="..\..\src\vera\sdcard.h" />
+    <ClInclude Include="..\..\src\vera\vera_pcm.h" />
+    <ClInclude Include="..\..\src\vera\vera_psg.h" />
+    <ClInclude Include="..\..\src\vera\vera_spi.h" />
+    <ClInclude Include="..\..\src\vera\vera_video.h" />
+    <ClInclude Include="..\..\src\version.h" />
+    <ClInclude Include="..\..\src\via.h" />
+    <ClInclude Include="..\..\src\ym2151\ym2151.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\cpu\6502.opcodes" />
+    <None Include="..\..\src\cpu\65c02.opcodes" />
+    <None Include="..\..\src\cpu\buildtables.py" />
+    <None Include="..\..\src\cpu\extract.py" />
+    <None Include="..\..\src\cpu\README" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\src\imgui\LICENSE.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="nativefiledialog\nativefiledialog.vcxproj">
+      <Project>{793b7219-b7cb-4169-b74b-85153a595f4d}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

@@ -1,0 +1,15 @@
+.vs
+
+resources/r39/docs
+resources/r39/x16emu
+resources/r39/*.bin
+resources/r39/*.dll
+resources/r39/*.exe
+resources/r39/*.sym
+resources/r39/*.zip
+
+build/make.out
+build/out
+build/obj
+build/vs2019/intermediates
+build/vs2019/out

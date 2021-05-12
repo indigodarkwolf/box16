@@ -1,0 +1,216 @@
+#include "symbols.h"
+
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <unordered_map>
+
+using symbol_address_type      = uint32_t;
+using loaded_symbol_type       = std::tuple<symbol_address_type, std::string>;
+using loaded_symbol_files_type = std::unordered_map<std::string, std::list<loaded_symbol_type>>;
+using symbol_table_type        = std::map<symbol_address_type, symbol_list_type>;
+
+symbol_table_type        Symbols_table;
+loaded_symbol_files_type Loaded_symbols_by_file;
+std::set<std::string>    Loaded_symbol_files;
+std::set<std::string>    Visible_symbol_files;
+
+const symbol_list_type Empty_symbols_list;
+
+std::set<std::string> Ignore_list = {
+	//".__BSS_LOAD__",
+	//".__BSS_RUN__",
+	".__BSS_SIZE__",
+	".__EXEHDR__",
+	".__HEADER_FILEOFFS__",
+	//".__HEADER_LAST__",
+	".__HEADER_SIZE__",
+	//".__HEADER_START__",
+	".__HIMEM__",
+	".__LOADADDR__",
+	".__MAIN_FILEOFFS__",
+	//".__MAIN_LAST__",
+	".__MAIN_SIZE__",
+	//".__MAIN_START__",
+	//".__ONCE_LOAD__",
+	//".__ONCE_RUN__",
+	".__ONCE_SIZE__",
+	".__STACKSIZE__",
+	".__ZP_FILEOFFS__",
+	".__ZP_LAST__",
+	".__ZP_SIZE__",
+	".__ZP_START__"
+};
+
+static void show_file_entries(const std::string &file_path)
+{
+	auto entry = Loaded_symbols_by_file.find(file_path);
+	if (entry != Loaded_symbols_by_file.end()) {
+		auto &symbols = entry->second;
+		for (auto &sym : symbols) {
+			auto &[addr, name] = sym;
+
+			const auto &table_entry = Symbols_table.find(addr);
+			if (table_entry != Symbols_table.end()) {
+				table_entry->second.push_back(name);
+			} else {
+				Symbols_table.insert({ addr, std::list<std::string>{ name } });
+			}
+		}
+	}
+
+	Visible_symbol_files.insert(file_path);
+}
+
+static void hide_file_entries(const std::string &file_path)
+{
+	auto entry = Loaded_symbols_by_file.find(file_path);
+	if (entry != Loaded_symbols_by_file.end()) {
+		auto &symbols = entry->second;
+		for (auto &sym : symbols) {
+			auto &[addr, name] = sym;
+
+			auto &sym_list = Symbols_table[addr];
+			sym_list.remove(name);
+			if (sym_list.empty()) {
+				Symbols_table.erase(addr);
+			}
+		}
+	}
+
+	Visible_symbol_files.erase(file_path);
+}
+
+bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
+{
+	std::ifstream infile(file_path, std::ios_base::in);
+	if (!infile.is_open()) {
+		return false;
+	}
+
+	infile >> std::hex;
+
+	std::string cmd;
+	uint32_t    addr;
+	std::string label;
+
+	std::list<loaded_symbol_type> file_symbols;
+
+	while (!infile.eof()) {
+		infile >> cmd >> addr >> label;
+		if (cmd != "al") {
+			continue;
+		}
+		if (addr > 0xffff) {
+			continue;
+		}
+		if (label.size() == 0) {
+			continue;
+		}
+		if (Ignore_list.find(label) != Ignore_list.end()) {
+			continue;
+		}
+
+		if (addr < 0xa000) {
+			bank = 0;
+		}
+
+		symbol_address_type symbol_addr = (bank << 16) + addr;
+
+		bool already_exists = false;
+		for (auto &[address, symbol] : file_symbols) {
+			if ((symbol_addr == address) && !symbol.compare(label)) {
+				already_exists = true;
+				break;
+			}
+		}
+
+		if (!already_exists) {
+			file_symbols.push_back(std::tuple{ symbol_addr, label });
+		}
+	}
+
+	Loaded_symbols_by_file.insert({ file_path, file_symbols });
+	Loaded_symbol_files.insert(file_path);
+	show_file_entries(file_path);
+
+	return true;
+}
+
+void symbols_unload_file(const std::string &file_path)
+{
+	hide_file_entries(file_path);
+	Loaded_symbol_files.erase(file_path);
+	Loaded_symbols_by_file.erase(file_path);
+}
+
+void symbols_refresh_file(const std::string &file_path)
+{
+	symbols_unload_file(file_path);
+	symbols_load_file(file_path);
+}
+
+void symbols_show_file(const std::string &file_path)
+{
+	if (Visible_symbol_files.find(file_path) == Visible_symbol_files.end()) {
+		show_file_entries(file_path);
+	}
+}
+
+void symbols_hide_file(const std::string &file_path)
+{
+	if (Visible_symbol_files.find(file_path) != Visible_symbol_files.end()) {
+		hide_file_entries(file_path);
+	}
+}
+
+const std::set<std::string> &symbols_get_loaded_files()
+{
+	return Loaded_symbol_files;
+}
+
+bool symbols_file_all_are_visible()
+{
+	for (const auto &file : Loaded_symbol_files) {
+		if (!symbols_file_is_visible(file)) {
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool symbols_file_any_is_visible()
+{
+	return !Visible_symbol_files.empty();
+}
+
+bool symbols_file_is_visible(const std::string &file_path)
+{
+	return Visible_symbol_files.find(file_path) != Visible_symbol_files.end();
+}
+
+const symbol_list_type &symbols_find(uint32_t address, symbol_bank_type bank)
+{
+	if (address < 0xa000) {
+		bank = 0;
+	}
+
+	auto entry = Symbols_table.find((bank << 16) + address);
+	if (entry == Symbols_table.end()) {
+		return Empty_symbols_list;
+	}
+
+	return entry->second;
+}
+
+void symbols_for_each(std::function<void(uint16_t, symbol_bank_type, const std::string &)> fn)
+{
+	for (auto &entry : Symbols_table) {
+		uint16_t         addr = entry.first & 0xffff;
+		symbol_bank_type bank = entry.first >> 16;
+		for (const std::string &name : entry.second) {
+			fn(addr, bank, name);
+		}
+	}
+}
