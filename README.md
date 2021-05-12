@@ -44,17 +44,9 @@ loaded from the directory containing the emulator binary, or you can use the `-r
 
 You can build a ROM image yourself using the [build instructions][https://github.com/commanderx16/x16-rom/x16rom-build] in the [x16-rom][https://github.com/commanderx16/x16-rom] repo. The `rom.bin` included in the [_latest_ release][https://github.com/commanderx16/x16-emulator/releases] of the emulator may also work with the HEAD of this repo, but this is not guaranteed.
 
-### MacOS Build
-
-Read `build-r39/README` and build or acquire the necessary files.
-
-Install SDL2 using `brew install sdl2`.
-
-Type `cmake` to build the source. The output will be `box16` in the output directory. Remember you will also need a `rom.bin` as described above.
-
 ### Linux Build
 
-Read `build-r39/README` and build or acquire the necessary files.
+Read `resources/r39/README` and build or acquire the necessary files.
 
 The needed development packages are available as a distribution package with most major versions of Linux:
 - Debian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
@@ -64,7 +56,7 @@ Type `make` to build the source. The output will be `box16` in the output direct
 
 ### Windows Build
 
-Read `build-r39/README` and build or acquire the necessary files.
+Read `resources/r39/README` and build or acquire the necessary files.
 
 Install Microsoft Visual Studio Community 2019, make sure to include the following modules:
 - `Desktop development with C++`
