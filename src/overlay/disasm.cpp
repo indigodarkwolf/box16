@@ -180,6 +180,7 @@ void imgui_debugger_disasm::draw()
 					reset_scroll = true;
 				}
 				for (uint32_t y = 0; y < lines; ++y) {
+					ImGui::PushID(y);
 					int len = disasm_len(addr, addr < 0xc000 ? ram_bank : rom_bank);
 
 					bool found_symbols = false;
@@ -194,7 +195,7 @@ void imgui_debugger_disasm::draw()
 							ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 							char addr_text[5];
 							sprintf(addr_text, "%04X", i);
-							if (ImGui::Selectable(addr_text, false)) {
+							if (ImGui::Selectable(addr_text, false, 0, ImGui::CalcTextSize(addr_text))) {
 								set_dump_start(i);
 							}
 							ImGui::SameLine();
@@ -218,13 +219,14 @@ void imgui_debugger_disasm::draw()
 						if (pc == addr) {
 							ImGui::PopStyleColor();
 						}
+						ImGui::PopID();
 						break;
 					}
 
 					if (!found_symbols) {
 						char addr_text[5];
 						sprintf(addr_text, "%04X", addr);
-						if (ImGui::Selectable(addr_text, false)) {
+						if (ImGui::Selectable(addr_text, false, 0, ImGui::CalcTextSize(addr_text))) {
 							set_dump_start(addr);
 						}
 						ImGui::SameLine();
@@ -239,6 +241,7 @@ void imgui_debugger_disasm::draw()
 					if (pc == addr) {
 						ImGui::PopStyleColor();
 					}
+					ImGui::PopID();
 
 					addr += len;
 
