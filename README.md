@@ -274,15 +274,15 @@ Wiki
 License
 -------
 
-Copyright (c) 2019-2020 Michael Steil &lt;mist64@mac.com&gt;, [www.pagetable.com](https://www.pagetable.com/), et al.
-Copyright (c) 2021 Stephen Horn, et al.
+Copyright (c) 2019-2020 Michael Steil &lt;mist64@mac.com&gt;, [www.pagetable.com](https://www.pagetable.com/), et al.<br>
+Portions copyright (c) 2021 Stephen Horn, et al.<br>
 All rights reserved. License: 2-clause BSD
 
 
 Release Notes
 -------------
 
-## Release 39.1 ("")
+## Non-Release 39.1 ("Kiyomizu-dera Temple")
 
 * Supporting hardware Rev2.
 * Removed NES controller support.
@@ -294,6 +294,7 @@ Release Notes
 * Internals
 	* Faster joystick implementation, now supporting hot-swapping.
 	* Even faster PS2.
+	* Rebuilt build script. Windows is now a VS2019 solution. Still no Mac, but Linux builds A-OK. Pls halp with iThings, PRs absolutely welcome.
 * Fixes ported from official emulator:
 	* PR 216, fixing occasional flicker and hang issues on Linux. (nigels-com)
 	* PR 317, fixing debugger break timing after hypercalls.
@@ -302,7 +303,7 @@ Release Notes
 	* PR 323, fixing front/back porch terms, quantities, and use. (Elektron72)
 	* PR 349, adding Delete, Insert, End, Page Up, and Page Down keys. (stefan-b-jakobsson)
 
-## Non-Release 38.1 ("Kikakuji Temple")
+## Non-Release 38.1 ("Kinkakuji Temple")
 
 * Internals
 	* Converted code to C++17, cleaned up all build warnings, save one.
