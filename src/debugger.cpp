@@ -4,6 +4,7 @@
 #include "memory.h"
 
 static breakpoint_list Breakpoints;
+static breakpoint_list Active_breakpoints;
 
 enum debugger_mode {
 	DEBUG_RUN,
@@ -47,12 +48,7 @@ static bool breakpoint_hit(breakpoint_type current_pc)
 	if (debugger_step_clocks() == 0) {
 		return false;
 	}
-	for (auto bp : Breakpoints) {
-		if (current_pc == bp) {
-			return true;
-		}
-	}
-	return false;
+	return (Active_breakpoints.find(current_pc) != Active_breakpoints.end());
 }
 
 bool debugger_is_paused()
@@ -240,12 +236,10 @@ void debugger_add_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
 	}
 
 	breakpoint_type new_bp{ address, bank };
-	for (auto bp : Breakpoints) {
-		if (new_bp == bp) {
-			return;
-		}
+	if (Breakpoints.find(new_bp) == Breakpoints.end()) {
+		Breakpoints.insert(new_bp);
+		Active_breakpoints.insert(new_bp);
 	}
-	Breakpoints.insert(new_bp);
 }
 
 void debugger_remove_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
@@ -256,6 +250,38 @@ void debugger_remove_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
 
 	breakpoint_type old_bp{ address, bank };
 	Breakpoints.erase(old_bp);
+	Active_breakpoints.erase(old_bp);
+}
+
+void debugger_activate_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
+{
+	if (address < 0xa000) {
+		bank = 0;
+	}
+
+	breakpoint_type new_bp{ address, bank };
+	if (Breakpoints.find(new_bp) == Breakpoints.end()) {
+		return;
+	}
+	if (Active_breakpoints.find(new_bp) == Active_breakpoints.end()) {
+		Active_breakpoints.insert(new_bp);
+	}
+}
+
+void debugger_deactivate_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
+{
+	if (address < 0xa000) {
+		bank = 0;
+	}
+
+	breakpoint_type old_bp{ address, bank };
+	Active_breakpoints.erase(old_bp);
+}
+
+bool debugger_breakpoint_is_active(uint16_t address, uint8_t bank /* = 0 */)
+{
+	breakpoint_type bp{ address, bank };
+	return (Active_breakpoints.find(bp) != Active_breakpoints.end());
 }
 
 const breakpoint_list &debugger_get_breakpoints()

@@ -260,10 +260,14 @@ static void draw_breakpoints()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 		if (ImGui::TreeNodeEx("Breakpoints", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			ImGui::Columns(4);
+			ImGui::Columns(5);
 			ImGui::SetColumnWidth(0, 27);
-			ImGui::SetColumnWidth(1, ImGui::CalcTextSize("Address  ").x);
-			ImGui::SetColumnWidth(2, ImGui::CalcTextSize("Bank      ").x);
+			ImGui::SetColumnWidth(1, 27);
+			ImGui::SetColumnWidth(2, ImGui::CalcTextSize("Address  ").x);
+			ImGui::SetColumnWidth(3, ImGui::CalcTextSize("Bank      ").x);
+
+			ImGui::Dummy(ImVec2(10, 10));
+			ImGui::NextColumn();
 
 			ImGui::Dummy(ImVec2(10, 10));
 			ImGui::NextColumn();
@@ -287,16 +291,25 @@ static void draw_breakpoints()
 				}
 				ImGui::NextColumn();
 
+				if (debugger_breakpoint_is_active(address, bank)) {
+					if (ImGui::TileButton(ICON_CHECKED)) {
+						debugger_deactivate_breakpoint(address, bank);
+					}
+				} else {
+					if (ImGui::TileButton(ICON_UNCHECKED)) {
+						debugger_activate_breakpoint(address, bank);
+					}
+				}
+				ImGui::NextColumn();
+
 				char addr_text[5];
 				sprintf(addr_text, "%04X", address);
 				if (ImGui::Selectable(addr_text, false, ImGuiSelectableFlags_AllowDoubleClick)) {
-					if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-						disasm.set_dump_start(address);
-						if (address >= 0xc000) {
-							disasm.set_rom_bank(bank);
-						} else if (address >= 0xa000) {
-							disasm.set_ram_bank(bank);
-						}
+					disasm.set_dump_start(address);
+					if (address >= 0xc000) {
+						disasm.set_rom_bank(bank);
+					} else if (address >= 0xa000) {
+						disasm.set_ram_bank(bank);
 					}
 				}
 
@@ -311,16 +324,13 @@ static void draw_breakpoints()
 
 				for (auto &sym : symbols_find(address)) {
 					if (ImGui::Selectable(sym.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
-						if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-							disasm.set_dump_start(address);
-							if (address >= 0xc000) {
-								disasm.set_rom_bank(bank);
-							} else if (address >= 0xa000) {
-								disasm.set_ram_bank(bank);
-							}
+						disasm.set_dump_start(address);
+						if (address >= 0xc000) {
+							disasm.set_rom_bank(bank);
+						} else if (address >= 0xa000) {
+							disasm.set_ram_bank(bank);
 						}
 					}
-					//ImGui::Text("%s", sym.c_str());
 				}
 				ImGui::NextColumn();
 			}

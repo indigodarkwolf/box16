@@ -276,7 +276,7 @@ void imgui_debugger_disasm::imgui_label(uint16_t target, bool branch_target, con
 	}
 	inner[255] = '\0';
 
-	if (ImGui::Selectable(inner)) {
+	if (ImGui::Selectable(inner, false, 0, ImGui::CalcTextSize(inner))) {
 		if (branch_target) {
 			set_dump_start(target);
 		} else if (memory_window == 1) {
@@ -307,7 +307,7 @@ void imgui_debugger_disasm::imgui_label_wrap(uint16_t target, bool branch_target
 	snprintf(wrapped, 256, wrapper_format, inner);
 	wrapped[255] = '\0';
 
-	if (ImGui::Selectable(wrapped)) {
+	if (ImGui::Selectable(wrapped, false, 0, ImGui::CalcTextSize(wrapped))) {
 		if (branch_target) {
 			set_dump_start(target);
 		} else if (memory_window == 1) {
