@@ -29,6 +29,8 @@ static void usage()
 	printf("\tempty NVRAM and does not save it to disk.\n");
 	printf("-keymap <keymap>\n");
 	printf("\tEnable a specific keyboard layout decode table.\n");
+	printf("-hypercall_path <path>\n");
+	printf("\tSet the base path for hypercalls (effectively, the current working directory when no SD card is attached).\n");
 	printf("-sdcard <sdcard.img>\n");
 	printf("\tSpecify SD card image (partition map + FAT32)\n");
 	printf("-prg <app.prg>[,<load_addr>]\n");
@@ -169,6 +171,17 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			}
 
 			ini["main"]["keymap"] = argv[0];
+
+			argc--;
+			argv++;
+		} else if (!strcmp(argv[0], "-hypercall_path")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["hypercall_path"] = argv[0];
 
 			argc--;
 			argv++;
@@ -389,7 +402,7 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 
 void load_options(int argc, char **argv)
 {
-	mINI::INIFile      file("x16emu.ini");
+	mINI::INIFile      file("box16.ini");
 	mINI::INIStructure ini;
 
 	bool force_write = !file.read(ini);
@@ -413,6 +426,10 @@ void load_options(int argc, char **argv)
 			usage_ram();
 		}
 		Options.num_ram_banks = kb / 8;
+	}
+
+	if (ini["main"].has("hypercall_path")) {
+		strcpy(Options.hyper_path, ini["main"]["hypercall_path"].c_str());
 	}
 
 	if (ini["main"].has("keymap")) {
@@ -604,7 +621,7 @@ void load_options(int argc, char **argv)
 
 void save_options(bool all)
 {
-	mINI::INIFile      file("x16emu.ini");
+	mINI::INIFile      file("box16.ini");
 	mINI::INIStructure ini;
 
 	std::stringstream value;
@@ -653,6 +670,7 @@ void save_options(bool all)
 	save_option("rom", Options.rom_path, Default_options.rom_path);
 	save_option("ram", Options.num_ram_banks, Default_options.num_ram_banks);
 	save_option("keymap", keymaps[Options.keymap], keymaps[Default_options.keymap]);
+	save_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
 	save_option("prg", Options.prg_path, Default_options.prg_path);
 	save_option("run", Options.run_after_load, Default_options.run_after_load);
 	save_option("bas", Options.bas_path, Default_options.bas_path);

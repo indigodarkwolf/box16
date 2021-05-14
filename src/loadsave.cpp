@@ -2,17 +2,21 @@
 // Copyright (c) 2019 Michael Steil
 // All rights reserved. License: 2-clause BSD
 
-#include <string.h>
-#include <stdio.h>
-#include <stdbool.h>
-#include <sys/stat.h>
-#include <dirent.h>
-#include <unistd.h>
+#include "loadsave.h"
+
 #include <SDL.h>
+#include <dirent.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 #include "glue.h"
 #include "memory.h"
-#include "vera/vera_video.h"
+#include "options.h"
 #include "rom_symbols.h"
+#include "vera/vera_video.h"
 
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
@@ -51,7 +55,7 @@ static int create_directory_listing(uint8_t *data)
 	*data++ = 'C';
 	*data++ = 0;
 
-	if (!(dirp = opendir("."))) {
+	if (!(dirp = opendir(Options.hyper_path))) {
 		return 0;
 	}
 	while ((dp = readdir(dirp))) {
@@ -115,14 +119,10 @@ static int create_directory_listing(uint8_t *data)
 
 void LOAD()
 {
-	char    filename[41];
-	uint8_t len = MIN(RAM[FNLEN], sizeof(filename) - 1);
-	memcpy(filename, (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8], len);
-	filename[len] = 0;
+	char const *kernal_filename = (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8];
+	uint16_t    override_start  = (x | (y << 8));
 
-	uint16_t override_start = (x | (y << 8));
-
-	if (filename[0] == '$') {
+	if (kernal_filename[0] == '$') {
 		uint16_t dir_len = create_directory_listing(RAM + override_start);
 		uint16_t end     = override_start + dir_len;
 		x                = end & 0xff;
@@ -131,6 +131,13 @@ void LOAD()
 		RAM[STATUS] = 0;
 		a           = 0;
 	} else {
+		char      filename[PATH_MAX];
+		const int hyperpath_len = sprintf(filename, "%s/", Options.hyper_path);
+
+		const int len = MIN(RAM[FNLEN], sizeof(filename) - hyperpath_len - 1);
+		memcpy(filename + hyperpath_len, kernal_filename, len);
+		filename[hyperpath_len + len] = 0;
+
 		SDL_RWops *f = SDL_RWFromFile(filename, "rb");
 		if (!f) {
 			a           = 4; // FNF
@@ -198,10 +205,14 @@ void LOAD()
 
 void SAVE()
 {
-	char    filename[41];
-	uint8_t len = MIN(RAM[FNLEN], sizeof(filename) - 1);
-	memcpy(filename, (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8], len);
-	filename[len] = 0;
+	char const *kernal_filename = (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8];
+
+	char      filename[PATH_MAX];
+	const int hyperpath_len = sprintf(filename, "%s/", Options.hyper_path);
+
+	const int len = MIN(RAM[FNLEN], sizeof(filename) - hyperpath_len - 1);
+	memcpy(filename + hyperpath_len, kernal_filename, len);
+	filename[hyperpath_len + len] = 0;
 
 	uint16_t start = RAM[a] | RAM[a + 1] << 8;
 	uint16_t end   = x | y << 8;

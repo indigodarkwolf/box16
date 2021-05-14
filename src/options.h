@@ -16,6 +16,7 @@ enum class scale_quality_t {
 };
 
 struct options {
+	char hyper_path[PATH_MAX]  = ".";
 	char rom_path[PATH_MAX]    = "rom.bin";
 	char prg_path[PATH_MAX]    = "";
 	char bas_path[PATH_MAX]    = "";

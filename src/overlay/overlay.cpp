@@ -597,6 +597,11 @@ static void draw_menu_bar()
 					keyboard_add_file(open_path);
 				}
 			}
+
+			if (ImGui::MenuItem("Save Options")) {
+				save_options(true);
+			}
+
 			if (ImGui::MenuItem("Exit")) {
 				SDL_Event evt;
 				evt.type = SDL_QUIT;
@@ -679,6 +684,13 @@ static void draw_menu_bar()
 					}
 				}
 				ImGui::EndMenu();
+			}
+
+			if (ImGui::MenuItem("Change CWD")) {
+				char *open_path = nullptr;
+				if (NFD_PickFolder("", &open_path) == NFD_OKAY && open_path != nullptr) {
+					strcpy(Options.hyper_path, open_path);
+				}
 			}
 
 			ImGui::Separator();
