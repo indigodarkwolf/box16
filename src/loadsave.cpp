@@ -180,7 +180,7 @@ void LOAD()
 			// banked RAM
 			while (1) {
 				size_t len = 0xc000 - start;
-				bytes_read = (uint16_t)SDL_RWread(f, RAM + ((uint16_t)memory_get_ram_bank() << 13) + start, 1, len);
+				bytes_read = (uint16_t)SDL_RWread(f, RAM + (((uint16_t)memory_get_ram_bank() % Options.num_ram_banks) << 13) + start, 1, len);
 				if (bytes_read < len)
 					break;
 

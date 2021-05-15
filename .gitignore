@@ -12,6 +12,7 @@ build/box16
 build/make.out
 build/out
 build/obj
+build/vs2019/box16.args.json
 build/vs2019/nativefiledialog/intermediates
 build/vs2019/nativefiledialog/output
 build/vs2019/intermediates

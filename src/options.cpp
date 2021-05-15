@@ -668,7 +668,7 @@ void save_options(bool all)
 	};
 
 	save_option("rom", Options.rom_path, Default_options.rom_path);
-	save_option("ram", Options.num_ram_banks, Default_options.num_ram_banks);
+	save_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
 	save_option("keymap", keymaps[Options.keymap], keymaps[Default_options.keymap]);
 	save_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
 	save_option("prg", Options.prg_path, Default_options.prg_path);
