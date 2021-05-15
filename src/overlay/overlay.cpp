@@ -13,6 +13,7 @@
 #include "util.h"
 #include "vram_dump.h"
 
+#include "audio.h"
 #include "cpu/fake6502.h"
 #include "debugger.h"
 #include "display.h"
@@ -23,13 +24,15 @@
 #include "symbols.h"
 #include "timing.h"
 #include "vera/sdcard.h"
+#include "vera/vera_psg.h"
 #include "vera/vera_video.h"
 
-bool Show_imgui_demo    = false;
-bool Show_memory_dump_1 = false;
-bool Show_memory_dump_2 = false;
-bool Show_monitor       = false;
-bool Show_VERA_monitor  = false;
+bool Show_imgui_demo       = false;
+bool Show_memory_dump_1    = false;
+bool Show_memory_dump_2    = false;
+bool Show_monitor          = false;
+bool Show_VERA_monitor     = false;
+bool Show_VERA_PSG_monitor = false;
 
 imgui_vram_dump vram_dump;
 
@@ -587,6 +590,107 @@ static void draw_debugger_controls()
 	}
 }
 
+static void draw_debugger_vera_psg()
+{
+	ImGui::Columns(6);
+	static const char *labels[] = {
+		"Freq",
+		"Left",
+		"Right",
+		"Vol",
+		"Wave",
+		"Width"
+	};	
+	for (int i = 0; i < 6; ++i) {
+		ImGui::Text("%s", labels[i]);
+		ImGui::NextColumn();
+	}
+
+	for (unsigned int i = 0; i < 16; ++i) {
+		ImGui::PushID(i);
+		const psg_channel *channel = psg_get_channel(i);
+
+		int freq = channel->freq;
+		ImGui::PushID("freq");
+		if (ImGui::InputInt("", &freq)) {
+			psg_set_channel_frequency(i, freq);
+		}
+		ImGui::PopID();
+		ImGui::NextColumn();
+
+		bool left = channel->left;
+		ImGui::PushID("left");
+		if (ImGui::Checkbox("", &left)) {
+			psg_set_channel_left(i, left);
+		}
+		ImGui::PopID();
+		ImGui::NextColumn();
+
+		bool right = channel->right;
+		ImGui::PushID("right");
+		if (ImGui::Checkbox("", &right)) {
+			psg_set_channel_right(i, right);
+		}
+		ImGui::PopID();
+		ImGui::NextColumn();
+
+		int volume = channel->volume;
+		ImGui::PushID("volume");
+		if (ImGui::InputInt("", &volume)) {
+			psg_set_channel_volume(i, volume);
+		}
+		ImGui::PopID();
+		ImGui::NextColumn();
+
+		static const char* waveforms[] = {
+			"Pulse",
+			"Sawtooth",
+			"Triangle",
+			"Noise"
+		};
+		int wf = channel->waveform;
+		ImGui::PushID("waveforms");
+		if (ImGui::Combo("", &wf, waveforms, IM_ARRAYSIZE(waveforms))) {
+			psg_set_channel_waveform(i, wf);
+		}
+		ImGui::PopID();
+		ImGui::NextColumn();
+
+		int pulse_width = channel->pw;
+		ImGui::PushID("pulse_width");
+		if (ImGui::InputInt("", &pulse_width)) {
+			psg_set_channel_pulse_width(i, pulse_width);
+		}
+		ImGui::PopID();
+		ImGui::NextColumn();
+
+		ImGui::PopID();
+	}
+	ImGui::Columns(1);
+
+	const int16_t *psg_buffer = audio_get_psg_buffer();
+	{
+		float left_samples[SAMPLES_PER_BUFFER];
+		float right_samples[SAMPLES_PER_BUFFER];
+
+		float *l = left_samples;
+		float *r = right_samples;
+
+		const int16_t *b = psg_buffer;
+		for (int i = 0; i < SAMPLES_PER_BUFFER; ++i) {
+			*l = *b;
+			++l;
+			++b;
+			*r = *b;
+			++r;
+			++b;
+		}
+
+		ImGui::PlotLines("Left", left_samples, SAMPLES_PER_BUFFER, 0, nullptr, INT16_MIN, INT16_MAX, ImVec2(0, 80.0f));
+		ImGui::PlotLines("Right", right_samples, SAMPLES_PER_BUFFER, 0, nullptr, INT16_MIN, INT16_MAX, ImVec2(0, 80.0f));
+	}
+}
+
 static void draw_menu_bar()
 {
 	if (ImGui::BeginMainMenuBar()) {
@@ -715,6 +819,7 @@ static void draw_menu_bar()
 				ImGui::Checkbox("Memory Dump 2", &Show_memory_dump_2);
 				ImGui::Checkbox("CPU Monitor", &Show_monitor);
 				ImGui::Checkbox("VERA Monitor", &Show_VERA_monitor);
+				ImGui::Checkbox("PSG Monitor", &Show_VERA_PSG_monitor);
 				ImGui::EndMenu();
 			}
 			ImGui::Separator();
@@ -783,6 +888,13 @@ void overlay_draw()
 
 	if (Show_imgui_demo) {
 		ImGui::ShowDemoWindow();
+	}
+
+	if (Show_VERA_PSG_monitor) {
+		if (ImGui::Begin("VERA PSG")) {
+			draw_debugger_vera_psg();
+		}
+		ImGui::End();
 	}
 }
 

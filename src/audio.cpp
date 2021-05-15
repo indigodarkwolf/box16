@@ -3,30 +3,24 @@
 // All rights reserved. License: 2-clause BSD
 
 #include "audio.h"
-#include "vera/vera_psg.h"
 #include "vera/vera_pcm.h"
+#include "vera/vera_psg.h"
 #include "ym2151/ym2151.h"
 #include <stdint.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define SAMPLERATE (25000000 / 512)
 
-#ifdef __EMSCRIPTEN__
-#	define SAMPLES_PER_BUFFER (1024)
-#else
-#	define SAMPLES_PER_BUFFER (256)
-#endif
-
-static SDL_AudioDeviceID audio_dev = 0;
-static int               vera_clks = 0;
-static int               cpu_clks  = 0;
-static int16_t **        buffers;
-static int               rdidx    = 0;
-static int               wridx    = 0;
-static int               buf_cnt  = 0;
-static int               num_bufs = 0;
+static SDL_AudioDeviceID Audio_dev = 0;
+static int               Vera_clks = 0;
+static int               Cpu_clks  = 0;
+static int16_t **        Buffers;
+static int               Read_index   = 0;
+static int               Write_index  = 0;
+static int               Buffer_count = 0;
+static int               Num_buffers     = 0;
 
 static void audio_callback(void *userdata, Uint8 *stream, int len)
 {
@@ -36,37 +30,37 @@ static void audio_callback(void *userdata, Uint8 *stream, int len)
 		return;
 	}
 
-	if (buf_cnt == 0) {
+	if (Buffer_count == 0) {
 		memset(stream, 0, len);
 		return;
 	}
 
-	memcpy(stream, buffers[rdidx++], len);
-	if (rdidx == num_bufs) {
-		rdidx = 0;
+	memcpy(stream, Buffers[Read_index++], len);
+	if (Read_index == Num_buffers) {
+		Read_index = 0;
 	}
-	buf_cnt--;
+	Buffer_count--;
 }
 
 void audio_init(const char *dev_name, int num_audio_buffers)
 {
-	if (audio_dev > 0) {
+	if (Audio_dev > 0) {
 		audio_close();
 	}
 
 	// Set number of buffers
-	num_bufs = num_audio_buffers;
-	if (num_bufs < 3) {
-		num_bufs = 3;
+	Num_buffers = num_audio_buffers;
+	if (Num_buffers < 3) {
+		Num_buffers = 3;
 	}
-	if (num_bufs > 1024) {
-		num_bufs = 1024;
+	if (Num_buffers > 1024) {
+		Num_buffers = 1024;
 	}
 
 	// Allocate audio buffers
-	buffers = new int16_t *[num_bufs * sizeof(*buffers)];
-	for (int i = 0; i < num_bufs; i++) {
-		buffers[i] = new int16_t[2 * SAMPLES_PER_BUFFER * sizeof(int16_t)];
+	Buffers = new int16_t *[Num_buffers * sizeof(*Buffers)];
+	for (int i = 0; i < Num_buffers; i++) {
+		Buffers[i] = new int16_t[2 * SAMPLES_PER_BUFFER * sizeof(int16_t)];
 	}
 
 	SDL_AudioSpec desired;
@@ -80,8 +74,8 @@ void audio_init(const char *dev_name, int num_audio_buffers)
 	desired.channels = 2;
 	desired.callback = audio_callback;
 
-	audio_dev = SDL_OpenAudioDevice(dev_name, 0, &desired, &obtained, 0);
-	if (audio_dev <= 0) {
+	Audio_dev = SDL_OpenAudioDevice(dev_name, 0, &desired, &obtained, 0);
+	if (Audio_dev <= 0) {
 		fprintf(stderr, "SDL_OpenAudioDevice failed: %s\n", SDL_GetError());
 		if (dev_name != NULL) {
 			audio_usage();
@@ -94,76 +88,74 @@ void audio_init(const char *dev_name, int num_audio_buffers)
 	YM_init(obtained.freq, 60);
 
 	// Start playback
-	SDL_PauseAudioDevice(audio_dev, 0);
+	SDL_PauseAudioDevice(Audio_dev, 0);
 }
 
 void audio_close(void)
 {
-	if (audio_dev == 0) {
+	if (Audio_dev == 0) {
 		return;
 	}
 
-	SDL_CloseAudioDevice(audio_dev);
-	audio_dev = 0;
+	SDL_CloseAudioDevice(Audio_dev);
+	Audio_dev = 0;
 
 	// Free audio buffers
-	if (buffers != NULL) {
-		for (int i = 0; i < num_bufs; i++) {
-			if (buffers[i] != NULL) {
-				delete buffers[i];
-				buffers[i] = NULL;
+	if (Buffers != NULL) {
+		for (int i = 0; i < Num_buffers; i++) {
+			if (Buffers[i] != NULL) {
+				delete [] Buffers[i];
+				Buffers[i] = NULL;
 			}
 		}
-		delete buffers;
-		buffers = NULL;
+		delete [] Buffers;
+		Buffers = NULL;
 	}
 }
 
+static int16_t Psg_buffer[2 * SAMPLES_PER_BUFFER];
+static int16_t Pcm_buffer[2 * SAMPLES_PER_BUFFER];
+static int16_t Ym_buffer[2 * SAMPLES_PER_BUFFER];
+
 void audio_render(int cpu_clocks)
 {
-	if (audio_dev == 0) {
+	if (Audio_dev == 0) {
 		return;
 	}
 
-	cpu_clks += cpu_clocks;
-	if (cpu_clks > 8) {
-		int c = cpu_clks / 8;
-		cpu_clks -= c * 8;
-		vera_clks += c * 25;
+	Cpu_clks += cpu_clocks;
+	if (Cpu_clks > 8) {
+		int c = Cpu_clks / 8;
+		Cpu_clks -= c * 8;
+		Vera_clks += c * 25;
 	}
 
-	while (vera_clks >= 512 * SAMPLES_PER_BUFFER) {
-		vera_clks -= 512 * SAMPLES_PER_BUFFER;
+	while (Vera_clks >= 512 * SAMPLES_PER_BUFFER) {
+		Vera_clks -= 512 * SAMPLES_PER_BUFFER;
 
-		if (audio_dev != 0) {
-			int16_t psg_buf[2 * SAMPLES_PER_BUFFER];
-			psg_render(psg_buf, SAMPLES_PER_BUFFER);
+		if (Audio_dev != 0) {
+			psg_render(Psg_buffer, SAMPLES_PER_BUFFER);
+			pcm_render(Pcm_buffer, SAMPLES_PER_BUFFER);
+			YM_stream_update((uint16_t *)Ym_buffer, SAMPLES_PER_BUFFER);
 
-			int16_t pcm_buf[2 * SAMPLES_PER_BUFFER];
-			pcm_render(pcm_buf, SAMPLES_PER_BUFFER);
-
-			int16_t ym_buf[2 * SAMPLES_PER_BUFFER];
-			YM_stream_update((uint16_t *)ym_buf, SAMPLES_PER_BUFFER);
-
-			bool buf_available;
-			SDL_LockAudioDevice(audio_dev);
-			buf_available = buf_cnt < num_bufs;
-			SDL_UnlockAudioDevice(audio_dev);
+			SDL_LockAudioDevice(Audio_dev);
+			const bool buf_available = Buffer_count < Num_buffers;
+			SDL_UnlockAudioDevice(Audio_dev);
 
 			if (buf_available) {
 				// Mix PSG, PCM and YM output
-				int16_t *buf = buffers[wridx];
+				int16_t *buf = Buffers[Write_index];
 				for (int i = 0; i < 2 * SAMPLES_PER_BUFFER; i++) {
-					buf[i] = ((int)psg_buf[i] + (int)pcm_buf[i] + (int)ym_buf[i]) / 3;
+					buf[i] = ((int)Psg_buffer[i] + (int)Pcm_buffer[i] + (int)Ym_buffer[i]) / 3;
 				}
 
-				SDL_LockAudioDevice(audio_dev);
-				wridx++;
-				if (wridx == num_bufs) {
-					wridx = 0;
+				SDL_LockAudioDevice(Audio_dev);
+				Write_index++;
+				if (Write_index == Num_buffers) {
+					Write_index = 0;
 				}
-				buf_cnt++;
-				SDL_UnlockAudioDevice(audio_dev);
+				Buffer_count++;
+				SDL_UnlockAudioDevice(Audio_dev);
 			}
 		}
 	}
@@ -185,4 +177,19 @@ void audio_usage(void)
 
 	SDL_Quit();
 	exit(1);
+}
+
+const int16_t *audio_get_psg_buffer()
+{
+	return Psg_buffer;
+}
+
+const int16_t *audio_get_pcm_buffer()
+{
+	return Pcm_buffer;
+}
+
+const int16_t *audio_get_ym_buffer()
+{
+	return Ym_buffer;
 }

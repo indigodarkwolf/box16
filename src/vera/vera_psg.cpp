@@ -8,36 +8,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-enum waveform {
-	WF_PULSE = 0,
-	WF_SAWTOOTH,
-	WF_TRIANGLE,
-	WF_NOISE,
-};
+static psg_channel Channels[16];
 
-struct channel {
-	uint16_t freq;
-	uint8_t  volume;
-	bool     left, right;
-	uint8_t  pw;
-	uint8_t  waveform;
+static uint8_t volume_lut[64] = { 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 28, 29, 31, 33, 35, 37, 39, 42, 44, 47, 50, 52, 56, 59, 63 };
 
-	unsigned phase;
-	uint8_t  noiseval;
-};
-
-static struct channel channels[16];
-
-static uint8_t volume_lut[64] = {0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 28, 29, 31, 33, 35, 37, 39, 42, 44, 47, 50, 52, 56, 59, 63};
-
-void
-psg_reset(void)
+void psg_reset(void)
 {
-	memset(channels, 0, sizeof(channels));
+	memset(Channels, 0, sizeof(Channels));
 }
 
-void
-psg_writereg(uint8_t reg, uint8_t val)
+void psg_writereg(uint8_t reg, uint8_t val)
 {
 	reg &= 0x3f;
 
@@ -45,30 +25,29 @@ psg_writereg(uint8_t reg, uint8_t val)
 	int idx = reg & 3;
 
 	switch (idx) {
-		case 0: channels[ch].freq = (channels[ch].freq & 0xFF00) | val; break;
-		case 1: channels[ch].freq = (channels[ch].freq & 0x00FF) | (val << 8); break;
+		case 0: Channels[ch].freq = (Channels[ch].freq & 0xFF00) | val; break;
+		case 1: Channels[ch].freq = (Channels[ch].freq & 0x00FF) | (val << 8); break;
 		case 2: {
-			channels[ch].right  = (val & 0x80) != 0;
-			channels[ch].left   = (val & 0x40) != 0;
-			channels[ch].volume = volume_lut[val & 0x3F];
+			Channels[ch].right  = (val & 0x80) != 0;
+			Channels[ch].left   = (val & 0x40) != 0;
+			Channels[ch].volume = volume_lut[val & 0x3F];
 			break;
 		}
 		case 3: {
-			channels[ch].pw       = val & 0x3F;
-			channels[ch].waveform = val >> 6;
+			Channels[ch].pw       = val & 0x3F;
+			Channels[ch].waveform = val >> 6;
 			break;
 		}
 	}
 }
 
-static void
-render(int16_t *left, int16_t *right)
+static void render(int16_t *left, int16_t *right)
 {
 	int l = 0;
 	int r = 0;
 
 	for (int i = 0; i < 16; i++) {
-		struct channel *ch = &channels[i];
+		struct psg_channel *ch = &Channels[i];
 
 		unsigned new_phase = (ch->phase + ch->freq) & 0x1FFFF;
 		if ((ch->phase & 0x10000) != (new_phase & 0x10000)) {
@@ -102,11 +81,70 @@ render(int16_t *left, int16_t *right)
 	*right = r;
 }
 
-void
-psg_render(int16_t *buf, unsigned num_samples)
+void psg_render(int16_t *buf, unsigned int num_samples)
 {
 	while (num_samples--) {
 		render(&buf[0], &buf[1]);
 		buf += 2;
+	}
+}
+
+const psg_channel *psg_get_channel(unsigned int channel)
+{
+	if (channel > 16) {
+		return nullptr;
+	}
+
+	return &Channels[channel];
+}
+
+psg_channel *psg_get_channel_debug(unsigned int channel)
+{
+	if (channel >= 16) {
+		return nullptr;
+	}
+
+	return &Channels[channel];
+}
+
+void psg_set_channel_frequency(unsigned int channel, uint16_t freq)
+{
+	if (channel < 16) {
+		Channels[channel].freq = freq;
+	}
+}
+
+void psg_set_channel_left(unsigned int channel, bool left)
+{
+	if (channel < 16) {
+		Channels[channel].left = left;
+	}
+}
+
+void psg_set_channel_right(unsigned int channel, bool right)
+{
+	if (channel < 16) {
+		Channels[channel].right = right;
+	}
+}
+
+void psg_set_channel_volume(unsigned int channel, uint8_t volume)
+{
+	if (channel < 16) {
+		Channels[channel].volume = volume & 0x3f;
+	}
+}
+
+void psg_set_channel_waveform(unsigned int channel, uint8_t waveform)
+{
+	if (channel < 16) {
+		Channels[channel].waveform = waveform;
+	}
+}
+
+void psg_set_channel_pulse_width(unsigned int channel, uint8_t pw)
+{
+	if (channel < 16) {
+		Channels[channel].pw = pw & 0x3f;
 	}
 }
