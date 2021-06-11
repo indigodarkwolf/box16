@@ -27,7 +27,6 @@ SOFTWARE.
 
 #include <GL/glew.h>
 #include <SDL_image.h>
-#include <tuple>
 
 #include "display.h"
 #include "icon.h"
@@ -65,34 +64,19 @@ static bool Initd_icons               = false;
 
 #if SDL_MAJOR_VERSION <= 2 && SDL_MINOR_VERSION <= 0 && SDL_PATCHLEVEL <= 9
 struct SDL_FRect {
-    float x;
-    float y;
-    float w;
-    float h;
+	float x;
+	float y;
+	float w;
+	float h;
 };
 #endif
 
-class icon_set
+bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 {
-public:
-	bool load_file(const char *filename, int width, int height);
-	bool load_memory(const void *buffer, const int buffer_len, int width, int height, int texture_width, int texture_height);
+	if (texture != 0) {
+		unload();
+	}
 
-	ImVec2                     get_top_left(int id);
-	ImVec2                     get_bottom_right(int id);
-	std::tuple<ImVec2, ImVec2> get_imvec2_corners(int id);
-	SDL_FRect                  get_sdl_rect(int id);
-
-private:
-	GLuint texture;
-	float  tile_uv_width;
-	float  tile_uv_height;
-	int    map_width;
-	int    map_height;
-};
-
-bool icon_set::load_file(const char *filename, int width, int height)
-{
 	SDL_Surface *icons = IMG_Load("icons.png");
 	if (icons == nullptr) {
 		printf("Unable load icon resources\n");
@@ -103,9 +87,10 @@ bool icon_set::load_file(const char *filename, int width, int height)
 	if (icons->format->BytesPerPixel == 4) {
 		mode = GL_RGBA;
 	}
-
-	map_width                = icons->w / width;
-	map_height               = icons->h / height;
+	texture_width            = icons->w;
+	texture_height           = icons->h;
+	map_width                = icons->w / icon_width;
+	map_height               = icons->h / icon_height;
 	const float map_width_f  = map_width;
 	const float map_height_f = map_height;
 	tile_uv_width            = 1.0f / map_width_f;
@@ -125,19 +110,45 @@ bool icon_set::load_file(const char *filename, int width, int height)
 	return true;
 }
 
-bool icon_set::load_memory(const void *buffer, const int buffer_len, int width, int height, int texture_width, int texture_height)
+bool icon_set::load_memory(const void *buffer, int texture_width, int texture_height, int icon_width, int icon_height)
 {
+	if (texture != 0) {
+		unload();
+	}
+
+	this->texture_width      = texture_width;
+	this->texture_height     = texture_height;
+	map_width                = texture_width / icon_width;
+	map_height               = texture_height / icon_height;
+	const float map_width_f  = map_width;
+	const float map_height_f = map_height;
+	tile_uv_width            = 1.0f / map_width_f;
+	tile_uv_height           = 1.0f / map_height_f;
+
+	int mode = GL_RGBA;
+
 	glGenTextures(1, &texture);
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, buffer);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, texture_width, texture_height, 0, mode, GL_UNSIGNED_INT_8_8_8_8, buffer);
 
 	return true;
 }
 
+void icon_set::update_memory(const void *buffer)
+{
+	glBindTexture(GL_TEXTURE_2D, texture);
+	glTextureSubImage2D(texture, 0, 0, 0, texture_width, texture_height, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buffer);
+}
+
+void icon_set::unload()
+{
+	glDeleteTextures(1, &texture);
+	texture = 0;
+}
 
 ImVec2 icon_set::get_top_left(int id)
 {
@@ -159,6 +170,34 @@ std::tuple<ImVec2, ImVec2> icon_set::get_imvec2_corners(int id)
 SDL_FRect icon_set::get_sdl_rect(int id)
 {
 	return { (float)(id % map_width) * tile_uv_width, (float)(id / map_width) * tile_uv_height, tile_uv_width, tile_uv_height };
+}
+
+uint32_t icon_set::get_texture_id()
+{
+	return texture;
+}
+
+void icon_set::draw(int id, int x, int y, int w, int h, SDL_Color color)
+{
+	ImVec2 topleft{ (float)(id % map_width) * tile_uv_width, (float)(id / tile_uv_height) * tile_uv_height };
+	ImVec2 botright{ topleft.x + tile_uv_width, topleft.y + tile_uv_height };
+
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	glBindTexture(GL_TEXTURE_2D, Icon_tilemap);
+	glColor4f(color.r / 255.0f, color.g / 255.0f, color.b / 255.0f, color.a / 255.0f);
+	glBegin(GL_QUADS);
+	glTexCoord2f(topleft.x, topleft.y);
+	glVertex2i(x, y + h);
+	glTexCoord2f(botright.x, topleft.y);
+	glVertex2i(x + w, y + h);
+	glTexCoord2f(botright.x, botright.y);
+	glVertex2i(x + w, y);
+	glTexCoord2f(topleft.x, botright.y);
+	glVertex2i(x, y);
+	glEnd();
+	glBindTexture(GL_TEXTURE_2D, 0);
+	glDisable(GL_BLEND);
 }
 
 static void display_video()
@@ -289,11 +328,11 @@ bool display_init(const display_settings &settings)
 		}
 
 		char title[128];
-		#if defined(WIN32)
-			sprintf_s(title, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
-		#else
-			sprintf(title, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
-		#endif
+#if defined(WIN32)
+		sprintf_s(title, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
+#else
+		sprintf(title, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
+#endif
 
 		Display_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, Display.window_rect.w, Display.window_rect.h, sdl_window_flags);
 		if (Display_window == nullptr) {

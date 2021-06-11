@@ -163,15 +163,21 @@ int main(int argc, char **argv)
 
 	prg_override_start = -1;
 	if (strlen(Options.prg_path) > 0) {
-		char *comma = strchr(Options.prg_path, ',');
+		char  path_buffer[PATH_MAX];
+		if (strlen(Options.hyper_path) > 0) {
+			sprintf(path_buffer, "%s/%s", Options.hyper_path, Options.prg_path);
+		} else {
+			sprintf(path_buffer, "%s", Options.prg_path);
+		}
+		char *comma = strchr(path_buffer, ',');
 		if (comma) {
 			prg_override_start = (uint16_t)strtol(comma + 1, NULL, 16);
 			*comma             = 0;
 		}
 
-		prg_file = SDL_RWFromFile(Options.prg_path, "rb");
+		prg_file = SDL_RWFromFile(path_buffer, "rb");
 		if (!prg_file) {
-			printf("Cannot open %s!\n", Options.prg_path);
+			printf("Cannot open %s!\n", path_buffer);
 			exit(1);
 		}
 	}

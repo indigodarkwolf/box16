@@ -257,6 +257,146 @@ static void draw_debugger_vera_status()
 	ImGui::EndGroup();
 }
 
+static void draw_debugger_vera_palette()
+{
+	ImGui::BeginGroup();
+	{
+		ImGui::TextDisabled("Palette");
+		ImGui::SameLine();
+		ImGui::Dummy(ImVec2(0.0f, 19.0f));
+		ImGui::Separator();
+
+		const uint32_t *palette = vera_video_get_palette_argb32();
+		for (int i = 0; i < 256; ++i) {
+			const uint8_t *p = reinterpret_cast<const uint8_t *>(&palette[i]);
+			ImVec4         c{ (float)(p[2]) / 255.0f, (float)(p[1]) / 255.0f, (float)(p[0]) / 255.0f, 1.0f };
+			ImGui::ColorButton("", c, ImGuiColorEditFlags_NoBorder, ImVec2(16, 16));
+			if (i % 16 != 15) {
+				ImGui::SameLine();
+			}
+		}
+	}
+	ImGui::EndGroup();
+}
+
+static void draw_debugger_vera_sprite()
+{
+	static icon_set sprite_preview;
+	static uint8_t  uncompressed_vera_memory[64 * 64];
+	static uint32_t sprite_pixels[64 * 64];
+
+	static ImU8     sprite_id  = 0;
+	static uint64_t sprite_sig = 0;
+
+	static const ImU8  incr_one8  = 1;
+	static const ImU8  incr_hex8  = 16;
+	static const ImU16 incr_one16 = 1;
+	static const ImU16 incr_ten16 = 10;
+	static const ImU16 incr_hex16 = 16;
+	static const ImU16 incr_addr  = 32;
+	static const ImU16 fast_addr  = 32 * 16;
+
+	static bool reload = true;
+
+	ImGui::BeginGroup();
+	{
+		ImGui::TextDisabled("Sprite Preview");
+		ImGui::SameLine();
+		ImGui::Dummy(ImVec2(0.0f, 19.0f));
+		ImGui::Separator();
+
+		if (ImGui::InputScalar("Sprite", ImGuiDataType_U8, &sprite_id, &incr_one8, nullptr, "%d")) {
+			reload = true;
+		}
+
+		uint8_t sprite_data[8];
+		memcpy(sprite_data, vera_video_get_sprite_data(sprite_id), 8);
+
+		vera_video_sprite_properties sprite_props;
+		memcpy(&sprite_props, vera_video_get_sprite_properties(sprite_id), sizeof(vera_video_sprite_properties));
+
+		if (sprite_sig != *reinterpret_cast<const uint64_t *>(sprite_data)) {
+			sprite_sig = *reinterpret_cast<const uint64_t *>(sprite_data);
+			reload     = true;
+		}
+
+		const uint32_t num_dots = 1 << (sprite_props.sprite_width_log2 + sprite_props.sprite_height_log2);
+		vera_video_get_expanded_vram(sprite_props.sprite_address, 4 << sprite_props.color_mode, uncompressed_vera_memory, num_dots);
+		const uint32_t *palette = vera_video_get_palette_argb32();
+		for (uint32_t i = 0; i < num_dots; ++i) {
+			sprite_pixels[i] = (palette[uncompressed_vera_memory[i] + sprite_props.palette_offset] << 8) | 0xff;
+		}
+		if (reload) {
+			sprite_preview.load_memory(sprite_pixels, sprite_props.sprite_width, sprite_props.sprite_height, sprite_props.sprite_width, sprite_props.sprite_height);
+			reload = false;
+		} else {
+			sprite_preview.update_memory(sprite_pixels);
+		}
+
+		ImGui::Image((void *)(intptr_t)sprite_preview.get_texture_id(), ImVec2(128.0f, 128.0f), sprite_preview.get_top_left(0), sprite_preview.get_bottom_right(0));
+
+		ImGui::SameLine();
+		ImGui::BeginGroup();
+		{
+			for (int i = 0; i < 8; ++i) {
+				if (ImGui::InputHex(0, sprite_data[i])) {
+					vera_video_space_write(0x1FC00 + 8 * sprite_id + i, sprite_data[i]);
+				}
+				if ((i & 1) != 1) {
+					ImGui::SameLine();
+				}
+			}
+		}
+		ImGui::EndGroup();
+		ImGui::SameLine();
+		ImGui::BeginGroup();
+		{
+			ImGui::PushItemWidth(128.0f);
+
+			if (ImGui::InputScalar("VRAM Addr", ImGuiDataType_U16, &sprite_props.sprite_address, &incr_addr, &fast_addr, "%d")) {
+				vera_video_space_write(0x1FC00 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_address >> 5));
+				vera_video_space_write(0x1FC01 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_address >> 13) | (sprite_props.color_mode << 7));
+			}
+			bool eight_bit = sprite_props.color_mode;
+			if (ImGui::Checkbox("8bit Color", &eight_bit)) {
+				vera_video_space_write(0x1FC01 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_address >> 13) | (sprite_props.color_mode << 7));
+			}
+			if (ImGui::InputScalar("Pos X", ImGuiDataType_U16, &sprite_props.sprite_x, &incr_one16, &incr_ten16, "%d")) {
+				vera_video_space_write(0x1FC02 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_x));
+				vera_video_space_write(0x1FC03 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_x >> 8));
+			}
+			if (ImGui::InputScalar("Pos Y", ImGuiDataType_U16, &sprite_props.sprite_y, &incr_one16, &incr_ten16, "%d")) {
+				vera_video_space_write(0x1FC04 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_y));
+				vera_video_space_write(0x1FC05 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_y >> 8));
+			}
+			if (ImGui::Checkbox("h-flip", &sprite_props.hflip)) {
+				vera_video_space_write(0x1FC06 + 8 * sprite_id, (uint8_t)(sprite_props.hflip ? 0x1 : 0) | (uint8_t)(sprite_props.vflip ? 0x2 : 0) | (uint8_t)((sprite_props.sprite_zdepth & 3) << 2) | (uint8_t)((sprite_props.sprite_collision_mask & 0xf) << 4));
+			}
+			if (ImGui::Checkbox("v-flip", &sprite_props.vflip)) {
+				vera_video_space_write(0x1FC06 + 8 * sprite_id, (uint8_t)(sprite_props.hflip ? 0x1 : 0) | (uint8_t)(sprite_props.vflip ? 0x2 : 0) | (uint8_t)((sprite_props.sprite_zdepth & 3) << 2) | (uint8_t)((sprite_props.sprite_collision_mask & 0xf) << 4));
+			}
+			if (ImGui::InputScalar("Z-depth", ImGuiDataType_U8, &sprite_props.sprite_zdepth, &incr_one8, nullptr, "%d")) {
+				vera_video_space_write(0x1FC06 + 8 * sprite_id, (uint8_t)(sprite_props.hflip ? 0x1 : 0) | (uint8_t)(sprite_props.vflip ? 0x2 : 0) | (uint8_t)((sprite_props.sprite_zdepth & 3) << 2) | (uint8_t)((sprite_props.sprite_collision_mask & 0xf) << 4));
+			}
+			if (ImGui::InputScalar("Collision", ImGuiDataType_U8, &sprite_props.sprite_collision_mask, &incr_hex8, nullptr, "%1x")) {
+				vera_video_space_write(0x1FC06 + 8 * sprite_id, (uint8_t)(sprite_props.hflip ? 0x1 : 0) | (uint8_t)(sprite_props.vflip ? 0x2 : 0) | (uint8_t)((sprite_props.sprite_zdepth & 3) << 2) | (uint8_t)((sprite_props.sprite_collision_mask & 0xf0)));
+			}
+			if (ImGui::InputScalar("Palette Offset", ImGuiDataType_U16, &sprite_props.palette_offset, &incr_hex16, nullptr, "%d")) {
+				vera_video_space_write(0x1FC07 + 8 * sprite_id, (uint8_t)((sprite_props.palette_offset >> 4) & 0xf) | (uint8_t)(((sprite_props.sprite_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((sprite_props.sprite_height_log2 - 3) & 0x3) << 6));
+			}
+			if (ImGui::InputScalar("Width", ImGuiDataType_U8, &sprite_props.sprite_width_log2, &incr_one8, nullptr, "%d")) {
+				vera_video_space_write(0x1FC07 + 8 * sprite_id, (uint8_t)((sprite_props.palette_offset >> 4) & 0xf) | (uint8_t)(((sprite_props.sprite_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((sprite_props.sprite_height_log2 - 3) & 0x3) << 6));
+			}
+			if (ImGui::InputScalar("Height", ImGuiDataType_U8, &sprite_props.sprite_height_log2, &incr_one8, nullptr, "%d")) {
+				vera_video_space_write(0x1FC07 + 8 * sprite_id, (uint8_t)((sprite_props.palette_offset >> 4) & 0xf) | (uint8_t)(((sprite_props.sprite_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((sprite_props.sprite_height_log2 - 3) & 0x3) << 6));
+			}
+			ImGui::PopItemWidth();
+		}
+		ImGui::EndGroup();
+	}
+	ImGui::EndGroup();
+}
+
 static void draw_breakpoints()
 {
 	ImGui::BeginGroup();
@@ -394,7 +534,9 @@ static void draw_symbols_list()
 					if (search_filter_contains(name.c_str())) {
 						ImGui::PushID(id++);
 						bool is_selected = selected && (selected_addr == address) && (selected_bank == bank);
-						if (ImGui::Selectable(name.c_str(), is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+						char display_name[128];
+						sprintf(display_name, "%04x %s", address, name.c_str());
+						if (ImGui::Selectable(display_name, is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
 							selected      = true;
 							selected_addr = address;
 							selected_bank = bank;
@@ -600,7 +742,7 @@ static void draw_debugger_vera_psg()
 		"Vol",
 		"Wave",
 		"Width"
-	};	
+	};
 	for (int i = 0; i < 6; ++i) {
 		ImGui::Text("%s", labels[i]);
 		ImGui::NextColumn();
@@ -642,7 +784,7 @@ static void draw_debugger_vera_psg()
 		ImGui::PopID();
 		ImGui::NextColumn();
 
-		static const char* waveforms[] = {
+		static const char *waveforms[] = {
 			"Pulse",
 			"Sawtooth",
 			"Triangle",
@@ -882,6 +1024,10 @@ void overlay_draw()
 			vram_dump.draw();
 			ImGui::SameLine();
 			draw_debugger_vera_status();
+			ImGui::NewLine();
+			draw_debugger_vera_palette();
+			ImGui::NewLine();
+			draw_debugger_vera_sprite();
 		}
 		ImGui::End();
 	}

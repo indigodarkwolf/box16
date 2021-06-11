@@ -94,7 +94,7 @@ static const uint16_t default_palette[] = {
 };
 
 uint8_t     vera_video_space_read(uint32_t address);
-static void video_space_read_range(uint8_t *dest, uint32_t address, uint32_t size);
+static void vera_video_space_read_range(uint8_t *dest, uint32_t address, uint32_t size);
 
 static void refresh_palette();
 
@@ -290,31 +290,11 @@ static void refresh_layer_properties(const uint8_t layer)
 	props->color_fields_max = (8 >> props->color_depth) - 1;
 }
 
-struct video_sprite_properties {
-	int8_t  sprite_zdepth;
-	uint8_t sprite_collision_mask;
-
-	int16_t sprite_x;
-	int16_t sprite_y;
-	uint8_t sprite_width_log2;
-	uint8_t sprite_height_log2;
-	uint8_t sprite_width;
-	uint8_t sprite_height;
-
-	bool hflip;
-	bool vflip;
-
-	uint8_t  color_mode;
-	uint32_t sprite_address;
-
-	uint16_t palette_offset;
-};
-
-struct video_sprite_properties sprite_properties[128];
+vera_video_sprite_properties sprite_properties[128];
 
 static void refresh_sprite_properties(const uint16_t sprite)
 {
-	struct video_sprite_properties *props = &sprite_properties[sprite];
+	struct vera_video_sprite_properties *props = &sprite_properties[sprite];
 
 	props->sprite_zdepth         = (sprite_data[sprite][6] >> 2) & 3;
 	props->sprite_collision_mask = sprite_data[sprite][6] & 0xf0;
@@ -374,9 +354,67 @@ static void refresh_palette()
 			}
 		}
 
-		video_palette.entries[i] = (uint32_t)(r << 16) | ((uint32_t)g << 8) | ((uint32_t)b);
+		video_palette.entries[i] = 0xff000000 | (uint32_t)(r << 16) | ((uint32_t)g << 8) | ((uint32_t)b);
 	}
 	video_palette.dirty = false;
+}
+
+static void expand_1bpp_data(uint8_t *dst, const uint8_t *src, int dst_size)
+{
+	dst += 7;
+	while (dst_size >= 8) {
+		uint8_t s = *src;
+
+		*dst = s & 0x1;
+		--dst;
+		s >>= 1;
+		*dst = s & 0x1;
+		--dst;
+		s >>= 1;
+		*dst = s & 0x1;
+		--dst;
+		s >>= 1;
+		*dst = s & 0x1;
+		--dst;
+		s >>= 1;
+		*dst = s & 0x1;
+		--dst;
+		s >>= 1;
+		*dst = s & 0x1;
+		--dst;
+		s >>= 1;
+		*dst = s & 0x1;
+		--dst;
+		s >>= 1;
+		*dst = s & 0x1;
+
+		dst += 15;
+		++src;
+		dst_size -= 8;
+	}
+}
+
+static void expand_2bpp_data(uint8_t *dst, const uint8_t *src, int dst_size)
+{
+	dst += 3;
+	while (dst_size >= 4) {
+		uint8_t s = *src;
+
+		*dst = s & 0x3;
+		--dst;
+		s >>= 2;
+		*dst = s & 0x3;
+		--dst;
+		s >>= 2;
+		*dst = s & 0x3;
+		--dst;
+		s >>= 2;
+		*dst = s & 0x3;
+
+		dst += 7;
+		++src;
+		dst_size -= 4;
+	}
 }
 
 static void expand_4bpp_data(uint8_t *dst, const uint8_t *src, int dst_size)
@@ -404,7 +442,7 @@ static void render_sprite_line(const uint16_t y)
 		sprite_budget--;
 		if (sprite_budget == 0)
 			break;
-		const struct video_sprite_properties *props = &sprite_properties[i];
+		const struct vera_video_sprite_properties *props = &sprite_properties[i];
 
 		if (props->sprite_zdepth == 0) {
 			continue;
@@ -483,7 +521,7 @@ static void render_layer_line_text(uint8_t layer, uint16_t y)
 	const int      size           = (map_addr_end - map_addr_begin) + 2;
 
 	uint8_t tile_bytes[512]; // max 256 tiles, 2 bytes each.
-	video_space_read_range(tile_bytes, map_addr_begin, size);
+	vera_video_space_read_range(tile_bytes, map_addr_begin, size);
 
 	uint32_t tile_start;
 
@@ -578,7 +616,7 @@ static void render_layer_line_tile(uint8_t layer, uint16_t y)
 	const int      size           = (map_addr_end - map_addr_begin) + 2;
 
 	uint8_t tile_bytes[512]; // max 256 tiles, 2 bytes each.
-	video_space_read_range(tile_bytes, map_addr_begin, size);
+	vera_video_space_read_range(tile_bytes, map_addr_begin, size);
 
 	uint8_t  palette_offset;
 	bool     vflip;
@@ -739,13 +777,21 @@ static void render_line(uint16_t y)
 
 	int eff_y = (reg_composer[2] * (y - vstart)) >> 7;
 
-	uint8_t dc_video     = reg_composer[0];
+	uint8_t dc_video = reg_composer[0];
+
+	const bool layer0_was_enabled = layer_line_enable[0];
+	const bool layer1_was_enabled = layer_line_enable[1];
+	const bool sprite_was_enabled = sprite_line_enable;
+
 	layer_line_enable[0] = dc_video & 0x10;
 	layer_line_enable[1] = dc_video & 0x20;
 	sprite_line_enable   = dc_video & 0x40;
 
 	if (sprite_line_enable) {
 		render_sprite_line(eff_y);
+	} else if (sprite_was_enabled) {
+		memset(sprite_line_z, 0, SCREEN_WIDTH);
+		memset(sprite_line_col, 0, SCREEN_WIDTH);
 	}
 
 	if (frame_count & cheat_mask) {
@@ -762,7 +808,10 @@ static void render_line(uint16_t y)
 		} else {
 			render_layer_line_tile(0, eff_y);
 		}
+	} else if (layer0_was_enabled) {
+		memset(layer_line[0], 0, SCREEN_WIDTH);
 	}
+
 	if (layer_line_enable[1]) {
 		if (layer_properties[1].text_mode) {
 			render_layer_line_text(1, eff_y);
@@ -771,6 +820,8 @@ static void render_line(uint16_t y)
 		} else {
 			render_layer_line_tile(1, eff_y);
 		}
+	} else if (layer1_was_enabled) {
+		memset(layer_line[1], 0, SCREEN_WIDTH);
 	}
 
 	uint8_t col_line[SCREEN_WIDTH];
@@ -950,14 +1001,15 @@ uint8_t vera_video_space_read(uint32_t address)
 	return video_ram[address & 0x1FFFF];
 }
 
-static void video_space_read_range(uint8_t *dest, uint32_t address, uint32_t size)
+void vera_video_space_read_range(uint8_t *dest, uint32_t address, uint32_t size)
 {
 	if (address >= ADDR_VRAM_START && (address + size) <= ADDR_VRAM_END) {
 		memcpy(dest, &video_ram[address], size);
 	} else {
-		for (uint32_t i = 0; i < size; ++i) {
-			*dest++ = vera_video_space_read(address + i);
-		}
+		const uint32_t tail_size = ADDR_VRAM_END - address;
+		memcpy(dest, &video_ram[address & 0x1FFFF], tail_size);
+		const uint32_t head_size = ((address + size) & 0x1FFFF);
+		memcpy(dest + tail_size, video_ram, head_size);
 	}
 }
 
@@ -1346,4 +1398,52 @@ void vera_video_set_log_video(bool enable)
 bool vera_video_get_log_video()
 {
 	return log_video;
+}
+
+void vera_video_get_expanded_vram(uint32_t address, int bpp, uint8_t *dest, uint32_t dest_size)
+{
+	switch (bpp) {
+		case 1:
+			expand_1bpp_data(dest, video_ram + address, dest_size);
+			break;
+		case 2:
+			expand_2bpp_data(dest, video_ram + address, dest_size);
+			break;
+		case 4:
+			expand_4bpp_data(dest, video_ram + address, dest_size);
+			break;
+		case 8:
+			vera_video_space_read_range(dest, address, dest_size);
+			break;
+		default:
+			break;
+	}
+}
+
+const uint32_t *vera_video_get_palette_argb32()
+{
+	return video_palette.entries;
+}
+
+const uint16_t *vera_video_get_palette_argb16()
+{
+	return reinterpret_cast<const uint16_t *>(palette);
+}
+
+const vera_video_sprite_properties *vera_video_get_sprite_properties(int sprite)
+{
+	if (sprite >= 0 && sprite < 128) {
+		return &sprite_properties[sprite];
+	} else {
+		return nullptr;
+	}
+}
+
+const uint8_t *vera_video_get_sprite_data(int sprite)
+{
+	if (sprite >= 0 && sprite < 128) {
+		return sprite_data[sprite];
+	} else {
+		return nullptr;
+	}
 }

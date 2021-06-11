@@ -14,6 +14,26 @@
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
 
+struct vera_video_sprite_properties {
+	int8_t  sprite_zdepth;
+	uint8_t sprite_collision_mask;
+
+	int16_t sprite_x;
+	int16_t sprite_y;
+	uint8_t sprite_width_log2;
+	uint8_t sprite_height_log2;
+	uint8_t sprite_width;
+	uint8_t sprite_height;
+
+	bool hflip;
+	bool vflip;
+
+	uint8_t  color_mode;
+	uint32_t sprite_address;
+
+	uint16_t palette_offset;
+};
+
 void vera_video_reset(void);
 bool vera_video_step(float mhz, float cycles);
 bool vera_video_get_irq_out(void);
@@ -28,6 +48,7 @@ void    via1_write(uint8_t reg, uint8_t value);
 
 // For debugging purposes only:
 uint8_t vera_video_space_read(uint32_t address);
+void    vera_video_space_read_range(uint8_t *dest, uint32_t address, uint32_t size);
 void    vera_video_space_write(uint32_t address, uint8_t value);
 
 bool vera_video_is_tilemap_address(uint32_t addr);
@@ -68,5 +89,13 @@ void vera_video_set_cheat_mask(int mask);
 int  vera_video_get_cheat_mask();
 void vera_video_set_log_video(bool enable);
 bool vera_video_get_log_video();
+
+void vera_video_get_expanded_vram(uint32_t address, int bpp, uint8_t *dest, uint32_t dest_size);
+
+const uint32_t *vera_video_get_palette_argb32();
+const uint16_t *vera_video_get_palette_argb16();
+
+const vera_video_sprite_properties *vera_video_get_sprite_properties(int sprite);
+const uint8_t *                     vera_video_get_sprite_data(int sprite);
 
 #endif

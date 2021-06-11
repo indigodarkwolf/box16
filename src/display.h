@@ -1,11 +1,39 @@
 #pragma once
 
-#include <SDL.h>
 #include "imgui/imgui.h"
+
+#include <SDL.h>
+#include <tuple>
 
 struct display_settings {
 	SDL_Rect window_rect;
 	SDL_Rect video_rect;
+};
+
+class icon_set
+{
+public:
+	bool load_file(const char *filename, int width, int height);
+	bool load_memory(const void *buffer, int width, int height, int texture_width, int texture_height);
+	void update_memory(const void *buffer);
+	void unload();
+
+	ImVec2                     get_top_left(int id);
+	ImVec2                     get_bottom_right(int id);
+	std::tuple<ImVec2, ImVec2> get_imvec2_corners(int id);
+	SDL_FRect                  get_sdl_rect(int id);
+
+	uint32_t get_texture_id();
+	void     draw(int id, int x, int y, int w, int h, SDL_Color color);
+
+private:
+	uint32_t texture        = 0;
+	int      texture_width  = 0;
+	int      texture_height = 0;
+	float    tile_uv_width  = 0.0f;
+	float    tile_uv_height = 0.0f;
+	int      map_width      = 0;
+	int      map_height     = 0;
 };
 
 bool display_init(const display_settings &);
