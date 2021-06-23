@@ -62,15 +62,6 @@ static bool Initd_imgui_sdl2          = false;
 static bool Initd_imgui_opengl        = false;
 static bool Initd_icons               = false;
 
-#if SDL_MAJOR_VERSION <= 2 && SDL_MINOR_VERSION <= 0 && SDL_PATCHLEVEL <= 9
-struct SDL_FRect {
-	float x;
-	float y;
-	float w;
-	float h;
-};
-#endif
-
 bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 {
 	if (texture != 0) {

@@ -556,13 +556,13 @@ static void draw_debugger_vera_layer()
 					case 2:
 						return ((layer_props.tile_base >> 11) << 2) | (layer_props.tileh_log2 == 4 ? 0x2 : 0) | (layer_props.tilew_log2 == 4 ? 0x1 : 0);
 					case 3:
-						return layer_props.hscroll >> 8;
-					case 4:
 						return layer_props.hscroll & 0xff;
+					case 4:
+						return layer_props.hscroll >> 8;
 					case 5:
-						return layer_props.vscroll >> 8;
-					case 6:
 						return layer_props.vscroll & 0xff;
+					case 6:
+						return layer_props.vscroll >> 8;
 					default:
 						return 0;
 				}
@@ -587,7 +587,7 @@ static void draw_debugger_vera_layer()
 				layer_props.maph_log2 = maph_log2 + 5;
 				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
 			}
-			if (ImGui::InputScalar("Map Base", ImGuiDataType_U32, &layer_props.map_base, &incr_map, &fast_map, "%03X")) {
+			if (ImGui::InputScalar("Map Base", ImGuiDataType_U32, &layer_props.map_base, &incr_map, &fast_map, "%05X")) {
 				vera_video_write(0x0E + 7 * layer_id, get_byte(1));
 			}
 			bool tile16h = layer_props.tileh_log2 > 3;
@@ -600,15 +600,17 @@ static void draw_debugger_vera_layer()
 				layer_props.tilew_log2 = tile16w ? 4 : 3;
 				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
 			}
-
-			if (ImGui::InputScalar("H-Scroll", ImGuiDataType_U16, &layer_props.hscroll, &incr_hex16, &incr_hex16, "%03X")) {
+			if (ImGui::InputScalar("Tile Base", ImGuiDataType_U32, &layer_props.tile_base, &incr_tile, &fast_tile, "%05X")) {
+				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
+			}
+			if (ImGui::InputScalar("H-Scroll", ImGuiDataType_U16, &layer_props.hscroll, &incr_one16, &incr_ten16, "%03X")) {
 				vera_video_write(0x10 + 7 * layer_id, get_byte(3));
-				vera_video_write(0x10 + 7 * layer_id, get_byte(4));
+				vera_video_write(0x11 + 7 * layer_id, get_byte(4));
 			}
 
-			if (ImGui::InputScalar("V-Scroll", ImGuiDataType_U16, &layer_props.vscroll, &incr_hex16, &incr_hex16, "%03X")) {
-				vera_video_write(0x10 + 7 * layer_id, get_byte(5));
-				vera_video_write(0x10 + 7 * layer_id, get_byte(6));
+			if (ImGui::InputScalar("V-Scroll", ImGuiDataType_U16, &layer_props.vscroll, &incr_one16, &incr_ten16, "%03X")) {
+				vera_video_write(0x12 + 7 * layer_id, get_byte(5));
+				vera_video_write(0x13 + 7 * layer_id, get_byte(6));
 			}
 
 			ImGui::PopItemWidth();

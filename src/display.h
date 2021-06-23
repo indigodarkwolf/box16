@@ -5,6 +5,15 @@
 #include <SDL.h>
 #include <tuple>
 
+#if SDL_MAJOR_VERSION <= 2 && SDL_MINOR_VERSION <= 0 && SDL_PATCHLEVEL <= 9
+struct SDL_FRect {
+	float x;
+	float y;
+	float w;
+	float h;
+};
+#endif
+
 struct display_settings {
 	SDL_Rect window_rect;
 	SDL_Rect video_rect;
