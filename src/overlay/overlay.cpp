@@ -303,11 +303,6 @@ static void draw_debugger_vera_sprite()
 
 	ImGui::BeginGroup();
 	{
-		ImGui::TextDisabled("Sprite Preview");
-		ImGui::SameLine();
-		ImGui::Dummy(ImVec2(0.0f, 19.0f));
-		ImGui::Separator();
-
 		if (ImGui::InputScalar("Sprite", ImGuiDataType_U8, &sprite_id, &incr_one8, nullptr, "%d")) {
 			reload = true;
 		}
@@ -336,25 +331,38 @@ static void draw_debugger_vera_sprite()
 			sprite_preview.update_memory(sprite_pixels);
 		}
 
-		ImGui::Image((void *)(intptr_t)sprite_preview.get_texture_id(), ImVec2(128.0f, 128.0f), sprite_preview.get_top_left(0), sprite_preview.get_bottom_right(0));
 
-		ImGui::SameLine();
 		ImGui::BeginGroup();
 		{
-			for (int i = 0; i < 8; ++i) {
-				if (ImGui::InputHex(i, sprite_data[i])) {
-					vera_video_space_write(0x1FC00 + 8 * sprite_id + i, sprite_data[i]);
-				}
-				if ((i & 1) != 1) {
-					ImGui::SameLine();
-				}
-			}
+			ImGui::TextDisabled("Sprite Preview");
+			ImGui::Image((void *)(intptr_t)sprite_preview.get_texture_id(), ImVec2(128.0f, 128.0f), sprite_preview.get_top_left(0), sprite_preview.get_bottom_right(0));
 		}
 		ImGui::EndGroup();
 		ImGui::SameLine();
 		ImGui::BeginGroup();
 		{
+			ImGui::TextDisabled("Raw Bytes");
+
+			for (int i = 0; i < 8; ++i) {
+				if (i) {
+					ImGui::SameLine();
+				}
+				if (ImGui::InputHex(i, sprite_data[i])) {
+					vera_video_space_write(0x1FC00 + 8 * sprite_id + i, sprite_data[i]);
+				}
+				//if ((i & 1) != 1) {
+				//	ImGui::SameLine();
+				//}
+			}
+		}
+		//ImGui::EndGroup();
+		//ImGui::SameLine();
+		//ImGui::BeginGroup();
+		ImGui::NewLine();
+		{
 			ImGui::PushItemWidth(128.0f);
+
+			ImGui::TextDisabled("Sprite Properties");
 
 			if (ImGui::InputScalar("VRAM Addr", ImGuiDataType_U16, &sprite_props.sprite_address, &incr_addr, &fast_addr, "%d")) {
 				vera_video_space_write(0x1FC00 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_address >> 5));
@@ -425,11 +433,6 @@ static void draw_debugger_vera_layer()
 
 	ImGui::BeginGroup();
 	{
-		ImGui::TextDisabled("Layer Preview");
-		ImGui::SameLine();
-		ImGui::Dummy(ImVec2(0.0f, 19.0f));
-		ImGui::Separator();
-
 		if (ImGui::InputScalar("layer", ImGuiDataType_U8, &layer_id, &incr_one8, nullptr, "%d")) {
 			reload = true;
 			layer_id &= 1;
@@ -447,108 +450,167 @@ static void draw_debugger_vera_layer()
 			reload    = true;
 		}
 
-		const uint32_t num_dots = 1024 << (layer_props.tilew_log2 + layer_props.tileh_log2);
-		vera_video_get_expanded_vram(layer_props.tile_base, 1 << layer_props.color_depth, uncompressed_vera_memory, num_dots);
-		const uint32_t *palette = vera_video_get_palette_argb32();
-		for (uint32_t i = 0; i < num_dots; ++i) {
-			tile_pixels[i] = (palette[uncompressed_vera_memory[i] + tile_palette_offset] << 8) | 0xff;
-		}
-		if (reload) {
-			tiles_preview.load_memory(tile_pixels, layer_props.tilew, 1024 << layer_props.tileh_log2, layer_props.tilew, layer_props.tileh);
-			reload = false;
-		} else {
-			tiles_preview.update_memory(tile_pixels);
-		}
+		if (layer_props.bitmap_mode) {
+			const uint32_t num_dots = layer_props.tilew * 128;
+			vera_video_get_expanded_vram(layer_props.tile_base, 1 << layer_props.color_depth, uncompressed_vera_memory, num_dots);
 
-		ImVec2 custom_spacing(5, 5);
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, custom_spacing);
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
-
-		static const int tiles_per_row = 128 >> layer_props.tilew_log2;
-		ImGui::BeginChild("tiles", ImVec2(256.0f + custom_spacing.x * tiles_per_row + 10, 256.0f + custom_spacing.y * tiles_per_row));
-		{
-			ImVec2 tile_imsize(layer_props.tilew << 1, layer_props.tileh << 1);
-
-			ImGuiListClipper clipper;
-			clipper.Begin(1024 / tiles_per_row, layer_props.tileh + custom_spacing.y);
-
-			while (clipper.Step()) {
-				uint16_t start_tile = clipper.DisplayStart * tiles_per_row;
-				uint16_t end_tile   = clipper.DisplayEnd * tiles_per_row;
-				if (end_tile > 1024) {
-					end_tile = 1024;
-				}
-				for (int i = start_tile; i < end_tile; ++i) {
-					if (i % tiles_per_row) {
-						ImGui::SameLine();
-					}
-					ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), tile_imsize, tiles_preview.get_top_left(i), tiles_preview.get_bottom_right(i));
-				}
+			const uint32_t *palette = vera_video_get_palette_argb32();
+			for (uint32_t i = 0; i < num_dots; ++i) {
+				tile_pixels[i] = (palette[uncompressed_vera_memory[i] + tile_palette_offset] << 8) | 0xff;
 			}
-			clipper.End();
 
-			ImGui::EndChild();
+			if (reload) {
+				tiles_preview.load_memory(tile_pixels, layer_props.tilew, 128, layer_props.tilew, 128);
+				reload = false;
+			} else {
+				tiles_preview.update_memory(tile_pixels);
+			}
+		} else {
+			const uint32_t num_dots = 1024 << (layer_props.tilew_log2 + layer_props.tileh_log2);
+			vera_video_get_expanded_vram(layer_props.tile_base, 1 << layer_props.color_depth, uncompressed_vera_memory, num_dots);
+
+			const uint32_t *palette = vera_video_get_palette_argb32();
+			for (uint32_t i = 0; i < num_dots; ++i) {
+				tile_pixels[i] = (palette[uncompressed_vera_memory[i] + tile_palette_offset] << 8) | 0xff;
+			}
+
+			if (reload) {
+				tiles_preview.load_memory(tile_pixels, layer_props.tilew, 1024 << layer_props.tileh_log2, layer_props.tilew, layer_props.tileh);
+				reload = false;
+			} else {
+				tiles_preview.update_memory(tile_pixels);
+			}
 		}
-		ImGui::PopStyleVar();
-		ImGui::PopStyleVar();
 
-		ImGui::SameLine();
 		ImGui::BeginGroup();
 		{
-			for (int i = 0; i < 7; ++i) {
-				if (ImGui::InputHex(i, layer_data[i])) {
-					vera_video_write(0x0D + 7 * layer_id + i, layer_data[i]);
+			ImGui::TextDisabled("Tile Preview");
+
+			ImVec2 custom_spacing(5, 5);
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, custom_spacing);
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
+
+			static const int tiles_per_row = 128 >> layer_props.tilew_log2;
+			ImGui::BeginChild("tiles", ImVec2(256.0f + custom_spacing.x * tiles_per_row + 10, 256.0f + custom_spacing.y * tiles_per_row));
+			{
+				ImVec2 tile_imsize(layer_props.tilew << 1, layer_props.tileh << 1);
+
+				ImGuiListClipper clipper;
+				clipper.Begin(1024 / tiles_per_row, layer_props.tileh + custom_spacing.y);
+
+				while (clipper.Step()) {
+					uint16_t start_tile = clipper.DisplayStart * tiles_per_row;
+					uint16_t end_tile   = clipper.DisplayEnd * tiles_per_row;
+					if (end_tile > 1024) {
+						end_tile = 1024;
+					}
+					for (int i = start_tile; i < end_tile; ++i) {
+						if (i % tiles_per_row) {
+							ImGui::SameLine();
+						}
+						ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), tile_imsize, tiles_preview.get_top_left(i), tiles_preview.get_bottom_right(i));
+					}
 				}
-				if ((i & 1) != 1) {
-					ImGui::SameLine();
-				}
+				clipper.End();
+
+				ImGui::EndChild();
 			}
+			ImGui::PopStyleVar();
+			ImGui::PopStyleVar();
+			ImGui::PushItemWidth(128.0f);
+			ImGui::InputScalar("Preview Palette Offset", ImGuiDataType_U16, &tile_palette_offset, &incr_hex16, nullptr, "%d");
+			ImGui::PopItemWidth();
 		}
 		ImGui::EndGroup();
 		ImGui::SameLine();
 		ImGui::BeginGroup();
 		{
-			ImGui::PushItemWidth(128.0f);
+			ImGui::TextDisabled("Raw Bytes");
 
-			if (ImGui::InputScalar("Map Base", ImGuiDataType_U32, &layer_props.map_base, &incr_map, &fast_map, "%d")) {
-				vera_video_write(0x0E + 7 * layer_id, (uint8_t)((layer_props.map_base >> 9)));
+			for (int i = 0; i < 7; ++i) {
+				if (i) {
+					ImGui::SameLine();
+				}
+				if (ImGui::InputHex(i, layer_data[i])) {
+					vera_video_write(0x0D + 7 * layer_id + i, layer_data[i]);
+				}
+				//if ((i & 1) != 1) {
+				//	ImGui::SameLine();
+				//}
 			}
-			if (ImGui::InputScalar("Tile Base", ImGuiDataType_U32, &layer_props.tile_base, &incr_tile, &fast_tile, "%d")) {
-				vera_video_write(0x0F + 7 * layer_id, (uint8_t)((layer_props.tile_base >> 11) << 2) | ((layer_props.tileh_log2 >> 3) << 1) | ((layer_props.tilew_log2 >> 3)));
+		}
+		//ImGui::EndGroup();
+		//ImGui::SameLine();
+		ImGui::NewLine();
+		//ImGui::BeginGroup();
+		{
+			ImGui::TextDisabled("Layer Properties");
+
+			ImGui::PushItemWidth(128.0f);
+			auto get_byte = [&layer_props](int b) -> uint8_t {
+				switch (b) {
+					case 0:
+						return ((layer_props.maph_log2 - 5) << 6) | ((layer_props.mapw_log2 - 5) << 4) | (layer_props.text_mode_256c ? 0x8 : 0) | (layer_props.bitmap_mode ? 0x4 : 0) | layer_props.color_depth;
+					case 1:
+						return layer_props.map_base >> 9;
+					case 2:
+						return ((layer_props.tile_base >> 11) << 2) | (layer_props.tileh_log2 == 4 ? 0x2 : 0) | (layer_props.tilew_log2 == 4 ? 0x1 : 0);
+					case 3:
+						return layer_props.hscroll >> 8;
+					case 4:
+						return layer_props.hscroll & 0xff;
+					case 5:
+						return layer_props.vscroll >> 8;
+					case 6:
+						return layer_props.vscroll & 0xff;
+					default:
+						return 0;
+				}
+			};
+
+			if (ImGui::InputScalar("Color Depth", ImGuiDataType_U8, &layer_props.color_depth, &incr_one8, "%d")) {
+				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
 			}
-		//	bool eight_bit = layer_props.color_mode;
-		//	if (ImGui::Checkbox("8bit Color", &eight_bit)) {
-		//		vera_video_space_write(0x1FC01 + 8 * layer_id, (uint8_t)(layer_props.layer_address >> 13) | (layer_props.color_mode << 7));
-		//	}
-		//	if (ImGui::InputScalar("Pos X", ImGuiDataType_U16, &layer_props.layer_x, &incr_one16, &incr_ten16, "%d")) {
-		//		vera_video_space_write(0x1FC02 + 8 * layer_id, (uint8_t)(layer_props.layer_x));
-		//		vera_video_space_write(0x1FC03 + 8 * layer_id, (uint8_t)(layer_props.layer_x >> 8));
-		//	}
-		//	if (ImGui::InputScalar("Pos Y", ImGuiDataType_U16, &layer_props.layer_y, &incr_one16, &incr_ten16, "%d")) {
-		//		vera_video_space_write(0x1FC04 + 8 * layer_id, (uint8_t)(layer_props.layer_y));
-		//		vera_video_space_write(0x1FC05 + 8 * layer_id, (uint8_t)(layer_props.layer_y >> 8));
-		//	}
-		//	if (ImGui::Checkbox("h-flip", &layer_props.hflip)) {
-		//		vera_video_space_write(0x1FC06 + 8 * layer_id, (uint8_t)(layer_props.hflip ? 0x1 : 0) | (uint8_t)(layer_props.vflip ? 0x2 : 0) | (uint8_t)((layer_props.layer_zdepth & 3) << 2) | (uint8_t)((layer_props.layer_collision_mask & 0xf) << 4));
-		//	}
-		//	if (ImGui::Checkbox("v-flip", &layer_props.vflip)) {
-		//		vera_video_space_write(0x1FC06 + 8 * layer_id, (uint8_t)(layer_props.hflip ? 0x1 : 0) | (uint8_t)(layer_props.vflip ? 0x2 : 0) | (uint8_t)((layer_props.layer_zdepth & 3) << 2) | (uint8_t)((layer_props.layer_collision_mask & 0xf) << 4));
-		//	}
-		//	if (ImGui::InputScalar("Z-depth", ImGuiDataType_U8, &layer_props.layer_zdepth, &incr_one8, nullptr, "%d")) {
-		//		vera_video_space_write(0x1FC06 + 8 * layer_id, (uint8_t)(layer_props.hflip ? 0x1 : 0) | (uint8_t)(layer_props.vflip ? 0x2 : 0) | (uint8_t)((layer_props.layer_zdepth & 3) << 2) | (uint8_t)((layer_props.layer_collision_mask & 0xf) << 4));
-		//	}
-		//	if (ImGui::InputScalar("Collision", ImGuiDataType_U8, &layer_props.layer_collision_mask, &incr_hex8, nullptr, "%1x")) {
-		//		vera_video_space_write(0x1FC06 + 8 * layer_id, (uint8_t)(layer_props.hflip ? 0x1 : 0) | (uint8_t)(layer_props.vflip ? 0x2 : 0) | (uint8_t)((layer_props.layer_zdepth & 3) << 2) | (uint8_t)((layer_props.layer_collision_mask & 0xf0)));
-		//	}
-		//	if (ImGui::InputScalar("Palette Offset", ImGuiDataType_U16, &layer_props.palette_offset, &incr_hex16, nullptr, "%d")) {
-		//		vera_video_space_write(0x1FC07 + 8 * layer_id, (uint8_t)((layer_props.palette_offset >> 4) & 0xf) | (uint8_t)(((layer_props.layer_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((layer_props.layer_height_log2 - 3) & 0x3) << 6));
-		//	}
-		//	if (ImGui::InputScalar("Width", ImGuiDataType_U8, &layer_props.layer_width_log2, &incr_one8, nullptr, "%d")) {
-		//		vera_video_space_write(0x1FC07 + 8 * layer_id, (uint8_t)((layer_props.palette_offset >> 4) & 0xf) | (uint8_t)(((layer_props.layer_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((layer_props.layer_height_log2 - 3) & 0x3) << 6));
-		//	}
-		//	if (ImGui::InputScalar("Height", ImGuiDataType_U8, &layer_props.layer_height_log2, &incr_one8, nullptr, "%d")) {
-		//		vera_video_space_write(0x1FC07 + 8 * layer_id, (uint8_t)((layer_props.palette_offset >> 4) & 0xf) | (uint8_t)(((layer_props.layer_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((layer_props.layer_height_log2 - 3) & 0x3) << 6));
-		//	}
+			if (ImGui::Checkbox("Bitmap Layer", &layer_props.bitmap_mode)) {
+				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
+			}
+			if (ImGui::Checkbox("256-color text", &layer_props.text_mode_256c)) {
+				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
+			}
+			uint8_t mapw_log2 = layer_props.mapw_log2 - 5;
+			if (ImGui::InputScalar("Map Width (log 2)", ImGuiDataType_U8, &mapw_log2, &incr_one8, "%d")) {
+				layer_props.mapw_log2 = mapw_log2 + 5;
+				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
+			}
+			uint8_t maph_log2 = layer_props.maph_log2 - 5;
+			if (ImGui::InputScalar("Map Height (log 2)", ImGuiDataType_U8, &maph_log2, &incr_one8, "%d")) {
+				layer_props.maph_log2 = maph_log2 + 5;
+				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
+			}
+			if (ImGui::InputScalar("Map Base", ImGuiDataType_U32, &layer_props.map_base, &incr_map, &fast_map, "%03X")) {
+				vera_video_write(0x0E + 7 * layer_id, get_byte(1));
+			}
+			bool tile16h = layer_props.tileh_log2 > 3;
+			if (ImGui::Checkbox("16-pixel tile height", &tile16h)) {
+				layer_props.tileh_log2 = tile16h ? 4 : 3;
+				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
+			}
+			bool tile16w = layer_props.tilew_log2 > 3;
+			if (ImGui::Checkbox("16-pixel tile width", &tile16w)) {
+				layer_props.tilew_log2 = tile16w ? 4 : 3;
+				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
+			}
+
+			if (ImGui::InputScalar("H-Scroll", ImGuiDataType_U16, &layer_props.hscroll, &incr_hex16, &incr_hex16, "%03X")) {
+				vera_video_write(0x10 + 7 * layer_id, get_byte(3));
+				vera_video_write(0x10 + 7 * layer_id, get_byte(4));
+			}
+
+			if (ImGui::InputScalar("V-Scroll", ImGuiDataType_U16, &layer_props.vscroll, &incr_hex16, &incr_hex16, "%03X")) {
+				vera_video_write(0x10 + 7 * layer_id, get_byte(5));
+				vera_video_write(0x10 + 7 * layer_id, get_byte(6));
+			}
+
 			ImGui::PopItemWidth();
 		}
 		ImGui::EndGroup();
@@ -1162,21 +1224,21 @@ void overlay_draw()
 	draw_menu_bar();
 
 	if (Show_memory_dump_1) {
-		if (ImGui::Begin("Memory 1")) {
+		if (ImGui::Begin("Memory 1", &Show_memory_dump_1)) {
 			memory_dump_1.draw();
 		}
 		ImGui::End();
 	}
 
 	if (Show_memory_dump_2) {
-		if (ImGui::Begin("Memory 2")) {
+		if (ImGui::Begin("Memory 2", &Show_memory_dump_2)) {
 			memory_dump_2.draw();
 		}
 		ImGui::End();
 	}
 
 	if (Show_monitor) {
-		if (ImGui::Begin("CPU Monitor")) {
+		if (ImGui::Begin("CPU Monitor", &Show_monitor)) {
 			draw_debugger_controls();
 			disasm.draw();
 			ImGui::SameLine();
@@ -1189,7 +1251,7 @@ void overlay_draw()
 	}
 
 	if (Show_VERA_monitor) {
-		if (ImGui::Begin("VERA Monitor")) {
+		if (ImGui::Begin("VERA Monitor", &Show_VERA_monitor)) {
 			vram_dump.draw();
 			ImGui::SameLine();
 			draw_debugger_vera_status();
@@ -1198,21 +1260,21 @@ void overlay_draw()
 	}
 
 	if (Show_VERA_palette) {
-		if (ImGui::Begin("VERA Palette")) {
+		if (ImGui::Begin("VERA Palette", &Show_VERA_palette)) {
 			draw_debugger_vera_palette();
 		}
 		ImGui::End();
 	}
 
 	if (Show_VERA_layers) {
-		if (ImGui::Begin("VERA Layers")) {
+		if (ImGui::Begin("VERA Layers", &Show_VERA_layers)) {
 			draw_debugger_vera_layer();
 		}
 		ImGui::End();
 	}
 
 	if (Show_VERA_sprites) {
-		if (ImGui::Begin("VERA Sprites")) {
+		if (ImGui::Begin("VERA Sprites", &Show_VERA_sprites)) {
 			draw_debugger_vera_sprite();
 		}
 		ImGui::End();
@@ -1221,9 +1283,9 @@ void overlay_draw()
 	if (Show_imgui_demo) {
 		ImGui::ShowDemoWindow();
 	}
-
+	
 	if (Show_VERA_PSG_monitor) {
-		if (ImGui::Begin("VERA PSG")) {
+		if (ImGui::Begin("VERA PSG", &Show_VERA_PSG_monitor)) {
 			draw_debugger_vera_psg();
 		}
 		ImGui::End();
