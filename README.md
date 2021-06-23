@@ -295,6 +295,7 @@ Release Notes
 	* Faster joystick implementation, now supporting hot-swapping.
 	* Even faster PS2.
 	* Rebuilt build script. Windows is now a VS2019 solution. Still no Mac, but Linux builds A-OK. Pls halp with iThings, PRs absolutely welcome.
+* Fixes VERA scaling for scaling values greater than $80.
 * Fixes ported from official emulator:
 	* PR 216, fixing occasional flicker and hang issues on Linux. (nigels-com)
 	* PR 317, fixing debugger break timing after hypercalls.
