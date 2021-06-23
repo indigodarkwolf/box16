@@ -32,6 +32,9 @@ bool Show_memory_dump_1    = false;
 bool Show_memory_dump_2    = false;
 bool Show_monitor          = false;
 bool Show_VERA_monitor     = false;
+bool Show_VERA_palette     = false;
+bool Show_VERA_layers      = false;
+bool Show_VERA_sprites     = false;
 bool Show_VERA_PSG_monitor = false;
 
 imgui_vram_dump vram_dump;
@@ -339,7 +342,7 @@ static void draw_debugger_vera_sprite()
 		ImGui::BeginGroup();
 		{
 			for (int i = 0; i < 8; ++i) {
-				if (ImGui::InputHex(0, sprite_data[i])) {
+				if (ImGui::InputHex(i, sprite_data[i])) {
 					vera_video_space_write(0x1FC00 + 8 * sprite_id + i, sprite_data[i]);
 				}
 				if ((i & 1) != 1) {
@@ -390,6 +393,162 @@ static void draw_debugger_vera_sprite()
 			if (ImGui::InputScalar("Height", ImGuiDataType_U8, &sprite_props.sprite_height_log2, &incr_one8, nullptr, "%d")) {
 				vera_video_space_write(0x1FC07 + 8 * sprite_id, (uint8_t)((sprite_props.palette_offset >> 4) & 0xf) | (uint8_t)(((sprite_props.sprite_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((sprite_props.sprite_height_log2 - 3) & 0x3) << 6));
 			}
+			ImGui::PopItemWidth();
+		}
+		ImGui::EndGroup();
+	}
+	ImGui::EndGroup();
+}
+
+static void draw_debugger_vera_layer()
+{
+	static icon_set tiles_preview;
+	static uint8_t  uncompressed_vera_memory[16 * 16 * 1024];
+	static uint32_t tile_pixels[16 * 16 * 1024];
+
+	static uint16_t tile_palette_offset = 0;
+
+	static ImU8     layer_id  = 0;
+	static uint64_t layer_sig = 0;
+
+	static const ImU8  incr_one8  = 1;
+	static const ImU8  incr_hex8  = 16;
+	static const ImU16 incr_one16 = 1;
+	static const ImU16 incr_ten16 = 10;
+	static const ImU16 incr_hex16 = 16;
+	static const ImU32 incr_map  = 1 << 9;
+	static const ImU32 fast_map   = incr_map << 4;
+	static const ImU32 incr_tile  = 1 << 11;
+	static const ImU32 fast_tile  = incr_tile << 4;
+
+	static bool reload = true;
+
+	ImGui::BeginGroup();
+	{
+		ImGui::TextDisabled("Layer Preview");
+		ImGui::SameLine();
+		ImGui::Dummy(ImVec2(0.0f, 19.0f));
+		ImGui::Separator();
+
+		if (ImGui::InputScalar("layer", ImGuiDataType_U8, &layer_id, &incr_one8, nullptr, "%d")) {
+			reload = true;
+			layer_id &= 1;
+		}
+
+		uint8_t layer_data[8];
+		memcpy(layer_data, vera_video_get_layer_data(layer_id), 7);
+		layer_data[7] = 0;
+
+		vera_video_layer_properties layer_props;
+		memcpy(&layer_props, vera_video_get_layer_properties(layer_id), sizeof(vera_video_layer_properties));
+
+		if (layer_sig != *reinterpret_cast<const uint64_t *>(layer_data)) {
+			layer_sig = *reinterpret_cast<const uint64_t *>(layer_data);
+			reload    = true;
+		}
+
+		const uint32_t num_dots = 1024 << (layer_props.tilew_log2 + layer_props.tileh_log2);
+		vera_video_get_expanded_vram(layer_props.tile_base, 1 << layer_props.color_depth, uncompressed_vera_memory, num_dots);
+		const uint32_t *palette = vera_video_get_palette_argb32();
+		for (uint32_t i = 0; i < num_dots; ++i) {
+			tile_pixels[i] = (palette[uncompressed_vera_memory[i] + tile_palette_offset] << 8) | 0xff;
+		}
+		if (reload) {
+			tiles_preview.load_memory(tile_pixels, layer_props.tilew, 1024 << layer_props.tileh_log2, layer_props.tilew, layer_props.tileh);
+			reload = false;
+		} else {
+			tiles_preview.update_memory(tile_pixels);
+		}
+
+		ImVec2 custom_spacing(5, 5);
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, custom_spacing);
+		ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
+
+		static const int tiles_per_row = 128 >> layer_props.tilew_log2;
+		ImGui::BeginChild("tiles", ImVec2(256.0f + custom_spacing.x * tiles_per_row + 10, 256.0f + custom_spacing.y * tiles_per_row));
+		{
+			ImVec2 tile_imsize(layer_props.tilew << 1, layer_props.tileh << 1);
+
+			ImGuiListClipper clipper;
+			clipper.Begin(1024 / tiles_per_row, layer_props.tileh + custom_spacing.y);
+
+			while (clipper.Step()) {
+				uint16_t start_tile = clipper.DisplayStart * tiles_per_row;
+				uint16_t end_tile   = clipper.DisplayEnd * tiles_per_row;
+				if (end_tile > 1024) {
+					end_tile = 1024;
+				}
+				for (int i = start_tile; i < end_tile; ++i) {
+					if (i % tiles_per_row) {
+						ImGui::SameLine();
+					}
+					ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), tile_imsize, tiles_preview.get_top_left(i), tiles_preview.get_bottom_right(i));
+				}
+			}
+			clipper.End();
+
+			ImGui::EndChild();
+		}
+		ImGui::PopStyleVar();
+		ImGui::PopStyleVar();
+
+		ImGui::SameLine();
+		ImGui::BeginGroup();
+		{
+			for (int i = 0; i < 7; ++i) {
+				if (ImGui::InputHex(i, layer_data[i])) {
+					vera_video_write(0x0D + 7 * layer_id + i, layer_data[i]);
+				}
+				if ((i & 1) != 1) {
+					ImGui::SameLine();
+				}
+			}
+		}
+		ImGui::EndGroup();
+		ImGui::SameLine();
+		ImGui::BeginGroup();
+		{
+			ImGui::PushItemWidth(128.0f);
+
+			if (ImGui::InputScalar("Map Base", ImGuiDataType_U32, &layer_props.map_base, &incr_map, &fast_map, "%d")) {
+				vera_video_write(0x0E + 7 * layer_id, (uint8_t)((layer_props.map_base >> 9)));
+			}
+			if (ImGui::InputScalar("Tile Base", ImGuiDataType_U32, &layer_props.tile_base, &incr_tile, &fast_tile, "%d")) {
+				vera_video_write(0x0F + 7 * layer_id, (uint8_t)((layer_props.tile_base >> 11) << 2) | ((layer_props.tileh_log2 >> 3) << 1) | ((layer_props.tilew_log2 >> 3)));
+			}
+		//	bool eight_bit = layer_props.color_mode;
+		//	if (ImGui::Checkbox("8bit Color", &eight_bit)) {
+		//		vera_video_space_write(0x1FC01 + 8 * layer_id, (uint8_t)(layer_props.layer_address >> 13) | (layer_props.color_mode << 7));
+		//	}
+		//	if (ImGui::InputScalar("Pos X", ImGuiDataType_U16, &layer_props.layer_x, &incr_one16, &incr_ten16, "%d")) {
+		//		vera_video_space_write(0x1FC02 + 8 * layer_id, (uint8_t)(layer_props.layer_x));
+		//		vera_video_space_write(0x1FC03 + 8 * layer_id, (uint8_t)(layer_props.layer_x >> 8));
+		//	}
+		//	if (ImGui::InputScalar("Pos Y", ImGuiDataType_U16, &layer_props.layer_y, &incr_one16, &incr_ten16, "%d")) {
+		//		vera_video_space_write(0x1FC04 + 8 * layer_id, (uint8_t)(layer_props.layer_y));
+		//		vera_video_space_write(0x1FC05 + 8 * layer_id, (uint8_t)(layer_props.layer_y >> 8));
+		//	}
+		//	if (ImGui::Checkbox("h-flip", &layer_props.hflip)) {
+		//		vera_video_space_write(0x1FC06 + 8 * layer_id, (uint8_t)(layer_props.hflip ? 0x1 : 0) | (uint8_t)(layer_props.vflip ? 0x2 : 0) | (uint8_t)((layer_props.layer_zdepth & 3) << 2) | (uint8_t)((layer_props.layer_collision_mask & 0xf) << 4));
+		//	}
+		//	if (ImGui::Checkbox("v-flip", &layer_props.vflip)) {
+		//		vera_video_space_write(0x1FC06 + 8 * layer_id, (uint8_t)(layer_props.hflip ? 0x1 : 0) | (uint8_t)(layer_props.vflip ? 0x2 : 0) | (uint8_t)((layer_props.layer_zdepth & 3) << 2) | (uint8_t)((layer_props.layer_collision_mask & 0xf) << 4));
+		//	}
+		//	if (ImGui::InputScalar("Z-depth", ImGuiDataType_U8, &layer_props.layer_zdepth, &incr_one8, nullptr, "%d")) {
+		//		vera_video_space_write(0x1FC06 + 8 * layer_id, (uint8_t)(layer_props.hflip ? 0x1 : 0) | (uint8_t)(layer_props.vflip ? 0x2 : 0) | (uint8_t)((layer_props.layer_zdepth & 3) << 2) | (uint8_t)((layer_props.layer_collision_mask & 0xf) << 4));
+		//	}
+		//	if (ImGui::InputScalar("Collision", ImGuiDataType_U8, &layer_props.layer_collision_mask, &incr_hex8, nullptr, "%1x")) {
+		//		vera_video_space_write(0x1FC06 + 8 * layer_id, (uint8_t)(layer_props.hflip ? 0x1 : 0) | (uint8_t)(layer_props.vflip ? 0x2 : 0) | (uint8_t)((layer_props.layer_zdepth & 3) << 2) | (uint8_t)((layer_props.layer_collision_mask & 0xf0)));
+		//	}
+		//	if (ImGui::InputScalar("Palette Offset", ImGuiDataType_U16, &layer_props.palette_offset, &incr_hex16, nullptr, "%d")) {
+		//		vera_video_space_write(0x1FC07 + 8 * layer_id, (uint8_t)((layer_props.palette_offset >> 4) & 0xf) | (uint8_t)(((layer_props.layer_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((layer_props.layer_height_log2 - 3) & 0x3) << 6));
+		//	}
+		//	if (ImGui::InputScalar("Width", ImGuiDataType_U8, &layer_props.layer_width_log2, &incr_one8, nullptr, "%d")) {
+		//		vera_video_space_write(0x1FC07 + 8 * layer_id, (uint8_t)((layer_props.palette_offset >> 4) & 0xf) | (uint8_t)(((layer_props.layer_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((layer_props.layer_height_log2 - 3) & 0x3) << 6));
+		//	}
+		//	if (ImGui::InputScalar("Height", ImGuiDataType_U8, &layer_props.layer_height_log2, &incr_one8, nullptr, "%d")) {
+		//		vera_video_space_write(0x1FC07 + 8 * layer_id, (uint8_t)((layer_props.palette_offset >> 4) & 0xf) | (uint8_t)(((layer_props.layer_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((layer_props.layer_height_log2 - 3) & 0x3) << 6));
+		//	}
 			ImGui::PopItemWidth();
 		}
 		ImGui::EndGroup();
@@ -960,11 +1119,21 @@ static void draw_menu_bar()
 				ImGui::Checkbox("Memory Dump 1", &Show_memory_dump_1);
 				ImGui::Checkbox("Memory Dump 2", &Show_memory_dump_2);
 				ImGui::Checkbox("CPU Monitor", &Show_monitor);
+				ImGui::Separator();
 				ImGui::Checkbox("VERA Monitor", &Show_VERA_monitor);
+				ImGui::Checkbox("VERA Palette", &Show_VERA_palette);
+				ImGui::Checkbox("VERA Layers", &Show_VERA_layers);
+				ImGui::Checkbox("VERA Sprites", &Show_VERA_sprites);
 				ImGui::Checkbox("PSG Monitor", &Show_VERA_PSG_monitor);
 				ImGui::EndMenu();
 			}
 			ImGui::Separator();
+
+			bool safety_frame = vera_video_safety_frame_is_enabled();
+			if (ImGui::Checkbox("Show Safety Frame", &safety_frame)) {
+				vera_video_enable_safety_frame(safety_frame);
+			}
+
 			if (ImGui::Checkbox("Show ImGui Demo", &Show_imgui_demo)) {
 				// Nothing to do.
 			}
@@ -1024,9 +1193,26 @@ void overlay_draw()
 			vram_dump.draw();
 			ImGui::SameLine();
 			draw_debugger_vera_status();
-			ImGui::NewLine();
+		}
+		ImGui::End();
+	}
+
+	if (Show_VERA_palette) {
+		if (ImGui::Begin("VERA Palette")) {
 			draw_debugger_vera_palette();
-			ImGui::NewLine();
+		}
+		ImGui::End();
+	}
+
+	if (Show_VERA_layers) {
+		if (ImGui::Begin("VERA Layers")) {
+			draw_debugger_vera_layer();
+		}
+		ImGui::End();
+	}
+
+	if (Show_VERA_sprites) {
+		if (ImGui::Begin("VERA Sprites")) {
 			draw_debugger_vera_sprite();
 		}
 		ImGui::End();

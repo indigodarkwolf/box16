@@ -5,8 +5,8 @@
 #include "display.h"
 #include "glue.h"
 #include "imgui/imgui.h"
-#include "ram_dump.h"
 #include "overlay.h"
+#include "ram_dump.h"
 #include "symbols.h"
 #include "util.h"
 
@@ -174,10 +174,12 @@ void imgui_debugger_disasm::draw()
 					//if (dump_address > 0x1FED0) {
 					//	dump_address = 0x1FED0;
 					//}
-				} else if (addr != dump_start) {
-					dump_start   = addr;
-					reset_input  = true;
-					reset_scroll = true;
+				} else if (clipper.DisplayEnd - clipper.DisplayStart >= 28) {
+					if (addr != dump_start) {
+						dump_start   = addr;
+						reset_input  = true;
+						reset_scroll = true;
+					}
 				}
 				for (uint32_t y = 0; y < lines; ++y) {
 					ImGui::PushID(y);

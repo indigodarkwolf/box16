@@ -14,7 +14,7 @@ class icon_set
 {
 public:
 	bool load_file(const char *filename, int width, int height);
-	bool load_memory(const void *buffer, int width, int height, int texture_width, int texture_height);
+	bool load_memory(const void *buffer, int texture_width, int texture_height, int icon_width, int icon_height);
 	void update_memory(const void *buffer);
 	void unload();
 

@@ -325,6 +325,7 @@ void emulator_loop()
 {
 	for (;;) {
 		if (debugger_is_paused()) {
+			vera_video_force_redraw_screen();
 			display_process();
 			if (!sdl_events_update()) {
 				break;
