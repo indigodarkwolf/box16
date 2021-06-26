@@ -31,6 +31,7 @@ bool Show_imgui_demo       = false;
 bool Show_memory_dump_1    = false;
 bool Show_memory_dump_2    = false;
 bool Show_monitor          = false;
+bool Show_VRAM_visualizer  = false;
 bool Show_VERA_monitor     = false;
 bool Show_VERA_palette     = false;
 bool Show_VERA_layers      = false;
@@ -331,7 +332,6 @@ static void draw_debugger_vera_sprite()
 			sprite_preview.update_memory(sprite_pixels);
 		}
 
-
 		ImGui::BeginGroup();
 		{
 			ImGui::TextDisabled("Sprite Preview");
@@ -364,7 +364,7 @@ static void draw_debugger_vera_sprite()
 
 			ImGui::TextDisabled("Sprite Properties");
 
-			if (ImGui::InputScalar("VRAM Addr", ImGuiDataType_U16, &sprite_props.sprite_address, &incr_addr, &fast_addr, "%d")) {
+			if (ImGui::InputScalar("VRAM Addr", ImGuiDataType_U16, &sprite_props.sprite_address, &incr_addr, &fast_addr, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
 				vera_video_space_write(0x1FC00 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_address >> 5));
 				vera_video_space_write(0x1FC01 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_address >> 13) | (sprite_props.color_mode << 7));
 			}
@@ -424,7 +424,7 @@ static void draw_debugger_vera_layer()
 	static const ImU16 incr_one16 = 1;
 	static const ImU16 incr_ten16 = 10;
 	static const ImU16 incr_hex16 = 16;
-	static const ImU32 incr_map  = 1 << 9;
+	static const ImU32 incr_map   = 1 << 9;
 	static const ImU32 fast_map   = incr_map << 4;
 	static const ImU32 incr_tile  = 1 << 11;
 	static const ImU32 fast_tile  = incr_tile << 4;
@@ -587,7 +587,7 @@ static void draw_debugger_vera_layer()
 				layer_props.maph_log2 = maph_log2 + 5;
 				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
 			}
-			if (ImGui::InputScalar("Map Base", ImGuiDataType_U32, &layer_props.map_base, &incr_map, &fast_map, "%05X")) {
+			if (ImGui::InputScalar("Map Base", ImGuiDataType_U32, &layer_props.map_base, &incr_map, &fast_map, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
 				vera_video_write(0x0E + 7 * layer_id, get_byte(1));
 			}
 			bool tile16h = layer_props.tileh_log2 > 3;
@@ -600,7 +600,7 @@ static void draw_debugger_vera_layer()
 				layer_props.tilew_log2 = tile16w ? 4 : 3;
 				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
 			}
-			if (ImGui::InputScalar("Tile Base", ImGuiDataType_U32, &layer_props.tile_base, &incr_tile, &fast_tile, "%05X")) {
+			if (ImGui::InputScalar("Tile Base", ImGuiDataType_U32, &layer_props.tile_base, &incr_tile, &fast_tile, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
 				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
 			}
 			if (ImGui::InputScalar("H-Scroll", ImGuiDataType_U16, &layer_props.hscroll, &incr_one16, &incr_ten16, "%03X")) {
@@ -611,6 +611,195 @@ static void draw_debugger_vera_layer()
 			if (ImGui::InputScalar("V-Scroll", ImGuiDataType_U16, &layer_props.vscroll, &incr_one16, &incr_ten16, "%03X")) {
 				vera_video_write(0x12 + 7 * layer_id, get_byte(5));
 				vera_video_write(0x13 + 7 * layer_id, get_byte(6));
+			}
+
+			ImGui::PopItemWidth();
+		}
+		ImGui::EndGroup();
+	}
+	ImGui::EndGroup();
+}
+
+static void draw_debugger_vram_visualizer()
+{
+	static icon_set tiles_preview;
+	static uint8_t  uncompressed_vera_memory[0x20000];
+	static uint32_t tile_pixels[0x20000];
+
+	static uint16_t tile_palette_offset = 0;
+
+	static ImU8     layer_id  = 0;
+	static uint64_t layer_sig = 0;
+
+	static const ImU8  incr_one8  = 1;
+	static const ImU8  incr_hex8  = 16;
+	static const ImU16 incr_one16 = 1;
+	static const ImU16 incr_ten16 = 10;
+	static const ImU16 incr_hex16 = 16;
+
+	static bool reload = true;
+
+	ImGui::BeginGroup();
+	{
+		static struct {
+			uint8_t  color_depth;
+			uint32_t tile_base;
+
+			bool bitmap_mode;
+
+			uint16_t tilew;
+			uint16_t tileh;
+			uint8_t  tilew_log2;
+			uint8_t  tileh_log2;
+
+			uint16_t tilew_max;
+			uint16_t tileh_max;
+
+		} layer_props{
+			0, //uint8_t  color_depth;
+			0, //uint32_t tile_base;
+
+			false, //bool bitmap_mode;
+
+			8, //uint16_t tilew;
+			8, //uint16_t tileh;
+			3, //uint8_t  tilew_log2;
+			3, //uint8_t  tileh_log2;
+
+			7, //uint16_t tilew_max;
+			7, //uint16_t tileh_max;
+		};
+
+		const ImU32 incr_tile = 1 << (layer_props.tilew_log2 + layer_props.tileh_log2 - (3 - layer_props.color_depth));
+		const ImU32 fast_tile = incr_tile << 4;
+
+		if (layer_props.bitmap_mode) {
+			const uint32_t num_dots = layer_props.tilew * 256;
+			vera_video_get_expanded_vram(layer_props.tile_base, 1 << layer_props.color_depth, uncompressed_vera_memory, num_dots);
+
+			const uint32_t *palette = vera_video_get_palette_argb32();
+			for (uint32_t i = 0; i < num_dots; ++i) {
+				tile_pixels[i] = (palette[uncompressed_vera_memory[i] + tile_palette_offset] << 8) | 0xff;
+			}
+
+			tiles_preview.load_memory(tile_pixels, layer_props.tilew, 256, layer_props.tilew, 256);
+		} else {
+			constexpr const uint32_t num_dots = 128*256;
+			vera_video_get_expanded_vram(layer_props.tile_base, 1 << layer_props.color_depth, uncompressed_vera_memory, num_dots);
+
+			const uint32_t *palette = vera_video_get_palette_argb32();
+			for (uint32_t i = 0; i < num_dots; ++i) {
+				tile_pixels[i] = (palette[uncompressed_vera_memory[i] + tile_palette_offset] << 8) | 0xff;
+			}
+
+			tiles_preview.load_memory(tile_pixels, layer_props.tilew, num_dots >> layer_props.tilew_log2, layer_props.tilew, layer_props.tileh);
+		}
+
+		ImGui::BeginGroup();
+		{
+			ImGui::TextDisabled("Preview");
+
+			const int tiles_per_row = 128 >> layer_props.tilew_log2;
+			const int tiles_per_column = 128 >> layer_props.tileh_log2;
+			ImGui::BeginChild("tiles", ImVec2(256.0f + (5*16) + 10, 256.0f + (5*16)));
+			{
+				if (layer_props.bitmap_mode) {
+					ImVec2 tile_imsize(256.0f + (5 * 16), 256.0f + (5 * 16));
+					ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), tile_imsize, tiles_preview.get_top_left(0), tiles_preview.get_bottom_right(0));
+				} else {
+					ImVec2 custom_spacing(5 << (layer_props.tilew_log2 - 3), 5 << (layer_props.tileh_log2 - 3));
+					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, custom_spacing);
+					ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
+
+					ImVec2 tile_imsize(layer_props.tilew << 1, layer_props.tileh << 1);
+
+					ImGuiListClipper clipper;
+					clipper.Begin(tiles_per_column, layer_props.tileh + custom_spacing.y);
+
+					while (clipper.Step()) {
+						uint16_t start_tile = clipper.DisplayStart * tiles_per_row;
+						uint16_t end_tile   = clipper.DisplayEnd * tiles_per_row;
+						if (end_tile > 1024) {
+							end_tile = 1024;
+						}
+						for (int i = start_tile; i < end_tile; ++i) {
+							if (i % tiles_per_row) {
+								ImGui::SameLine();
+							}
+							ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), tile_imsize, tiles_preview.get_top_left(i), tiles_preview.get_bottom_right(i));
+						}
+					}
+					clipper.End();
+
+					ImGui::PopStyleVar();
+					ImGui::PopStyleVar();
+				}
+				ImGui::EndChild();
+			}
+			ImGui::PushItemWidth(128.0f);
+			ImGui::InputScalar("Preview Palette Offset", ImGuiDataType_U16, &tile_palette_offset, &incr_hex16, nullptr, "%d");
+			ImGui::PopItemWidth();
+		}
+		ImGui::EndGroup();
+		ImGui::SameLine();
+		ImGui::BeginGroup();
+		{
+			ImGui::TextDisabled("Graphics Properties");
+
+			ImGui::PushItemWidth(128.0f);
+
+			if (ImGui::InputLog2("Bits per pixel", &layer_props.color_depth, "%d")) {
+				if (layer_props.color_depth > 3) {
+					layer_props.color_depth = 3;
+				}
+			}
+			if (ImGui::Checkbox("Bitmap Data", &layer_props.bitmap_mode)) {
+				if (layer_props.bitmap_mode) {
+					layer_props.tilew = 320;
+				} else {
+					layer_props.tileh_log2 = 3;
+					layer_props.tileh      = 1 << layer_props.tileh_log2;
+					layer_props.tileh_max  = layer_props.tileh - 1;
+
+					layer_props.tilew_log2 = 3;
+					layer_props.tilew      = 1 << layer_props.tilew_log2;
+					layer_props.tilew_max  = layer_props.tilew - 1;
+				}
+			}
+			if (layer_props.bitmap_mode) {
+				static const char *labels[] = { "320", "640" };
+				static const int   widths[] = { 320, 640 };
+				if (ImGui::BeginCombo("Bitmap width", layer_props.tilew == 320 ? labels[0] : labels[1])) {
+					for (int i = 0; i < 2; ++i) {
+						if (ImGui::Selectable(labels[i], layer_props.tilew == widths[i])) {
+							layer_props.tilew = widths[i];
+						}
+					}
+					ImGui::EndCombo();
+				}
+			} else {
+				if (ImGui::InputLog2("Gfx Height", &layer_props.tileh_log2, "%d")) {
+					if (layer_props.tileh_log2 < 3) {
+						layer_props.tileh_log2 = 3;
+					} else if (layer_props.tileh_log2 > 6) {
+						layer_props.tileh_log2 = 6;
+					}
+					layer_props.tileh     = 1 << layer_props.tileh_log2;
+					layer_props.tileh_max = layer_props.tileh - 1;
+				}
+
+				if (ImGui::InputLog2("Gfx Width", &layer_props.tilew_log2, "%d")) {
+					if (layer_props.tilew_log2 < 3) {
+						layer_props.tilew_log2 = 3;
+					} else if (layer_props.tilew_log2 > 6) {
+						layer_props.tilew_log2 = 6;
+					}
+					layer_props.tilew     = 1 << layer_props.tilew_log2;
+					layer_props.tilew_max = layer_props.tilew - 1;
+				}
+			}
+
+			if (ImGui::InputScalar("Gfx Base", ImGuiDataType_U32, &layer_props.tile_base, &incr_tile, &fast_tile, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
 			}
 
 			ImGui::PopItemWidth();
@@ -1184,6 +1373,7 @@ static void draw_menu_bar()
 				ImGui::Checkbox("Memory Dump 2", &Show_memory_dump_2);
 				ImGui::Checkbox("CPU Monitor", &Show_monitor);
 				ImGui::Separator();
+				ImGui::Checkbox("VRAM Visualizer", &Show_VRAM_visualizer);
 				ImGui::Checkbox("VERA Monitor", &Show_VERA_monitor);
 				ImGui::Checkbox("VERA Palette", &Show_VERA_palette);
 				ImGui::Checkbox("VERA Layers", &Show_VERA_layers);
@@ -1252,6 +1442,13 @@ void overlay_draw()
 		ImGui::End();
 	}
 
+	if (Show_VRAM_visualizer) {
+		if (ImGui::Begin("VRAM Visualizer", &Show_VRAM_visualizer)) {
+			draw_debugger_vram_visualizer();
+		}
+		ImGui::End();
+	}
+
 	if (Show_VERA_monitor) {
 		if (ImGui::Begin("VERA Monitor", &Show_VERA_monitor)) {
 			vram_dump.draw();
@@ -1285,7 +1482,7 @@ void overlay_draw()
 	if (Show_imgui_demo) {
 		ImGui::ShowDemoWindow();
 	}
-	
+
 	if (Show_VERA_PSG_monitor) {
 		if (ImGui::Begin("VERA PSG", &Show_VERA_PSG_monitor)) {
 			draw_debugger_vera_psg();

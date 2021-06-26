@@ -92,4 +92,5 @@ namespace ImGui
 	bool TileButton(display_icons icon, bool enabled = true, bool *hovered = nullptr);
 	void Tile(display_icons icon, float alpha = 1.0f);
 	void TileDisabled(display_icons icon);
+	bool InputLog2(char const *label, uint8_t *value, const char *format, ImGuiInputTextFlags flags = 0);
 }; // namespace ImGui

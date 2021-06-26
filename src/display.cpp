@@ -111,8 +111,8 @@ bool icon_set::load_memory(const void *buffer, int texture_width, int texture_he
 	this->texture_height     = texture_height;
 	map_width                = texture_width / icon_width;
 	map_height               = texture_height / icon_height;
-	const float map_width_f  = map_width;
-	const float map_height_f = map_height;
+	const float map_width_f  = (float)texture_width / (float)icon_width;
+	const float map_height_f = (float)texture_height / (float)icon_height;
 	tile_uv_width            = 1.0f / map_width_f;
 	tile_uv_height           = 1.0f / map_height_f;
 
@@ -590,4 +590,22 @@ namespace ImGui
 		ImVec4 tint = GetStyleColorVec4(ImGuiCol_TextDisabled);
 		Image((void *)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, tint);
 	}
+
+	bool InputLog2(char const *label, uint8_t *value, const char *format, ImGuiInputTextFlags flags)
+	{
+		static const uint32_t incr_one = 1;
+		const uint32_t        original = 1 << *value;
+		uint32_t              input    = 1 << *value;
+
+		bool result = ImGui::InputScalar(label, ImGuiDataType_U32, &input, &incr_one, nullptr, format, flags);
+		if (result) {
+			if (input > original) {
+				*value += 1;
+			} else if (input < original) {
+				*value -= 1;
+			}
+		}
+		return result;
+	}
+
 }; // namespace ImGui
