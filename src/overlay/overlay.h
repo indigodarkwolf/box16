@@ -7,7 +7,7 @@
 extern bool Show_imgui_demo;
 extern bool Show_memory_dump_1;
 extern bool Show_memory_dump_2;
-extern bool Show_monitor;
+extern bool Show_cpu_monitor;
 extern bool Show_VERA_monitor;
 
 void overlay_draw();

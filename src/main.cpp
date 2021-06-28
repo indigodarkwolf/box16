@@ -16,6 +16,7 @@
 #ifdef __MINGW32__
 #	include <ctype.h>
 #endif
+#include "SDL.h"
 #include "audio.h"
 #include "cpu/fake6502.h"
 #include "debugger.h"
@@ -23,17 +24,17 @@
 #include "gif_recorder.h"
 #include "glue.h"
 #include "i2c.h"
-#include "overlay/overlay.h"
 #include "joystick.h"
 #include "keyboard.h"
 #include "loadsave.h"
 #include "memory.h"
 #include "options.h"
+#include "overlay/cpu_visualization.h"
+#include "overlay/overlay.h"
 #include "ps2.h"
 #include "ring_buffer.h"
 #include "rom_symbols.h"
 #include "rtc.h"
-#include "SDL.h"
 #include "sdl_events.h"
 #include "symbols.h"
 #include "timing.h"
@@ -56,7 +57,7 @@ void emulator_loop();
 
 bool debugger_enabled = true;
 
-bool        save_on_exit  = true;
+bool save_on_exit = true;
 
 SDL_RWops *prg_file;
 int        prg_override_start = -1;
@@ -163,7 +164,7 @@ int main(int argc, char **argv)
 
 	prg_override_start = -1;
 	if (strlen(Options.prg_path) > 0) {
-		char  path_buffer[PATH_MAX];
+		char path_buffer[PATH_MAX];
 		if (strlen(Options.hyper_path) > 0) {
 			sprintf(path_buffer, "%s/%s", Options.hyper_path, Options.prg_path);
 		} else {
@@ -182,7 +183,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (strlen(Options.bas_path)> 0) {
+	if (strlen(Options.bas_path) > 0) {
 		keyboard_add_file(Options.bas_path);
 		if (Options.run_after_load) {
 			keyboard_add_text("RUN\r");
@@ -387,7 +388,8 @@ void emulator_loop()
 
 		uint64_t old_clockticks6502 = clockticks6502;
 		step6502();
-		uint8_t clocks    = (uint8_t)(clockticks6502 - old_clockticks6502);
+		cpu_visualization_step();
+		uint8_t clocks = (uint8_t)(clockticks6502 - old_clockticks6502);
 		vera_spi_step(clocks);
 		bool new_frame = vera_video_step(MHZ, clocks);
 		audio_render(clocks);

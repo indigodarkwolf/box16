@@ -10,6 +10,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+// both VGA and NTSC signal timing
+#define SCAN_WIDTH 800
+#define SCAN_HEIGHT 525
+
 // visible area we're drawing
 #define SCREEN_WIDTH 640
 #define SCREEN_HEIGHT 480
@@ -67,6 +71,13 @@ struct vera_video_sprite_properties {
 	uint32_t sprite_address;
 
 	uint16_t palette_offset;
+};
+
+struct vera_video_rect {
+	uint16_t hstart;
+	uint16_t hstop;
+	uint16_t vstart;
+	uint16_t vstop;
 };
 
 void vera_video_reset(void);
@@ -139,5 +150,10 @@ const uint8_t *                     vera_video_get_sprite_data(int sprite);
 
 void vera_video_enable_safety_frame(bool enable);
 bool vera_video_safety_frame_is_enabled();
+
+float    vera_video_get_scan_pos_x();
+uint16_t vera_video_get_scan_pos_y();
+
+vera_video_rect vera_video_get_scan_visible();
 
 #endif

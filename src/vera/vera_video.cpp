@@ -26,22 +26,41 @@
 
 #define NUM_SPRITES 128
 
-// both VGA and NTSC
-#define SCAN_WIDTH 800
-#define SCAN_HEIGHT 525
+// TODO: No idea where these constants really originate from. Original reference was NTSC horizontal front porch of 80,
+//		 used to offset start of drawing, and NTSC vertical front porch of 22, also used to offset start of drawing.
+//	     This seems to indicate that timing is relative to ends of sync pulses, except the reference implementation then
+//		 used the wrong porch values (front porch instead of back porch). This creates a lot of open questions about the
+//		 exact timings of the VERA relative to h-sync and v-sync.
+//
+//		 At least the VGA timings are easy to lookup (http://tinyvga.com/vga-timing/640x480@60Hz), the NTSC timings are
+//		 somewhat more difficult, and may require some indirect reference followed by some computation to determine the
+//		 proper values.
+//
+//		 In any event, it seems we only really need one "offset" value in each dimension:
+//			1) the number of horizontal pixel clock cycles before start of drawing a line
+//			2) the number of vertical lines before the start of drawing a frame
+//		 NTSC may require a third "inter-field" offset for vertical timing.
+//
+//		 For now, assume timings are broken, NTSC moreso than VGA.
 
 // VGA
-#define VGA_BACK_PORCH_X 48
 #define VGA_FRONT_PORCH_X 16
-#define VGA_BACK_PORCH_Y 33
+#define VGA_SYNC_PULSE_X 96
+#define VGA_BACK_PORCH_X 48
+
 #define VGA_FRONT_PORCH_Y 10
-#define VGA_PIXEL_FREQ 25.175f
+#define VGA_SYNC_PULSE_Y 2
+#define VGA_BACK_PORCH_Y 33
+
+#define VGA_PIXEL_FREQ 25.175f // Note: 60hz frames
 
 // NTSC: 262.5 lines per frame, lower field first
-#define NTSC_FRONT_PORCH_X 80
-#define NTSC_BACK_PORCH_Y 23
-#define NTSC_FRONT_PORCH_Y 7
-#define NTSC_PIXEL_FREQ (15.750f * 800 / 1000)
+#define NTSC_BACK_PORCH_X 80 // ??
+#define NTSC_FRONT_PORCH_X 0 // ??
+#define NTSC_BACK_PORCH_Y 23 // ??
+#define NTSC_FRONT_PORCH_Y 7 // ??
+#define NTSC_PIXEL_FREQ (15.750f * 800 / 1000) // Note: 60hz fields, 30hz frames (two fields)
+
 #define TITLE_SAFE_X 0.067
 #define TITLE_SAFE_Y 0.05
 
@@ -838,17 +857,28 @@ static void render_line(uint16_t y)
 
 bool vera_video_step(float mhz, float cycles)
 {
-	uint8_t out_mode = reg_composer[0] & 3;
+	const uint8_t out_mode = reg_composer[0] & 3;
 
 	bool  new_frame = false;
 	float advance   = ((out_mode & 2) ? NTSC_PIXEL_FREQ : VGA_PIXEL_FREQ) * cycles / mhz;
 	scan_pos_x += advance;
 	if (scan_pos_x > SCAN_WIDTH) {
 		scan_pos_x -= SCAN_WIDTH;
-		uint16_t back_porch = (out_mode & 2) ? NTSC_BACK_PORCH_Y : VGA_BACK_PORCH_Y;
-		uint16_t y          = scan_pos_y - back_porch;
-		if (y < SCREEN_HEIGHT) {
-			render_line(y);
+		uint16_t y;
+		uint16_t back_porch;
+		if (out_mode & 2) {
+			back_porch = NTSC_BACK_PORCH_Y;
+			y                         = scan_pos_y - back_porch;
+			if (y < SCREEN_HEIGHT) {
+				const uint16_t yy = y % (SCREEN_HEIGHT >> 1);
+				render_line((yy << 1) + (y > (SCREEN_HEIGHT >> 1)));
+			}
+		} else {
+			back_porch = VGA_BACK_PORCH_Y;
+			y                         = scan_pos_y - back_porch;
+			if (y < SCREEN_HEIGHT) {
+				render_line(y);
+			}
 		}
 		y++;
 		if (y == SCREEN_HEIGHT) {
@@ -1436,4 +1466,24 @@ void vera_video_enable_safety_frame(bool enable)
 bool vera_video_safety_frame_is_enabled()
 {
 	return shadow_safety_frame;
+}
+
+float vera_video_get_scan_pos_x()
+{
+	return scan_pos_x;
+}
+
+uint16_t vera_video_get_scan_pos_y()
+{
+	return scan_pos_y;
+}
+
+vera_video_rect vera_video_get_scan_visible()
+{
+	const uint8_t out_mode = reg_composer[0] & 3;
+	if (out_mode & 2) {
+		return vera_video_rect{ NTSC_BACK_PORCH_X, NTSC_BACK_PORCH_X + SCREEN_WIDTH, NTSC_BACK_PORCH_Y, NTSC_BACK_PORCH_Y + SCREEN_HEIGHT };
+	} else {
+		return vera_video_rect{ VGA_BACK_PORCH_X, VGA_BACK_PORCH_X + SCREEN_WIDTH, VGA_BACK_PORCH_Y, VGA_BACK_PORCH_Y + SCREEN_HEIGHT };
+	}
 }

@@ -229,6 +229,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\memory.cpp" />
     <ClCompile Include="..\..\src\options.cpp" />
+    <ClCompile Include="..\..\src\overlay\cpu_visualization.cpp" />
     <ClCompile Include="..\..\src\overlay\disasm.cpp" />
     <ClCompile Include="..\..\src\overlay\memory_dump.cpp" />
     <ClCompile Include="..\..\src\overlay\overlay.cpp" />
@@ -283,6 +284,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClInclude Include="..\..\src\loadsave.h" />
     <ClInclude Include="..\..\src\memory.h" />
     <ClInclude Include="..\..\src\options.h" />
+    <ClInclude Include="..\..\src\overlay\cpu_visualization.h" />
     <ClInclude Include="..\..\src\overlay\disasm.h" />
     <ClInclude Include="..\..\src\overlay\memory_dump.h" />
     <ClInclude Include="..\..\src\overlay\overlay.h" />
