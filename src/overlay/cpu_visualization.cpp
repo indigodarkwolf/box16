@@ -4,6 +4,7 @@
 #include "memory.h"
 #include "vera/vera_video.h"
 
+static bool                        Enabled = false;
 static uint32_t                    Framebuffer[SCAN_WIDTH * SCAN_HEIGHT];
 static uint32_t                    Last_p         = 0;
 static cpu_visualization_coloring  Coloring_type  = cpu_visualization_coloring::ADDRESS;
@@ -51,8 +52,17 @@ static color_bgra hsv_to_rgb(float h, float s, float v)
 	}
 }
 
+void cpu_visualization_enable(bool enable)
+{
+	Enabled = enable;
+}
+
 void cpu_visualization_step()
 {
+	if (!Enabled) {
+		return;
+	}
+
 	const float sv = []() -> float {
 		switch (Highlight_type) {
 			case cpu_visualization_highlight::NONE:

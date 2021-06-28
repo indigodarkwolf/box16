@@ -13,6 +13,8 @@ enum cpu_visualization_coloring {
 	TEST
 };
 
+void            cpu_visualization_enable(bool enable);
+
 void            cpu_visualization_step();
 const uint32_t *cpu_visualization_get_framebuffer();
 

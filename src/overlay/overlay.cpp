@@ -1357,7 +1357,9 @@ static void draw_menu_bar()
 				ImGui::Checkbox("Memory Dump 1", &Show_memory_dump_1);
 				ImGui::Checkbox("Memory Dump 2", &Show_memory_dump_2);
 				ImGui::Checkbox("CPU Monitor", &Show_cpu_monitor);
-				ImGui::Checkbox("CPU Visualizer", &Show_cpu_visualizer);
+				if (ImGui::Checkbox("CPU Visualizer", &Show_cpu_visualizer)) {
+					cpu_visualization_enable(Show_cpu_visualizer);
+				}
 				ImGui::Separator();
 				ImGui::Checkbox("VRAM Visualizer", &Show_VRAM_visualizer);
 				ImGui::Checkbox("VERA Monitor", &Show_VERA_monitor);
@@ -1430,7 +1432,10 @@ void overlay_draw()
 
 	if (Show_cpu_visualizer) {
 		if (ImGui::Begin("CPU Visualizer", &Show_cpu_visualizer)) {
+			cpu_visualization_enable(Show_cpu_visualizer);
 			draw_debugger_cpu_visualizer();
+		} else {
+			cpu_visualization_enable(Show_cpu_visualizer);
 		}
 		ImGui::End();
 	}

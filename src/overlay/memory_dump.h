@@ -28,7 +28,7 @@ protected:
 			clipper.Begin(MEM_SIZE / 16, line_height);
 
 			while (clipper.Step()) {
-				uint16_t start_addr = clipper.DisplayStart * 16;
+				address_t start_addr = clipper.DisplayStart * 16;
 				if (reset_scroll) {
 					if (dump_address > MEM_SIZE - (20 * 16)) {
 						dump_address = 0xFEB0;
@@ -45,8 +45,8 @@ protected:
 					}
 				}
 				for (int y = clipper.DisplayStart; y < clipper.DisplayEnd; ++y) {
-					uint16_t       line_addr = start_addr;
-					const uint16_t line_stop = start_addr + 16;
+					address_t      line_addr = start_addr;
+					const address_t line_stop = start_addr + 16;
 
 					ImGui::Text(hex_formats[(ADDRESS_BITS >> 2) + 1], start_addr);
 
