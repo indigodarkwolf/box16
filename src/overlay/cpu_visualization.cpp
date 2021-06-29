@@ -38,27 +38,6 @@ static color_bgra hsv_to_rgb(float h, float s, float v)
 	return {
 		255, static_cast<uint8_t>(r * 255.0f), static_cast<uint8_t>(g * 255.0f), static_cast<uint8_t>(b * 255.0f)
 	};
-
-	//const float c  = s * v;
-	//const float hh = h / 60.0f;
-	//const float x  = c * (1.0f - fabsf(fmodf(hh, 2) - 1.0f));
-	//const float m  = v - c;
-	//switch ((int)hh) {
-	//	case 0:
-	//		return { 255, static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((c + m) * 255.0f) };
-	//	case 1:
-	//		return { 255, static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((x + m) * 255.0f) };
-	//	case 2:
-	//		return { 255, static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((m)*255.0f) };
-	//	case 3:
-	//		return { 255, static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((m)*255.0f) };
-	//	case 4:
-	//		return { 255, static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((x + m) * 255.0f) };
-	//	case 5:
-	//		return { 255, static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((c + m) * 255.0f) };
-	//	default:
-	//		return { 0, 0, 0, 0 };
-	//}
 }
 
 void cpu_visualization_enable(bool enable)
@@ -72,28 +51,31 @@ void cpu_visualization_step()
 		return;
 	}
 
+	static constexpr const float bright = 0.95f;
+	static constexpr const float dim    = 0.65f;
+
 	const float sv = []() -> float {
 		switch (Highlight_type) {
 			case cpu_visualization_highlight::NONE:
-				return 0.95f;
+				return bright;
 
 			case cpu_visualization_highlight::IRQ:
-				return (status & 0x04) ? 0.95f : 0.50f;
+				return (status & 0x04) ? bright : dim;
 
 			case cpu_visualization_highlight::VISIBLE: {
 				const vera_video_rect visible = vera_video_get_scan_visible();
 				const uint32_t        x       = vera_video_get_scan_pos_x();
 				const uint32_t        y       = vera_video_get_scan_pos_y();
-				return (x >= visible.hstart && x < visible.hstop && y >= visible.vstart && y < visible.vstop) ? 0.95f : 0.50f;
+				return (x >= visible.hstart && x < visible.hstop && y >= visible.vstart && y < visible.vstop) ? bright : dim;
 			}
 			case cpu_visualization_highlight::INVISIBLE: {
 				const vera_video_rect visible = vera_video_get_scan_visible();
 				const uint32_t        x       = vera_video_get_scan_pos_x();
 				const uint32_t        y       = vera_video_get_scan_pos_y();
-				return (x >= visible.hstart && x < visible.hstop && y >= visible.vstart && y < visible.vstop) ? 0.50f : 0.95f;
+				return (x >= visible.hstart && x < visible.hstop && y >= visible.vstart && y < visible.vstop) ? dim : bright;
 			}
 			default:
-				return 0.95f;
+				return bright;
 		}
 	}();
 
