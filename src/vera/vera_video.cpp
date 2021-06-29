@@ -55,10 +55,10 @@
 #define VGA_PIXEL_FREQ 25.175f // Note: 60hz frames
 
 // NTSC: 262.5 lines per frame, lower field first
-#define NTSC_BACK_PORCH_X 80 // ??
-#define NTSC_FRONT_PORCH_X 0 // ??
-#define NTSC_BACK_PORCH_Y 23 // ??
-#define NTSC_FRONT_PORCH_Y 7 // ??
+#define NTSC_BACK_PORCH_X 80                   // ??
+#define NTSC_FRONT_PORCH_X 0                   // ??
+#define NTSC_BACK_PORCH_Y 23                   // ??
+#define NTSC_FRONT_PORCH_Y 7                   // ??
 #define NTSC_PIXEL_FREQ (15.750f * 800 / 1000) // Note: 60hz fields, 30hz frames (two fields)
 
 #define TITLE_SAFE_X 0.067
@@ -868,14 +868,14 @@ bool vera_video_step(float mhz, float cycles)
 		uint16_t back_porch;
 		if (out_mode & 2) {
 			back_porch = NTSC_BACK_PORCH_Y;
-			y                         = scan_pos_y - back_porch;
+			y          = scan_pos_y - back_porch;
 			if (y < SCREEN_HEIGHT) {
 				const uint16_t yy = y % (SCREEN_HEIGHT >> 1);
 				render_line((yy << 1) + (y > (SCREEN_HEIGHT >> 1)));
 			}
 		} else {
 			back_porch = VGA_BACK_PORCH_Y;
-			y                         = scan_pos_y - back_porch;
+			y          = scan_pos_y - back_porch;
 			if (y < SCREEN_HEIGHT) {
 				render_line(y);
 			}
@@ -1420,6 +1420,23 @@ const uint32_t *vera_video_get_palette_argb32()
 const uint16_t *vera_video_get_palette_argb16()
 {
 	return reinterpret_cast<const uint16_t *>(palette);
+}
+
+void vera_video_set_palette(int index, uint32_t argb32)
+{
+	argb32 &= 0xf0f0f000;
+	argb32 |= (argb32 >> 4);
+	argb32 &= 0x0ff00f00;
+	const uint16_t argb16 = ((argb32 >> 8) & 0x00f) | ((argb32 >> 16) & 0xff0) | 0xf000;
+
+	vera_video_set_palette(index, argb16);
+}
+
+void vera_video_set_palette(int index, uint16_t argb16)
+{
+	uint16_t *const p16 = reinterpret_cast<uint16_t *>(palette);
+	p16[index & 0xff]   = argb16;
+	video_palette.dirty = true;
 }
 
 const vera_video_layer_properties *vera_video_get_layer_properties(int layer)

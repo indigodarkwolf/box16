@@ -142,6 +142,9 @@ void vera_video_get_expanded_vram(uint32_t address, int bpp, uint8_t *dest, uint
 const uint32_t *vera_video_get_palette_argb32();
 const uint16_t *vera_video_get_palette_argb16();
 
+void vera_video_set_palette(int index, uint32_t argb32);
+void vera_video_set_palette(int index, uint16_t argb16);
+
 const vera_video_layer_properties *vera_video_get_layer_properties(int layer);
 const uint8_t *                    vera_video_get_layer_data(int layer);
 
