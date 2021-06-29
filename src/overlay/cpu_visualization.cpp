@@ -1,5 +1,7 @@
 #include "cpu_visualization.h"
 
+#include "imgui/imgui.h"
+
 #include "glue.h"
 #include "memory.h"
 #include "vera/vera_video.h"
@@ -30,26 +32,33 @@ union color_u32 {
 
 static color_bgra hsv_to_rgb(float h, float s, float v)
 {
-	const float c  = s * v;
-	const float hh = h / 60.0f;
-	const float x  = c * (1.0f - fabsf(fmodf(hh, 2) - 1.0f));
-	const float m  = v - c;
-	switch ((int)hh) {
-		case 0:
-			return { 255, static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((c + m) * 255.0f) };
-		case 1:
-			return { 255, static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((x + m) * 255.0f) };
-		case 2:
-			return { 255, static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((m)*255.0f) };
-		case 3:
-			return { 255, static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((m)*255.0f) };
-		case 4:
-			return { 255, static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((x + m) * 255.0f) };
-		case 5:
-			return { 255, static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((c + m) * 255.0f) };
-		default:
-			return { 0, 0, 0, 0 };
-	}
+	float r, g, b;
+	ImGui::ColorConvertHSVtoRGB(h, s, v, b, g, r);
+
+	return {
+		255, static_cast<uint8_t>(r * 255.0f), static_cast<uint8_t>(g * 255.0f), static_cast<uint8_t>(b * 255.0f)
+	};
+
+	//const float c  = s * v;
+	//const float hh = h / 60.0f;
+	//const float x  = c * (1.0f - fabsf(fmodf(hh, 2) - 1.0f));
+	//const float m  = v - c;
+	//switch ((int)hh) {
+	//	case 0:
+	//		return { 255, static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((c + m) * 255.0f) };
+	//	case 1:
+	//		return { 255, static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((x + m) * 255.0f) };
+	//	case 2:
+	//		return { 255, static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((m)*255.0f) };
+	//	case 3:
+	//		return { 255, static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((m)*255.0f) };
+	//	case 4:
+	//		return { 255, static_cast<uint8_t>((c + m) * 255.0f), static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((x + m) * 255.0f) };
+	//	case 5:
+	//		return { 255, static_cast<uint8_t>((x + m) * 255.0f), static_cast<uint8_t>((m)*255.0f), static_cast<uint8_t>((c + m) * 255.0f) };
+	//	default:
+	//		return { 0, 0, 0, 0 };
+	//}
 }
 
 void cpu_visualization_enable(bool enable)
@@ -91,13 +100,13 @@ void cpu_visualization_step()
 	const color_u32 vis_color = [sv]() -> color_u32 {
 		switch (Coloring_type) {
 			case cpu_visualization_coloring::ADDRESS:
-				return { hsv_to_rgb((float)pc / 256.0f, sv, sv) };
+				return { hsv_to_rgb((float)pc / 65536.0f, sv, sv) };
 			case cpu_visualization_coloring::INSTRUCTION:
-				return { hsv_to_rgb(debug_read6502(pc), sv, sv) };
+				return { hsv_to_rgb((float)debug_read6502(pc) / 256.0f, sv, sv) };
 			case cpu_visualization_coloring::TEST: {
 				static int count = 0;
-				count            = (count + 1) % (360 << 2);
-				return { hsv_to_rgb(count >> 2, sv, sv) };
+				count            = (count + 1) % (256 << 4);
+				return { hsv_to_rgb((float)count / (float)(256 << 4), sv, sv) };
 			}
 			default:
 				return { 0, 0, 0, 0 };

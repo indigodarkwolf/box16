@@ -138,7 +138,7 @@ static void draw_debugger_cpu_visualizer()
 
 	int c = cpu_visualization_get_coloring();
 	if (ImGui::BeginCombo("Colorization", color_labels[c])) {
-		for (int i = 0; i < 2; ++i) {
+		for (int i = 0; i < 3; ++i) {
 			if (ImGui::Selectable(color_labels[i], i == c)) {
 				cpu_visualization_set_coloring((cpu_visualization_coloring)i);
 			}
@@ -1353,22 +1353,24 @@ static void draw_menu_bar()
 		}
 
 		if (ImGui::BeginMenu("Windows")) {
-			if (ImGui::BeginMenu("Debugging")) {
+			if (ImGui::BeginMenu("CPU Debugging")) {
 				ImGui::Checkbox("Memory Dump 1", &Show_memory_dump_1);
 				ImGui::Checkbox("Memory Dump 2", &Show_memory_dump_2);
-				ImGui::Checkbox("CPU Monitor", &Show_cpu_monitor);
+				ImGui::Checkbox("ASM Monitor", &Show_cpu_monitor);
 				if (ImGui::Checkbox("CPU Visualizer", &Show_cpu_visualizer)) {
 					cpu_visualization_enable(Show_cpu_visualizer);
 				}
-				ImGui::Separator();
-				ImGui::Checkbox("VRAM Visualizer", &Show_VRAM_visualizer);
-				ImGui::Checkbox("VERA Monitor", &Show_VERA_monitor);
-				ImGui::Checkbox("VERA Palette", &Show_VERA_palette);
-				ImGui::Checkbox("VERA Layers", &Show_VERA_layers);
-				ImGui::Checkbox("VERA Sprites", &Show_VERA_sprites);
-				ImGui::Checkbox("PSG Monitor", &Show_VERA_PSG_monitor);
 				ImGui::EndMenu();
 			}
+			if (ImGui::BeginMenu("VERA Debugging")) {
+				ImGui::Checkbox("VRAM Visualizer", &Show_VRAM_visualizer);
+				ImGui::Checkbox("VERA Monitor", &Show_VERA_monitor);
+				ImGui::Checkbox("Palette", &Show_VERA_palette);
+				ImGui::Checkbox("Layer Settings", &Show_VERA_layers);
+				ImGui::Checkbox("Sprite Settings", &Show_VERA_sprites);
+				ImGui::EndMenu();
+			}
+			ImGui::Checkbox("PSG Monitor", &Show_VERA_PSG_monitor);
 			ImGui::Separator();
 
 			bool safety_frame = vera_video_safety_frame_is_enabled();
@@ -1418,7 +1420,7 @@ void overlay_draw()
 	}
 
 	if (Show_cpu_monitor) {
-		if (ImGui::Begin("CPU Monitor", &Show_cpu_monitor)) {
+		if (ImGui::Begin("ASM Monitor", &Show_cpu_monitor)) {
 			draw_debugger_controls();
 			disasm.draw();
 			ImGui::SameLine();
@@ -1457,21 +1459,21 @@ void overlay_draw()
 	}
 
 	if (Show_VERA_palette) {
-		if (ImGui::Begin("VERA Palette", &Show_VERA_palette)) {
+		if (ImGui::Begin("Palette", &Show_VERA_palette)) {
 			draw_debugger_vera_palette();
 		}
 		ImGui::End();
 	}
 
 	if (Show_VERA_layers) {
-		if (ImGui::Begin("VERA Layers", &Show_VERA_layers)) {
+		if (ImGui::Begin("Layer Settings", &Show_VERA_layers)) {
 			draw_debugger_vera_layer();
 		}
 		ImGui::End();
 	}
 
 	if (Show_VERA_sprites) {
-		if (ImGui::Begin("VERA Sprites", &Show_VERA_sprites)) {
+		if (ImGui::Begin("Sprite Settings", &Show_VERA_sprites)) {
 			draw_debugger_vera_sprite();
 		}
 		ImGui::End();
