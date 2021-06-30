@@ -34,6 +34,7 @@ SOFTWARE.
 #include "imgui/imgui_impl_opengl2.h"
 #include "imgui/imgui_impl_sdl.h"
 #include "memory.h"
+#include "options.h"
 #include "overlay/overlay.h"
 #include "vera/vera_video.h"
 #include "version.h"
@@ -61,6 +62,8 @@ static bool Initd_imgui               = false;
 static bool Initd_imgui_sdl2          = false;
 static bool Initd_imgui_opengl        = false;
 static bool Initd_icons               = false;
+
+static float Max_anisotropy = 1.0f;
 
 bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 {
@@ -195,7 +198,9 @@ static void display_video()
 {
 	const uint8_t *video_buffer = vera_video_get_framebuffer();
 	glTextureSubImage2D(Video_framebuffer_texture_handle, 0, 0, 0, Display.video_rect.w, Display.video_rect.h, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, video_buffer);
-
+	if (Options.scale_quality == scale_quality_t::BEST) {
+		glGenerateTextureMipmap(Video_framebuffer_texture_handle);
+	}
 	GLenum result = glGetError();
 	if (result != GL_NO_ERROR) {
 		printf("GL error %s\n", glewGetErrorString(result));
@@ -217,7 +222,20 @@ static void display_video()
 		video_rect.y = (client_rect.h - video_rect.h) / 2;
 	}
 
+	GLint filter = []() {
+		switch (Options.scale_quality) {
+			case scale_quality_t::NEAREST: return GL_NEAREST;
+			case scale_quality_t::LINEAR: return GL_LINEAR;
+			case scale_quality_t::BEST: return GL_LINEAR_MIPMAP_LINEAR;
+			default: return GL_NEAREST;
+		}
+	}();
 	glBindTexture(GL_TEXTURE_2D, Video_framebuffer_texture_handle);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (Options.scale_quality == scale_quality_t::NEAREST) ? GL_NEAREST : GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, (Options.scale_quality == scale_quality_t::BEST) ? Max_anisotropy : 1.0f);
 	glColor3f(1.0f, 1.0f, 1.0f);
 	glBegin(GL_QUADS);
 	glTexCoord2f(0.0f, 0.0f);
@@ -362,6 +380,8 @@ bool display_init(const display_settings &settings)
 		}
 	}
 	Initd_glew = true;
+
+	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &Max_anisotropy);
 
 	// Initialize display framebuffer
 	{
@@ -617,9 +637,9 @@ namespace ImGui
 		bool result = ImGui::InputScalar(label, ImGuiDataType_U32, &input, &incr_one, nullptr, format, flags);
 		if (result) {
 			if (input > original) {
-				*value << 1;
+				*value <<= 1;
 			} else if (input < original) {
-				*value >> 1;
+				*value >>= 1;
 			}
 		}
 		return result;

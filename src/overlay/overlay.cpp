@@ -217,11 +217,31 @@ static void draw_options()
 		ImGui::SetTooltip("Set window scale (1x-4x) on emulator start.");
 	}
 
-	// TODO: Scale quality currently doesn't matter, would probably be nice to have again someday.
-	//ImGui::InputInt("Scale quality", &Options.scale_quality);
-	//if (ImGui::IsItemHovered()) {
-	//	ImGui::SetTooltip("Set window scale on emulator start.");
-	//}
+	static auto quality_name = [](scale_quality_t quality) {
+		switch (quality) {
+			case scale_quality_t::NEAREST: return "Nearest";
+			case scale_quality_t::LINEAR: return "Linear";
+			case scale_quality_t::BEST: return "Best";
+			default: return "Nearest";
+		}
+	};
+
+	if (ImGui::BeginCombo("Scale Quality", quality_name(Options.scale_quality))) {
+		auto selection = [](scale_quality_t quality) {
+			if (ImGui::Selectable(quality_name(quality), Options.scale_quality == quality)) {
+				Options.scale_quality = quality;
+			}
+		};
+
+		selection(scale_quality_t::NEAREST);
+		selection(scale_quality_t::LINEAR);
+		selection(scale_quality_t::BEST);
+
+		ImGui::EndCombo();
+	}
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Set scaling quality:\nNearest: Scale by nearest pixel.\nLinear: Scale by linearly averaging between pixels.\nBest: Scale by anisotropic filtering.");
+	}
 
 	file_option("gif", Options.gif_path, "GIF path", "Location to save gifs");
 	bool_option(Options.load_standard_symbols, "Load Standard Symbols", "Load all symbols files typically included with ROM distributions.");
