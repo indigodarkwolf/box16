@@ -93,4 +93,5 @@ namespace ImGui
 	void Tile(display_icons icon, float alpha = 1.0f);
 	void TileDisabled(display_icons icon);
 	bool InputLog2(char const *label, uint8_t *value, const char *format, ImGuiInputTextFlags flags = 0);
+	bool InputPow2(char const *label, int *value, const char *format, ImGuiInputTextFlags flags = 0);
 }; // namespace ImGui

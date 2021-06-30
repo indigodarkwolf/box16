@@ -608,4 +608,21 @@ namespace ImGui
 		return result;
 	}
 
+	bool InputPow2(char const *label, int *value, const char *format, ImGuiInputTextFlags flags)
+	{
+		static const uint32_t incr_one = 1;
+		const uint32_t        original = *value;
+		uint32_t              input    = *value;
+
+		bool result = ImGui::InputScalar(label, ImGuiDataType_U32, &input, &incr_one, nullptr, format, flags);
+		if (result) {
+			if (input > original) {
+				*value << 1;
+			} else if (input < original) {
+				*value >> 1;
+			}
+		}
+		return result;
+	}
+
 }; // namespace ImGui

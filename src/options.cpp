@@ -400,15 +400,8 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 	}
 }
 
-void load_options(int argc, char **argv)
+static void set_options(mINI::INIStructure &ini)
 {
-	mINI::INIFile      file("box16.ini");
-	mINI::INIStructure ini;
-
-	bool force_write = !file.read(ini);
-
-	parse_cmdline(ini, argc, argv);
-
 	if (ini["main"].has("rom")) {
 		strcpy(Options.rom_path, ini["main"]["rom"].c_str());
 	}
@@ -597,10 +590,6 @@ void load_options(int argc, char **argv)
 		if (Options.no_sound) {
 			usage();
 		}
-		if (!argc || argv[0][0] == '-') {
-			audio_usage();
-		}
-
 		strcpy(Options.audio_dev_name, ini["main"]["sound"].c_str());
 	}
 
@@ -613,10 +602,37 @@ void load_options(int argc, char **argv)
 			Options.set_system_time = true;
 		}
 	}
+}
+
+void load_options(int argc, char **argv)
+{
+	mINI::INIFile      file("box16.ini");
+	mINI::INIStructure ini;
+
+	bool force_write = !file.read(ini);
+
+	parse_cmdline(ini, argc, argv);
+
+	set_options(ini);
 
 	if (force_write) {
 		save_options(true);
 	}
+}
+
+void load_options()
+{
+	mINI::INIFile      file("box16.ini");
+	mINI::INIStructure ini;
+
+	bool force_write = !file.read(ini);
+
+	if (!force_write) {
+		set_options(ini);
+	} else {
+		save_options(true);
+	}
+
 }
 
 void save_options(bool all)

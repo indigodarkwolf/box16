@@ -55,6 +55,7 @@ struct options {
 
 extern options Options;
 
+void load_options();
 void load_options(int argc, char **argv);
 void save_options(bool all);
 

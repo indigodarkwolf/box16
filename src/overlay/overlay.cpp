@@ -21,6 +21,7 @@
 #include "glue.h"
 #include "joystick.h"
 #include "keyboard.h"
+#include "options.h"
 #include "smc.h"
 #include "symbols.h"
 #include "timing.h"
@@ -28,6 +29,7 @@
 #include "vera/vera_psg.h"
 #include "vera/vera_video.h"
 
+bool Show_options          = false;
 bool Show_imgui_demo       = false;
 bool Show_memory_dump_1    = false;
 bool Show_memory_dump_2    = false;
@@ -41,6 +43,201 @@ bool Show_VERA_sprites     = false;
 bool Show_VERA_PSG_monitor = false;
 
 imgui_vram_dump vram_dump;
+
+static void draw_options()
+{
+	if (ImGui::Button("Save to x16.ini")) {
+		save_options(true);
+	}
+	ImGui::SameLine();
+	if (ImGui::Button("Load from x16.ini")) {
+		load_options();
+	}
+
+	auto file_option = [](char const *ext, char(&path)[PATH_MAX], char const *name, char const *tip) {
+		ImGui::PushID(name);
+		ImGui::BeginGroup();
+		if (ImGui::Button("...")) {
+			char *open_path = nullptr;
+			if (NFD_OpenDialog(ext, nullptr, &open_path) == NFD_OKAY && open_path != nullptr) {
+				strcpy(path, open_path);
+			}
+		}
+		ImGui::SameLine();
+		ImGui::InputText(name, path, PATH_MAX);
+		ImGui::EndGroup();
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip(tip);
+		}
+		ImGui::PopID();
+	};
+
+	auto bool_option = [](bool &option, char const *name, char const *tip) {
+		ImGui::Checkbox(name, &option);
+		if (ImGui::IsItemHovered()) {
+			ImGui::SetTooltip(tip);
+		}
+	};
+
+	ImGui::TextDisabled("System Paths");
+	ImGui::Separator();
+	ImGui::BeginGroup();
+	{
+		if (ImGui::Button("...")) {
+			char *open_path = nullptr;
+			if (NFD_PickFolder(Options.hyper_path, &open_path) == NFD_OKAY && open_path != nullptr) {
+				strcpy(Options.hyper_path, open_path);
+			} else if (NFD_PickFolder("", &open_path) == NFD_OKAY && open_path != nullptr) {
+				strcpy(Options.hyper_path, open_path);
+			}
+		}
+		ImGui::SameLine();
+		ImGui::InputText("Hypercall Path", Options.hyper_path, PATH_MAX);
+	}
+	ImGui::EndGroup();
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("When attempting to LOAD or SAVE files without an SD card inserted, this is the root directory.");
+	}
+
+	file_option("bin", Options.rom_path, "ROM path", "Location of the emulator ROM file.");
+	file_option("bin;nvram", Options.nvram_path, "NVRAM path", "Location of NVRAM image file, if any.");
+	file_option("bin;img;sdcard", Options.sdcard_path, "SD Card path", "Location of SD card image file, if any.");
+
+	ImGui::NewLine();
+	ImGui::TextDisabled("Boot Options");
+	ImGui::Separator();
+	file_option("prg", Options.prg_path, "PRG path", "PRG file to LOAD after boot, if any.");
+	file_option("bas", Options.bas_path, "BAS path", "Tokenized BAS file to LOAD after boot, if any.");
+
+	bool_option(Options.run_after_load, "Run after load", "If a PRG or BAS file is set to be loaded, run it immediately.");
+	bool_option(Options.run_geos, "Run GEOS", "Run GEOS after boot.");
+	bool_option(Options.run_test, "Run tests", "Run tests after boot.");
+	ImGui::InputInt("Test ID", &Options.test_number);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Test ID to run, if any.");
+	}
+
+	static constexpr const char *keymaps[] = {
+		"en-us",
+		"en-gb",
+		"de",
+		"nordic",
+		"it",
+		"pl",
+		"hu",
+		"es",
+		"fr",
+		"de-ch",
+		"fr-be",
+		"pt-br",
+	};
+
+	if (ImGui::BeginCombo("Keymap", keymaps[Options.keymap])) {
+		for (uint8_t i = 0; i < sizeof(keymaps) / sizeof(*keymaps); i++) {
+			if (ImGui::Selectable(keymaps[i], Options.keymap == i)) {
+				Options.keymap = i;
+			}
+		}
+		ImGui::EndCombo();
+	}
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Keymap assumed by the kernal.");
+	}
+
+	ImGui::NewLine();
+	ImGui::TextDisabled("Logging and Exit Dumps");
+	ImGui::Separator();
+	bool_option(Options.log_keyboard, "Log Keyboard", "Log keyboard activity.");
+	bool_option(Options.log_speed, "Log Speed", "Log speed periodically.");
+	bool_option(Options.log_video, "Log Video", "Log video memory activity.");
+
+	bool_option(Options.dump_cpu, "Dump CPU", "Machine dumps should include CPU status.");
+	bool_option(Options.dump_ram, "Dump RAM", "Machine dumps should include low RAM.");
+	bool_option(Options.dump_bank, "Dump banks", "Machine dumps should include hi RAM banks.");
+	bool_option(Options.dump_vram, "Dump VRAM", "Machine dumps should include VRAM.");
+
+	static char const *echo_mode_labels[] = {
+		"None",
+		"Raw",
+		"Cooked",
+		"ISO",
+	};
+	if (ImGui::BeginCombo("Echo Mode", echo_mode_labels[Options.echo_mode])) {
+		for (int i = 0; i < 4; ++i) {
+			ImGui::Selectable(echo_mode_labels[i], Options.echo_mode == i);
+		}
+		ImGui::EndCombo();
+	}
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Format of console text to echoed to output.");
+	}
+
+	ImGui::NewLine();
+	ImGui::TextDisabled("Machine Options");
+	ImGui::Separator();
+
+	if (ImGui::InputPow2("Himem KBs", &Options.num_ram_banks, "%d")) {
+		if (Options.num_ram_banks < 8) {
+			Options.num_ram_banks = 8;
+		}
+		if (Options.num_ram_banks > 2048) {
+			Options.num_ram_banks = 2048;
+		}		
+	}
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("KBs of bankable Hi RAM (8-2048, in powers of 2)");
+	}
+
+	ImGui::Checkbox("Set RTC", &Options.set_system_time);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Set X16 system time to current time reported by your OS.");
+	}
+
+	bool warp_speed = Options.warp_factor;
+	if (ImGui::Checkbox("Warp Speed", &warp_speed)) {
+		Options.warp_factor = warp_speed ? 1 : 0;
+	}
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Toggle warp speed. (VERA will skip most frames, speed cap is removed.)");
+	}
+
+	ImGui::NewLine();
+	ImGui::TextDisabled("Misc. Options");
+	ImGui::Separator();
+
+	ImGui::InputInt("Window Scale", &Options.window_scale);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Set window scale on emulator start.");
+	}
+
+	// TODO: Scale quality currently doesn't matter, would probably be nice to have again someday.
+	//ImGui::InputInt("Scale quality", &Options.scale_quality);
+	//if (ImGui::IsItemHovered()) {
+	//	ImGui::SetTooltip("Set window scale on emulator start.");
+	//}
+
+	file_option("gif", Options.gif_path, "GIF path", "Location to save gifs");
+	bool_option(Options.load_standard_symbols, "Load Standard Symbols", "Load all symbols files typically included with ROM distributions.");
+
+	ImGui::NewLine();
+	ImGui::TextDisabled("Audio");
+	ImGui::Separator();
+
+	ImGui::InputText("Audio Device Name", Options.audio_dev_name, PATH_MAX);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Name of default audio device to use.");
+	}
+
+	ImGui::Checkbox("No Sound", &Options.no_sound);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Disable audio subsystems entirely.");
+	}
+
+	ImGui::InputInt("Audio Buffers", &Options.audio_buffers);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Number of audio buffers");
+	}
+}
 
 static void draw_debugger_cpu_status()
 {
@@ -432,14 +629,8 @@ static void draw_debugger_vera_sprite()
 				if (ImGui::InputHex(i, sprite_data[i])) {
 					vera_video_space_write(0x1FC00 + 8 * sprite_id + i, sprite_data[i]);
 				}
-				//if ((i & 1) != 1) {
-				//	ImGui::SameLine();
-				//}
 			}
 		}
-		//ImGui::EndGroup();
-		//ImGui::SameLine();
-		//ImGui::BeginGroup();
 		ImGui::NewLine();
 		{
 			ImGui::PushItemWidth(128.0f);
@@ -1277,8 +1468,8 @@ static void draw_menu_bar()
 				}
 			}
 
-			if (ImGui::MenuItem("Save Options")) {
-				save_options(true);
+			if (ImGui::MenuItem("Options")) {
+				Show_options = true;
 			}
 
 			if (ImGui::MenuItem("Exit")) {
@@ -1349,7 +1540,7 @@ static void draw_menu_bar()
 			if (ImGui::BeginMenu("SD Card")) {
 				if (ImGui::MenuItem("Open")) {
 					char *open_path = nullptr;
-					if (NFD_OpenDialog("bin,img,sdcard", nullptr, &open_path) == NFD_OKAY && open_path != nullptr) {
+					if (NFD_OpenDialog("bin;img;sdcard", nullptr, &open_path) == NFD_OKAY && open_path != nullptr) {
 						sdcard_set_file(open_path);
 					}
 				}
@@ -1440,6 +1631,13 @@ static void draw_menu_bar()
 void overlay_draw()
 {
 	draw_menu_bar();
+
+	if (Show_options) {
+		if (ImGui::Begin("Options", &Show_options)) {
+			draw_options();
+		}
+		ImGui::End();
+	}
 
 	if (Show_memory_dump_1) {
 		if (ImGui::Begin("Memory 1", &Show_memory_dump_1)) {
