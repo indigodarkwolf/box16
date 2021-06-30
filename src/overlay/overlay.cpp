@@ -205,9 +205,16 @@ static void draw_options()
 	ImGui::TextDisabled("Misc. Options");
 	ImGui::Separator();
 
-	ImGui::InputInt("Window Scale", &Options.window_scale);
+	if (ImGui::InputInt("Window Scale", &Options.window_scale)) {
+		if (Options.window_scale < 1) {
+			Options.window_scale = 1;
+		}
+		if (Options.window_scale > 4) {
+			Options.window_scale = 4;
+		}
+	}
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Set window scale on emulator start.");
+		ImGui::SetTooltip("Set window scale (1x-4x) on emulator start.");
 	}
 
 	// TODO: Scale quality currently doesn't matter, would probably be nice to have again someday.
