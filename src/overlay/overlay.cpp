@@ -107,7 +107,7 @@ static void draw_options()
 	ImGui::TextDisabled("Boot Options");
 	ImGui::Separator();
 	file_option("prg", Options.prg_path, "PRG path", "PRG file to LOAD after boot, if any.");
-	file_option("bas", Options.bas_path, "BAS path", "Tokenized BAS file to LOAD after boot, if any.");
+	file_option("bas", Options.bas_path, "BAS path", "Text BAS file to automatically type into the console after boot, if any.");
 
 	bool_option(Options.run_after_load, "Run after load", "If a PRG or BAS file is set to be loaded, run it immediately.");
 	bool_option(Options.run_geos, "Run GEOS", "Run GEOS after boot.");
