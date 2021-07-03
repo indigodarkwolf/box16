@@ -132,7 +132,8 @@ void LOAD()
 		a           = 0;
 	} else {
 		char      filename[PATH_MAX];
-		const int hyperpath_len = sprintf(filename, "%s/", Options.hyper_path);
+		const int hyperpath_len = snprintf(filename, PATH_MAX, "%s/", Options.hyper_path);
+		filename[PATH_MAX - 1]  = '\0';
 
 		const int len = MIN(RAM[FNLEN], sizeof(filename) - hyperpath_len - 1);
 		memcpy(filename + hyperpath_len, kernal_filename, len);
@@ -208,7 +209,8 @@ void SAVE()
 	char const *kernal_filename = (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8];
 
 	char      filename[PATH_MAX];
-	const int hyperpath_len = sprintf(filename, "%s/", Options.hyper_path);
+	const int hyperpath_len = snprintf(filename, PATH_MAX, "%s/", Options.hyper_path);
+	filename[PATH_MAX - 1]  = '\0';
 
 	const int len = MIN(RAM[FNLEN], sizeof(filename) - hyperpath_len - 1);
 	memcpy(filename + hyperpath_len, kernal_filename, len);

@@ -162,7 +162,8 @@ int main(int argc, char **argv)
 	if (strlen(Options.prg_path) > 0) {
 		char path_buffer[PATH_MAX];
 		if (strlen(Options.hyper_path) > 0) {
-			sprintf(path_buffer, "%s/%s", Options.hyper_path, Options.prg_path);
+			snprintf(path_buffer, PATH_MAX, "%s/%s", Options.hyper_path, Options.prg_path);
+			path_buffer[PATH_MAX - 1] = '\0';
 		} else {
 			sprintf(path_buffer, "%s", Options.prg_path);
 		}

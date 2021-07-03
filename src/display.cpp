@@ -86,8 +86,8 @@ bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 	texture_height           = icons->h;
 	map_width                = icons->w / icon_width;
 	map_height               = icons->h / icon_height;
-	const float map_width_f  = map_width;
-	const float map_height_f = map_height;
+	const float map_width_f  = (float)map_width;
+	const float map_height_f = (float)map_height;
 	tile_uv_width            = 1.0f / map_width_f;
 	tile_uv_height           = 1.0f / map_height_f;
 

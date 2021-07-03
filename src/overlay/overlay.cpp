@@ -67,7 +67,7 @@ static void draw_options()
 		ImGui::InputText(name, path, PATH_MAX);
 		ImGui::EndGroup();
 		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip(tip);
+			ImGui::SetTooltip("%s", tip);
 		}
 		ImGui::PopID();
 	};
@@ -75,7 +75,7 @@ static void draw_options()
 	auto bool_option = [](bool &option, char const *name, char const *tip) {
 		ImGui::Checkbox(name, &option);
 		if (ImGui::IsItemHovered()) {
-			ImGui::SetTooltip(tip);
+			ImGui::SetTooltip("%s", tip);
 		}
 	};
 
@@ -282,7 +282,7 @@ static void draw_debugger_cpu_status()
 		int         n       = 0;
 		while (mask > 0) {
 			ImGui::BeginGroup();
-			ImGui::Text(names[n]);
+			ImGui::Text("%s", names[n]);
 			if (ImGui::SmallButton(status & mask ? "1" : "0")) {
 				status ^= mask;
 			}
@@ -322,7 +322,7 @@ static void draw_debugger_cpu_status()
 			char label[4] = "r0";
 			for (int i = start; i <= end; ++i) {
 				sprintf(label, i < 10 ? " r%d" : "r%d", i);
-				ImGui::Text(label);
+				ImGui::Text("%s", label);
 				ImGui::SameLine();
 				uint16_t value = (int)get_mem16(2 + (i << 1), 0);
 				if (ImGui::InputHex(i, value)) {
@@ -569,10 +569,10 @@ static void draw_debugger_vera_palette()
 				float *  f = (float *)(&c);
 				uint32_t nc;
 				uint8_t *np = reinterpret_cast<uint8_t *>(&nc);
-				np[0]       = f[3] * 15.0f;
-				np[1]       = f[2] * 15.0f;
-				np[2]       = f[1] * 15.0f;
-				np[3]       = f[0] * 15.0f;
+				np[0]       = (uint8_t)(f[3] * 15.0f);
+				np[1]       = (uint8_t)(f[2] * 15.0f);
+				np[2]       = (uint8_t)(f[1] * 15.0f);
+				np[3]       = (uint8_t)(f[0] * 15.0f);
 				nc |= nc << 4;
 				vera_video_set_palette(picker_index, nc);
 				c = { (float)(np[2]) / 255.0f, (float)(np[1]) / 255.0f, (float)(np[0]) / 255.0f, 1.0f };
@@ -727,11 +727,11 @@ public:
 					ImVec2 tile_imsize(256.0f + (5 * 16), 256.0f + (5 * 16));
 					ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), tile_imsize, tiles_preview.get_top_left(0), tiles_preview.get_bottom_right(0));
 				} else {
-					ImVec2 custom_spacing(5 << (graphics_props.tilew_log2 - 3), 5 << (graphics_props.tileh_log2 - 3));
+					ImVec2 custom_spacing((float)(5 << (graphics_props.tilew_log2 - 3)), (float)(5 << (graphics_props.tileh_log2 - 3)));
 					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, custom_spacing);
 					ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
 
-					ImVec2 tile_imsize(graphics_props.tilew << 1, graphics_props.tileh << 1);
+					ImVec2 tile_imsize((float)(graphics_props.tilew << 1), (float)(graphics_props.tileh << 1));
 
 					ImGuiListClipper clipper;
 					clipper.Begin(tiles_per_column, graphics_props.tileh + custom_spacing.y);

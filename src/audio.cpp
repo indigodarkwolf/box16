@@ -22,7 +22,7 @@ static int               Write_index  = 0;
 static int               Buffer_count = 0;
 static int               Num_buffers     = 0;
 
-static void audio_callback(void *userdata, Uint8 *stream, int len)
+static void audio_callback(void *, Uint8 *stream, int len)
 {
 	int expected = 2 * SAMPLES_PER_BUFFER * sizeof(int16_t);
 	if (len != expected) {
