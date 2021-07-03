@@ -62,7 +62,9 @@ static bool Initd_imgui_sdl2          = false;
 static bool Initd_imgui_opengl        = false;
 static bool Initd_icons               = false;
 
+#if defined(GL_EXT_texture_filter_anisotropic)
 static float Max_anisotropy = 1.0f;
+#endif
 
 bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 {
@@ -70,7 +72,7 @@ bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 		unload();
 	}
 
-	SDL_Surface *icons = IMG_Load("icons.png");
+	SDL_Surface *icons = IMG_Load(filename);
 	if (icons == nullptr) {
 		printf("Unable load icon resources\n");
 		return false;
@@ -234,7 +236,9 @@ static void display_video()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, filter);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, (Options.scale_quality == scale_quality_t::BEST) ? Max_anisotropy : 1.0f);
+#if defined(GL_EXT_texture_filter_anisotropic)
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, (Options.scale_quality == scale_quality_t::BEST) ? Max_anisotropy : 1.0f);
+#endif
 	glColor3f(1.0f, 1.0f, 1.0f);
 	glBegin(GL_QUADS);
 	glTexCoord2f(0.0f, 0.0f);
@@ -380,8 +384,9 @@ bool display_init(const display_settings &settings)
 	}
 	Initd_glew = true;
 
-	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &Max_anisotropy);
-
+#if defined(GL_EXT_texture_filter_anisotropic)
+	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &Max_anisotropy);
+#endif
 	// Initialize display framebuffer
 	{
 		glGenFramebuffers(1, &Display_framebuffer_handle);
