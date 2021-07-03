@@ -251,8 +251,7 @@ The debugger keys are similar to the Microsoft Debugger shortcut keys, and work 
 |F9 |sets the breakpoint to the currently code position.									|
 |F10|steps 'over' routines - if the next instruction is JSR it will break on return.		|
 |F11|steps 'into' routines.																	|
-|F12|is used to break back into the debugger. This does not happen if you do not have -debug|
-|TAB|when stopped, or single stepping, hides the debug information when pressed 			|
+|F12|is used to break back into the debugger.                                               |
 
 The STP instruction (opcode $DB) will break into the debugger automatically.
 
@@ -294,8 +293,19 @@ Release Notes
 * Internals
 	* Faster joystick implementation, now supporting hot-swapping.
 	* Even faster PS2.
-	* Rebuilt build script. Windows is now a VS2019 solution. Still no Mac, but Linux builds A-OK. Pls halp with iThings, PRs absolutely welcome.
+	* Rebuilt build script. Windows is now a VS2019 solution. Still no Mac, but Linux builds A-OK. Pls halp with iThings, 	PRs absolutely welcome.
 * Fixes VERA scaling for scaling values greater than $80.
+* Added a bunch of imgui windows for debugging and options. Full list, including new ones:
+	* Options
+	* Memory Dumps
+	* ASM Monitor
+	* CPU Visualizer
+	* VRAM Visualizer
+	* VERA Monitor
+	* Palette
+	* Layer Settings
+	* Sprite Settings
+	* PSG Monitor
 * Fixes ported from official emulator:
 	* PR 216, fixing occasional flicker and hang issues on Linux. (nigels-com)
 	* PR 317, fixing debugger break timing after hypercalls.

@@ -2,9 +2,11 @@
 
 #include <SDL.h>
 
+#include "debugger.h"
 #include "display.h"
 #include "glue.h"
 #include "imgui/imgui_impl_sdl.h"
+#include "overlay/overlay.h"
 #include "joystick.h"
 #include "keyboard.h"
 #include "ps2.h"
@@ -65,28 +67,42 @@ bool sdl_events_update()
 
 			case SDL_KEYDOWN: {
 				bool consumed = false;
+				if (event.key.keysym.sym == SDLK_F12) {
+					Show_cpu_monitor = true;
+					debugger_pause_execution();
+				}
 				if (cmd_down) {
-					if (event.key.keysym.sym == SDLK_s) {
-						machine_dump();
-						consumed = true;
-					} else if (event.key.keysym.sym == SDLK_r) {
-						machine_reset();
-						consumed = true;
-					} else if (event.key.keysym.sym == SDLK_v) {
-						keyboard_add_text(SDL_GetClipboardText());
-						consumed = true;
-					} else if (event.key.keysym.sym == SDLK_f || event.key.keysym.sym == SDLK_RETURN) {
-						display_toggle_fullscreen();
-						consumed = true;
-					} else if (event.key.keysym.sym == SDLK_PLUS || event.key.keysym.sym == SDLK_EQUALS) {
-						machine_toggle_warp();
-						consumed = true;
-					} else if (event.key.keysym.sym == SDLK_a) {
-						sdcard_attach();
-						consumed = true;
-					} else if (event.key.keysym.sym == SDLK_d) {
-						sdcard_detach();
-						consumed = true;
+					switch (event.key.keysym.sym) {
+						case SDLK_s:
+							machine_dump();
+							consumed = true;
+							break;
+						case SDLK_r:
+							machine_reset();
+							consumed = true;
+							break;
+						case SDLK_v:
+							keyboard_add_text(SDL_GetClipboardText());
+							consumed = true;
+							break;
+						case SDLK_f:
+						case SDLK_RETURN:
+							display_toggle_fullscreen();
+							consumed = true;
+							break;
+						case SDLK_PLUS:
+						case SDLK_EQUALS:
+							machine_toggle_warp();
+							consumed = true;
+							break;
+						case SDLK_a:
+							sdcard_attach();
+							consumed = true;
+							break;
+						case SDLK_d:
+							sdcard_detach();
+							consumed = true;
+							break;
 					}
 				}
 				if (!consumed) {
