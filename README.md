@@ -1,6 +1,6 @@
 # Box16
 
-This is an emulator for the Commander X16 computer system. Unlike the official emulator, this has a few more dependencies, see the build instructions below. It compiles on Windows, Debian Linux, and Raspbian, and probably 
+This is an emulator for the Commander X16 computer system. Unlike [the official emulator](https://github.com/commanderx16/x16-emulator), this has a few more dependencies, see the build instructions below. It compiles on Windows, Debian Linux, and Raspbian, and probably 
 other Linux-based platforms.
 
 Don't expect official "releases" until the physical X16 is out. Until then, there will be "non-releases" of Box16.
@@ -50,7 +50,7 @@ loaded from the directory containing the emulator binary, or you can use the `-r
 
 > __WARNING:__ Older versions of the ROM might not work in newer versions of the emulator, and vice versa.
 
-You can build a ROM image yourself using the [build instructions][https://github.com/commanderx16/x16-rom/x16rom-build] in the [x16-rom][https://github.com/commanderx16/x16-rom] repo. The `rom.bin` included in the [_latest_ release][https://github.com/commanderx16/x16-emulator/releases] of the emulator may also work with the HEAD of this repo, but this is not guaranteed.
+You can build a ROM image yourself using the [build instructions](https://github.com/commanderx16/x16-rom/x16rom-build) in the [x16-rom](https://github.com/commanderx16/x16-rom) repo. The `rom.bin` included in the [_latest_ release](https://github.com/commanderx16/x16-emulator/releases) of the emulator may also work with the HEAD of this repo, but this is not guaranteed.
 
 ### Linux Build
 
@@ -335,6 +335,8 @@ Release Notes
 	* Pulled non-VERA code out of VERA code.
 * Debugger is now always enabled, the command-line option now requires an address and is used to set breakpoints.
 
+Official X16 Emulator Release Notes
+-------------
 
 ## Release 38 ("Kyoto")
 
