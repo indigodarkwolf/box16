@@ -162,6 +162,9 @@
     <ClCompile Include="..\..\src\overlay\cpu_visualization.cpp">
       <Filter>Source Files\overlay</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\vendor\lodepng\lodepng.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\compat\compat.h">
@@ -260,6 +263,9 @@
     <ClInclude Include="..\..\src\ym2151\ym2151.h">
       <Filter>Source Files\ym2151</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\overlay\cpu_visualization.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\audio.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -331,9 +337,6 @@
     </ClInclude>
     <ClInclude Include="..\..\src\via.h">
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\overlay\cpu_visualization.h">
-      <Filter>Source Files\overlay</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

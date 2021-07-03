@@ -26,7 +26,6 @@ SOFTWARE.
 */
 
 #include <GL/glew.h>
-#include <SDL_image.h>
 
 #include "display.h"
 #include "imgui/imgui.h"
@@ -37,6 +36,7 @@ SOFTWARE.
 #include "overlay/overlay.h"
 #include "vera/vera_video.h"
 #include "version.h"
+#include "lodepng.h"
 
 static display_settings Display;
 
@@ -70,11 +70,14 @@ bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 		unload();
 	}
 
-	SDL_Surface *icons = IMG_Load("icons.png");
-	if (icons == nullptr) {
+	std::vector<unsigned char> icons_buf;
+	unsigned                   icons_w;
+	unsigned                   icons_h;
+	if (lodepng::decode(icons_buf, icons_w, icons_h, "icons.png", LCT_RGBA) != 0) {
 		printf("Unable load icon resources\n");
 		return false;
 	}
+	SDL_Surface *icons = SDL_CreateRGBSurfaceWithFormatFrom(icons_buf.data(), icons_w, icons_h, 32, icons_w * 4, SDL_PIXELFORMAT_RGBA8888);
 
 	int mode = GL_RGB;
 	if (icons->format->BytesPerPixel == 4) {
@@ -300,15 +303,6 @@ bool display_init(const display_settings &settings)
 	if (Display.window_rect.h == 0)
 		Display.window_rect.h = Display.video_rect.h + 10; // Account for menu
 
-	// Initialize SDL_Image
-	{
-		if (IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG) < 0) {
-			printf("Unable to initialize SDL_Image: %s\n", SDL_GetError());
-			return false;
-		}
-	}
-	Initd_sdl_image = true;
-
 	// Initialize SDL_GL
 	{
 		uint32_t sdl_window_flags = SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL;
@@ -455,11 +449,14 @@ bool display_init(const display_settings &settings)
 
 	// Load icons
 	{
-		SDL_Surface *icons = IMG_Load("icons.png");
-		if (icons == nullptr) {
+		std::vector<unsigned char> icons_buf;
+		unsigned                   icons_w;
+		unsigned                   icons_h;
+		if (lodepng::decode(icons_buf, icons_w, icons_h, "icons.png", LCT_RGBA) != 0) {
 			printf("Unable load icon resources\n");
 			return false;
 		}
+		SDL_Surface *icons = SDL_CreateRGBSurfaceWithFormatFrom(icons_buf.data(), icons_w, icons_h, 32, icons_w * 4, SDL_PIXELFORMAT_RGBA8888);
 
 		int mode = GL_RGB;
 		if (icons->format->BytesPerPixel == 4) {
