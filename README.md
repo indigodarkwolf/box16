@@ -1,4 +1,12 @@
-This is an emulator for the Commander X16 computer system. Unlike the official emulator, this has a few more dependencies, see the build instructions below. It compiles on Windows and Debian Linux, and probably other Linux-based platforms.
+# Box16
+
+This is an emulator for the Commander X16 computer system. Unlike the official emulator, this has a few more dependencies, see the build instructions below. It compiles on Windows, Debian Linux, and Raspbian, and probably 
+other Linux-based platforms.
+
+Don't expect official "releases" until the physical X16 is out. Until then, there will be "non-releases" of Box16.
+Since this is originally forked from the Official X16 emulator, the goal is to remain fully compatible with the Official X16 emulator, but with feature-adds such as ImGui displays, and performance improvements from OpenGL acceleration. 
+
+Some of the feature-adds will be prototype or preview in nature, as this is also my platform for fixing bugs and adding features to the official emulator.
 
 Features
 --------
