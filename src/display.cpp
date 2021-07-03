@@ -29,7 +29,6 @@ SOFTWARE.
 #include <SDL_image.h>
 
 #include "display.h"
-#include "icon.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_opengl2.h"
 #include "imgui/imgui_impl_sdl.h"
@@ -349,7 +348,7 @@ bool display_init(const display_settings &settings)
 			return false;
 		}
 
-		SDL_SetWindowIcon(Display_window, CommanderX16Icon());
+//		SDL_SetWindowIcon(Display_window, CommanderX16Icon());
 	}
 	Initd_sdl_gl = true;
 

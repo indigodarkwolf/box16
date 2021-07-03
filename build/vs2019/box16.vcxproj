@@ -215,7 +215,6 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClCompile Include="..\..\src\display.cpp" />
     <ClCompile Include="..\..\src\gif_recorder.cpp" />
     <ClCompile Include="..\..\src\i2c.cpp" />
-    <ClCompile Include="..\..\src\icon.cpp" />
     <ClCompile Include="..\..\src\imgui\imgui.cpp" />
     <ClCompile Include="..\..\src\imgui\imgui_demo.cpp" />
     <ClCompile Include="..\..\src\imgui\imgui_draw.cpp" />
@@ -270,7 +269,6 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClInclude Include="..\..\src\gif_recorder.h" />
     <ClInclude Include="..\..\src\glue.h" />
     <ClInclude Include="..\..\src\i2c.h" />
-    <ClInclude Include="..\..\src\icon.h" />
     <ClInclude Include="..\..\src\imgui\imconfig.h" />
     <ClInclude Include="..\..\src\imgui\imgui.h" />
     <ClInclude Include="..\..\src\imgui\imgui_impl_opengl2.h" />
