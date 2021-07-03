@@ -59,6 +59,7 @@ Read `resources/r39/README` and build or acquire the necessary files.
 The needed development packages are available as a distribution package with most major versions of Linux:
 - Debian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
 - Raspbian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
+- Fedora 33: `sudo dnf install glew-devel SDL2-devel SDL2_image-devel`
 
 Type `make` to build the source. The output will be `box16` in the output directory. Remember you will also need a `rom.bin` as described above.
 
