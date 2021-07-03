@@ -2,7 +2,3 @@ To ensure copyrights and licenses are respected, it is up to *you*, dear reader,
 to build or otherwise acquire the following files from the official emulator:
 
 rom.bin (as of 1 May 2021, this must be built from the ROM source code at https://github.com/commanderx16/x16-rom)
-
-SDL2.dll            (this can come from the official emulator build, release r38)
-libgcc_s_sjlj-1.dll (this can come from any official emulator build, release r38)
-libwinpthread-1.dll (this can come from any official emulator build, release r38)
