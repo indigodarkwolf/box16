@@ -24,6 +24,12 @@ LPNG_OBJDIR := $(OBJDIR)/lodepng
 LPNG_SRCS := $(LPNG_SRCDIR)/lodepng.cpp
 LPNG_OBJS := $(LPNG_OBJDIR)/lodepng.o
 
+RTMIDI_SRCDIR := $(VENDORDIR)/rtmidi
+RTMIDI_OBJDIR := $(OBJDIR)/rtmidi
+
+RTMIDI_SRCS := $(RTMIDI_SRCDIR)/RtMidi.cpp
+RTMIDI_OBJS := $(RTMIDI_OBJDIR)/RtMidi.o
+
 BOX16_SRCDIR := $(REPODIR)/src
 BOX16_OBJDIR := $(OBJDIR)/box16/obj
 
@@ -54,7 +60,13 @@ $(LPNG_OBJDIR)/%.o: $(LPNG_SRCDIR)/%.cpp | $(LPNG_OBJDIR)
 $(LPNG_OBJDIR):
 	mkdir -p $@
 
-$(OUTDIR)/box16: $(NFD_OBJS) $(LPNG_OBJS) $(BOX16_OBJS)
+$(RTMIDI_OBJDIR)/%.o: $(RTMIDI_SRCDIR)/%.cpp | $(RTMIDI_OBJDIR)
+	g++ $(BOX16_CFLAGS) -c $< -o $@
+
+$(RTMIDI_OBJDIR):
+	mkdir -p $@
+
+$(OUTDIR)/box16: $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(BOX16_OBJS)
 	mkdir -p $(OUTDIR)
 	g++ $(BOX16_LDFLAGS) $(NFD_LDFLAGS) $^ -o $@
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
