@@ -77,10 +77,6 @@ static void usage()
 	printf("-dump {C|R|B|V}...\n");
 	printf("\tConfigure system dump: (C)PU, (R)AM, (B)anked-RAM, (V)RAM\n");
 	printf("\tMultiple characters are possible, e.g. -dump CV ; Default: RB\n");
-	printf("-joy1 {NES | SNES}\n");
-	printf("\tChoose what type of joystick to use, e.g. -joy1 SNES\n");
-	printf("-joy2 {NES | SNES}\n");
-	printf("\tChoose what type of joystick to use, e.g. -joy2 SNES\n");
 	printf("-nosound\n");
 	printf("\tDisables audio. Incompatible with -sound.\n");
 	printf("-sound <output device>\n");

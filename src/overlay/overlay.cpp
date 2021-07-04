@@ -46,11 +46,11 @@ imgui_vram_dump vram_dump;
 
 static void draw_options()
 {
-	if (ImGui::Button("Save to x16.ini")) {
+	if (ImGui::Button("Save to box16.ini")) {
 		save_options(true);
 	}
 	ImGui::SameLine();
-	if (ImGui::Button("Load from x16.ini")) {
+	if (ImGui::Button("Load from box16.ini")) {
 		load_options();
 	}
 
@@ -96,22 +96,22 @@ static void draw_options()
 	}
 	ImGui::EndGroup();
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("When attempting to LOAD or SAVE files without an SD card inserted, this is the root directory.");
+		ImGui::SetTooltip("When attempting to LOAD or SAVE files without an SD card inserted, this is the root directory.\nCommand line: -hypercall_path <path>");
 	}
 
-	file_option("bin", Options.rom_path, "ROM path", "Location of the emulator ROM file.");
-	file_option("bin;nvram", Options.nvram_path, "NVRAM path", "Location of NVRAM image file, if any.");
-	file_option("bin;img;sdcard", Options.sdcard_path, "SD Card path", "Location of SD card image file, if any.");
+	file_option("bin", Options.rom_path, "ROM path", "Location of the emulator ROM file.\nCommand line: -rom <path>");
+	file_option("bin;nvram", Options.nvram_path, "NVRAM path", "Location of NVRAM image file, if any.\nCommand line: -nvram <path>");
+	file_option("bin;img;sdcard", Options.sdcard_path, "SD Card path", "Location of SD card image file, if any.\nCommand line: -sdcard <path>");
 
 	ImGui::NewLine();
 	ImGui::TextDisabled("Boot Options");
 	ImGui::Separator();
-	file_option("prg", Options.prg_path, "PRG path", "PRG file to LOAD after boot, if any.");
-	file_option("bas", Options.bas_path, "BAS path", "Text BAS file to automatically type into the console after boot, if any.");
+	file_option("prg", Options.prg_path, "PRG path", "PRG file to LOAD after boot, if any.\nCommand line: -prg <path>");
+	file_option("bas", Options.bas_path, "BAS path", "Text BAS file to automatically type into the console after boot, if any.\nCommand line: -bas <path>");
 
-	bool_option(Options.run_after_load, "Run after load", "If a PRG or BAS file is set to be loaded, run it immediately.");
-	bool_option(Options.run_geos, "Run GEOS", "Run GEOS after boot.");
-	bool_option(Options.run_test, "Run tests", "Run tests after boot.");
+	bool_option(Options.run_after_load, "Run after load", "If a PRG or BAS file is set to be loaded, run it immediately.\nCommand line: -run");
+	bool_option(Options.run_geos, "Run GEOS", "Run GEOS after boot.\nCommand line: -geos");
+	bool_option(Options.run_test, "Run tests", "Run tests after boot.\nCommand line: -test");
 	ImGui::InputInt("Test ID", &Options.test_number);
 	if (ImGui::IsItemHovered()) {
 		ImGui::SetTooltip("Test ID to run, if any.");
@@ -141,20 +141,20 @@ static void draw_options()
 		ImGui::EndCombo();
 	}
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Keymap assumed by the kernal.");
+		ImGui::SetTooltip("Keymap assumed by the kernal.\nCommand line: -keymap <map>");
 	}
 
 	ImGui::NewLine();
 	ImGui::TextDisabled("Logging and Exit Dumps");
 	ImGui::Separator();
-	bool_option(Options.log_keyboard, "Log Keyboard", "Log keyboard activity.");
-	bool_option(Options.log_speed, "Log Speed", "Log speed periodically.");
-	bool_option(Options.log_video, "Log Video", "Log video memory activity.");
+	bool_option(Options.log_keyboard, "Log Keyboard", "Log keyboard activity.\nCommand line: -log k");
+	bool_option(Options.log_speed, "Log Speed", "Log speed periodically.\nCommand line: -log s");
+	bool_option(Options.log_video, "Log Video", "Log video memory activity.\nCommand line: -log v");
 
-	bool_option(Options.dump_cpu, "Dump CPU", "Machine dumps should include CPU status.");
-	bool_option(Options.dump_ram, "Dump RAM", "Machine dumps should include low RAM.");
-	bool_option(Options.dump_bank, "Dump banks", "Machine dumps should include hi RAM banks.");
-	bool_option(Options.dump_vram, "Dump VRAM", "Machine dumps should include VRAM.");
+	bool_option(Options.dump_cpu, "Dump CPU", "Machine dumps should include CPU status.\nCommand line: -dump c");
+	bool_option(Options.dump_ram, "Dump RAM", "Machine dumps should include low RAM.\nCommand line: -dump r");
+	bool_option(Options.dump_bank, "Dump banks", "Machine dumps should include hi RAM banks.\nCommand line: -dump b");
+	bool_option(Options.dump_vram, "Dump VRAM", "Machine dumps should include VRAM.\nCommand line: -dump v");
 
 	static char const *echo_mode_labels[] = {
 		"None",
@@ -169,7 +169,7 @@ static void draw_options()
 		ImGui::EndCombo();
 	}
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Format of console text to echoed to output.");
+		ImGui::SetTooltip("Format of console text to echoed to output.\nCommand line: -echo {raw|iso|cooked|none}");
 	}
 
 	ImGui::NewLine();
@@ -185,12 +185,12 @@ static void draw_options()
 		}		
 	}
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("KBs of bankable Hi RAM (8-2048, in powers of 2)");
+		ImGui::SetTooltip("KBs of bankable Hi RAM (8-2048, in powers of 2)\nCommand line: -ram <qty>");
 	}
 
 	ImGui::Checkbox("Set RTC", &Options.set_system_time);
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Set X16 system time to current time reported by your OS.");
+		ImGui::SetTooltip("Set X16 system time to current time reported by your OS.\nCommand line: -rtc");
 	}
 
 	bool warp_speed = Options.warp_factor;
@@ -198,7 +198,7 @@ static void draw_options()
 		Options.warp_factor = warp_speed ? 1 : 0;
 	}
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Toggle warp speed. (VERA will skip most frames, speed cap is removed.)");
+		ImGui::SetTooltip("Toggle warp speed. (VERA will skip most frames, speed cap is removed.)\nCommand line: -warp");
 	}
 
 	ImGui::NewLine();
@@ -214,7 +214,7 @@ static void draw_options()
 		}
 	}
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Set window scale (1x-4x) on emulator start.");
+		ImGui::SetTooltip("Set window scale (1x-4x) on emulator start.\nCommand line: -scale {1|2|3|4}");
 	}
 
 	static auto quality_name = [](scale_quality_t quality) {
@@ -240,11 +240,11 @@ static void draw_options()
 		ImGui::EndCombo();
 	}
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Set scaling quality:\nNearest: Scale by nearest pixel.\nLinear: Scale by linearly averaging between pixels.\nBest: Scale by anisotropic filtering.");
+		ImGui::SetTooltip("Set scaling quality:\nNearest: Scale by nearest pixel.\nLinear: Scale by linearly averaging between pixels.\nBest: Scale by anisotropic filtering.\nCommand line: -quality {nearest|linear|best}");
 	}
 
-	file_option("gif", Options.gif_path, "GIF path", "Location to save gifs");
-	bool_option(Options.load_standard_symbols, "Load Standard Symbols", "Load all symbols files typically included with ROM distributions.");
+	file_option("gif", Options.gif_path, "GIF path", "Location to save gifs\nCommand line: -gif <path>[,wait]");
+	bool_option(Options.load_standard_symbols, "Load Standard Symbols", "Load all symbols files typically included with ROM distributions.\nCommand line: -stds");
 
 	ImGui::NewLine();
 	ImGui::TextDisabled("Audio");
@@ -252,17 +252,17 @@ static void draw_options()
 
 	ImGui::InputText("Audio Device Name", Options.audio_dev_name, PATH_MAX);
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Name of default audio device to use.");
+		ImGui::SetTooltip("Name of default audio device to use.\nCommand line: -sound <device>");
 	}
 
 	ImGui::Checkbox("No Sound", &Options.no_sound);
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Disable audio subsystems entirely.");
+		ImGui::SetTooltip("Disable audio subsystems entirely.\nCommand line: -nosound");
 	}
 
 	ImGui::InputInt("Audio Buffers", &Options.audio_buffers);
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Number of audio buffers");
+		ImGui::SetTooltip("Number of audio buffers.\nCommand line: -abufs <qty>");
 	}
 }
 
