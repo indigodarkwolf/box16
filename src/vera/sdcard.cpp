@@ -57,7 +57,7 @@ void sdcard_set_file(char const *path)
 {
 	sdcard_file = SDL_RWFromFile(path, "r+b");
 	if (!sdcard_file) {
-		printf("Cannot open %s!\n", path);
+		printf("Cannot open SDCard file %s!\n", path);
 		return;
 	}
 	sdcard_attach();

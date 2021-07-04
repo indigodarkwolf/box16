@@ -194,7 +194,7 @@ void keyboard_add_file(char const *const path)
 {
 	SDL_RWops *file = SDL_RWFromFile(path, "r");
 	if (file == nullptr) {
-		printf("Cannot open %s!\n", path);
+		printf("Cannot open text file %s!\n", path);
 		return;
 	}
 

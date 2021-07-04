@@ -13,15 +13,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerWorkingDirectory>$(OutputPath)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>
-    </LocalDebuggerCommandArguments>
-    <RemoteDebuggerCommandArguments>-scale 2 -sym X16-RACE.sym -prg X16-RACE.prg -hypercall_path ../../../../../../../ASM/x16-racer/build</RemoteDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-sym X16-RACE.sym -prg X16-RACE.prg -hypercall_path ../../../../../../../ASM/x16-racer/build -scale 2</LocalDebuggerCommandArguments>
+    <RemoteDebuggerCommandArguments>-sym X16-RACE.sym -prg X16-RACE.prg -hypercall_path ../../../../../../../ASM/x16-racer/build -scale 2</RemoteDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerWorkingDirectory>$(OutputPath)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>
-    </LocalDebuggerCommandArguments>
-    <RemoteDebuggerCommandArguments>-scale 2 -sym X16-RACE.sym -prg X16-RACE.prg -hypercall_path ../../../../../../../ASM/x16-racer/build</RemoteDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-prg C:\Users\User\Desktop\x16\ASM\x16-racer\build\X16-RACE.PRG -hypercall_path . -scale 2</LocalDebuggerCommandArguments>
+    <RemoteDebuggerCommandArguments>-prg C:\Users\User\Desktop\x16\ASM\x16-racer\build\X16-RACE.PRG -hypercall_path . -scale 2</RemoteDebuggerCommandArguments>
   </PropertyGroup>
 </Project>

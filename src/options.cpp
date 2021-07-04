@@ -418,7 +418,22 @@ static void set_options(mINI::INIStructure &ini)
 	}
 
 	if (ini["main"].has("hypercall_path")) {
-		strcpy(Options.hyper_path, ini["main"]["hypercall_path"].c_str());
+		std::string &path = ini["main"]["hypercall_path"];
+		strcpy(Options.hyper_path, path.c_str());
+		// If the path specified ended in a directory separator, remove it.
+		if (path.length() > 0) {
+			const size_t last_char = path.length() - 1;
+			const char   term      = Options.hyper_path[last_char];
+#if defined(WIN32)
+			if (term == '\\' || term == '/') {
+				Options.hyper_path[last_char] = '\0';
+			}
+#else
+			if (term == '/') {
+				Options.hyper_path[last_char] = '\0';
+			}
+#endif
+		}
 	}
 
 	if (ini["main"].has("keymap")) {

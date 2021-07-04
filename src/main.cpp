@@ -137,7 +137,7 @@ int main(int argc, char **argv)
 
 	SDL_RWops *f = SDL_RWFromFile(Options.rom_path, "rb");
 	if (!f) {
-		printf("Cannot open %s!\n", Options.rom_path);
+		printf("Cannot open ROM file %s!\n", Options.rom_path);
 		exit(1);
 	}
 	size_t rom_size = SDL_RWread(f, ROM, ROM_SIZE, 1);
@@ -161,13 +161,38 @@ int main(int argc, char **argv)
 	prg_override_start = -1;
 	if (strlen(Options.prg_path) > 0) {
 		char path_buffer[PATH_MAX];
-		if (strlen(Options.hyper_path) > 0) {
-			snprintf(path_buffer, PATH_MAX, "%s/%s", Options.hyper_path, Options.prg_path);
-			path_buffer[PATH_MAX - 1] = '\0';
+		int  path_len = 0;
+#if defined(WIN32)
+		auto is_absolute_path = [](const char *path) -> bool {
+			return isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+		};
+#else
+		auto is_absolute_path = [](const char *path) -> bool {
+			return path[0] == '/';
+		};
+#endif
+		if (is_absolute_path(Options.prg_path) || strlen(Options.hyper_path) == 0 || strcmp(Options.hyper_path, ".") == 0) {
+			path_len = sprintf(path_buffer, "%s", Options.prg_path);
 		} else {
-			sprintf(path_buffer, "%s", Options.prg_path);
+			path_len = snprintf(path_buffer, PATH_MAX, "%s/%s", Options.hyper_path, Options.prg_path);
+			path_len = path_len < (PATH_MAX - 1) ? path_len : (PATH_MAX - 1);
+
+			path_buffer[path_len] = '\0';
 		}
-		char *comma = strchr(path_buffer, ',');
+
+		auto find_comma = [](char *path_buffer, int path_len) -> char *{
+			char *c = path_buffer + path_len - 1;
+			while (path_len) {
+				if (!isalnum(*c)) {
+					return (*c == ',') ? c : nullptr;
+				}
+				--c;
+				--path_len;
+			}
+			return nullptr;
+		};
+
+		char *comma = find_comma(&path_buffer[0], path_len);
 		if (comma) {
 			prg_override_start = (uint16_t)strtol(comma + 1, NULL, 16);
 			*comma             = 0;
@@ -175,7 +200,7 @@ int main(int argc, char **argv)
 
 		prg_file = SDL_RWFromFile(path_buffer, "rb");
 		if (!prg_file) {
-			printf("Cannot open %s!\n", path_buffer);
+			printf("Cannot open PRG file %s!\n", path_buffer);
 			exit(1);
 		}
 	}
