@@ -18,13 +18,19 @@ NFD_ARFLAGS := rcs
 NFD_SRCS := $(NFD_SRCDIR)/nfd_gtk.c $(NFD_SRCDIR)/nfd_common.c
 NFD_OBJS := $(NFD_OBJDIR)/nfd_gtk.o $(NFD_OBJDIR)/nfd_common.o
 
+LPNG_SRCDIR := $(VENDORDIR)/lodepng
+LPNG_OBJDIR := $(OBJDIR)/lodepng
+
+LPNG_SRCS := $(LPNG_SRCDIR)/lodepng.cpp
+LPNG_OBJS := $(LPNG_OBJDIR)/lodepng.o
+
 BOX16_SRCDIR := $(REPODIR)/src
 BOX16_OBJDIR := $(OBJDIR)/box16/obj
 
 BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
-BOX16_CFLAGS := $(shell $(PKGCONFIG) --cflags sdl2 SDL2_image gl glew) --std=c++17 -O3 -Wformat -Wformat-security -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORDIR)/mINI/src/mini -include $(BOX16_SRCDIR)/compat/compat.h $(MYFLAGS)
-BOX16_LDFLAGS := $(shell $(PKGCONFIG) --libs sdl2 SDL2_image gl glew) -O3 $(MYFLAGS)
+BOX16_CFLAGS := $(shell $(PKGCONFIG) --cflags sdl2 gl glew) --std=c++17 -O3 -Wformat -Wformat-security -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORDIR)/mINI/src/mini -I$(LPNG_SRCDIR) -include $(BOX16_SRCDIR)/compat/compat.h $(MYFLAGS)
+BOX16_LDFLAGS := $(shell $(PKGCONFIG) --libs sdl2 gl glew) -O3 $(MYFLAGS)
 
 .PHONY: all
 
@@ -42,7 +48,13 @@ $(NFD_OBJDIR)/%.o: $(NFD_SRCDIR)/%.c | $(NFD_OBJDIR)
 $(NFD_OBJDIR):
 	mkdir -p $@
 
-$(OUTDIR)/box16: $(NFD_OBJS) $(BOX16_OBJS)
+$(LPNG_OBJDIR)/%.o: $(LPNG_SRCDIR)/%.cpp | $(LPNG_OBJDIR)
+	g++ $(BOX16_CFLAGS) -c $< -o $@
+
+$(LPNG_OBJDIR):
+	mkdir -p $@
+
+$(OUTDIR)/box16: $(NFD_OBJS) $(LPNG_OBJS) $(BOX16_OBJS)
 	mkdir -p $(OUTDIR)
 	g++ $(BOX16_LDFLAGS) $(NFD_LDFLAGS) $^ -o $@
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
