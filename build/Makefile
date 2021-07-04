@@ -11,8 +11,8 @@ PKGCONFIG := pkg-config
 NFD_SRCDIR := $(VENDORDIR)/nativefiledialog/src
 NFD_OBJDIR := $(OBJDIR)/nativefiledialog/obj
 
-NFD_CFLAGS := $(shell $(PKGCONFIG) --cflags gtk+-3.0) -I$(NFD_SRCDIR) -I$(NFD_SRCDIR)/include
-NFD_LDFLAGS := $(shell $(PKGCONFIG) --libs gtk+-3.0)
+NFD_CFLAGS := $(shell $(PKGCONFIG) --cflags gtk+-3.0) -I$(NFD_SRCDIR) -I$(NFD_SRCDIR)/include $(MYFLAGS)
+NFD_LDFLAGS := $(shell $(PKGCONFIG) --libs gtk+-3.0) $(MYFLAGS)
 NFD_ARFLAGS := rcs
 
 NFD_SRCS := $(NFD_SRCDIR)/nfd_gtk.c $(NFD_SRCDIR)/nfd_common.c
@@ -29,8 +29,8 @@ BOX16_OBJDIR := $(OBJDIR)/box16/obj
 
 BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
-BOX16_CFLAGS := $(shell $(SDL2CONFIG) --cflags) --std=c++17 -O3 -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORDIR)/mINI/src/mini -I$(LPNG_SRCDIR) -include $(BOX16_SRCDIR)/compat/compat.h
-BOX16_LDFLAGS := $(shell $(SDL2CONFIG) --libs) -lGL -lGLEW -O3
+BOX16_CFLAGS := $(shell $(PKGCONFIG) --cflags sdl2 gl glew) --std=c++17 -O3 -Wformat -Wformat-security -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORDIR)/mINI/src/mini -I$(LPNG_SRCDIR) -include $(BOX16_SRCDIR)/compat/compat.h $(MYFLAGS)
+BOX16_LDFLAGS := $(shell $(PKGCONFIG) --libs sdl2 gl glew) -O3 $(MYFLAGS)
 
 .PHONY: all
 

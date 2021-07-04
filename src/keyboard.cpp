@@ -198,7 +198,7 @@ void keyboard_add_file(char const *const path)
 		return;
 	}
 
-	const size_t file_size   = SDL_RWsize(file);
+	const size_t file_size   = (size_t)SDL_RWsize(file);
 	const size_t buffer_size = file_size + 1;
 
 	char *const file_text = new char[buffer_size];

@@ -14,7 +14,7 @@ static cpu_visualization_highlight Highlight_type = cpu_visualization_highlight:
 
 float fmodf(float f, int m)
 {
-	const int ff = f;
+	const int ff = (int)f;
 	return (ff % m) + (f - (float)ff);
 }
 
@@ -64,13 +64,13 @@ void cpu_visualization_step()
 
 			case cpu_visualization_highlight::VISIBLE: {
 				const vera_video_rect visible = vera_video_get_scan_visible();
-				const uint32_t        x       = vera_video_get_scan_pos_x();
+				const uint32_t        x       = (uint32_t)vera_video_get_scan_pos_x();
 				const uint32_t        y       = vera_video_get_scan_pos_y();
 				return (x >= visible.hstart && x < visible.hstop && y >= visible.vstart && y < visible.vstop) ? bright : dim;
 			}
 			case cpu_visualization_highlight::INVISIBLE: {
 				const vera_video_rect visible = vera_video_get_scan_visible();
-				const uint32_t        x       = vera_video_get_scan_pos_x();
+				const uint32_t        x       = (uint32_t)vera_video_get_scan_pos_x();
 				const uint32_t        y       = vera_video_get_scan_pos_y();
 				return (x >= visible.hstart && x < visible.hstop && y >= visible.vstart && y < visible.vstop) ? dim : bright;
 			}
