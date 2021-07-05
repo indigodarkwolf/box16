@@ -100,7 +100,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\rtmidi;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat;$(VendorDir)\rtmidi</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -109,7 +109,7 @@
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\SDL2_image-2.0.5\lib\x86\SDL2_image.lib;$(VendorDir)\glew-2.2.0\lib\Release\win32\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\glew-2.2.0\lib\Release\win32\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
     </Link>
@@ -121,7 +121,6 @@
       <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
 xcopy $(ResourceDir)\r39\*.* $(OutDir) /E /I /F /Y
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\SDL2_image-2.0.5\lib\x86\*.dll $(OutDir) /E /I /F /Y
 xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -131,7 +130,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Com
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\rtmidi;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat;$(VendorDir)\rtmidi</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -142,7 +141,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Com
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\SDL2_image-2.0.5\lib\x86\SDL2_image.lib;$(VendorDir)\glew-2.2.0\lib\Release\win32\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\glew-2.2.0\lib\Release\win32\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
     </Link>
@@ -154,13 +153,12 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Com
       <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
 xcopy $(ResourceDir)\r39\*.* $(OutDir) /E /I /F /Y
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\SDL2_image-2.0.5\lib\x86\*.dll $(OutDir) /E /I /F /Y
 xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\rtmidi;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
@@ -180,14 +178,13 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Com
       <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
 xcopy $(ResourceDir)\r39\*.* $(OutDir) /E /I /F /Y
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\SDL2_image-2.0.5\lib\x64\*.dll $(OutDir) /E /I /F /Y
 xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\rtmidi;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
@@ -207,7 +204,6 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
       <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
 xcopy $(ResourceDir)\r39\*.* $(OutDir) /E /I /F /Y
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\SDL2_image-2.0.5\lib\x64\*.dll $(OutDir) /E /I /F /Y
 xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
 </Command>
     </PostBuildEvent>
