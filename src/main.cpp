@@ -24,6 +24,7 @@
 #include "keyboard.h"
 #include "loadsave.h"
 #include "memory.h"
+#include "midi.h"
 #include "options.h"
 #include "overlay/cpu_visualization.h"
 #include "overlay/overlay.h"
@@ -180,7 +181,7 @@ int main(int argc, char **argv)
 			path_buffer[path_len] = '\0';
 		}
 
-		auto find_comma = [](char *path_buffer, int path_len) -> char *{
+		auto find_comma = [](char *path_buffer, int path_len) -> char * {
 			char *c = path_buffer + path_len - 1;
 			while (path_len) {
 				if (!isalnum(*c)) {
@@ -253,6 +254,8 @@ int main(int argc, char **argv)
 	gif_recorder_init(SCREEN_WIDTH, SCREEN_HEIGHT);
 
 	joystick_init();
+
+	midi_init();
 
 	rtc_init(Options.set_system_time);
 
@@ -426,6 +429,7 @@ void emulator_loop()
 				nvram_dirty = false;
 			}
 
+			midi_process();
 			gif_recorder_update(vera_video_get_framebuffer());
 			display_process();
 			if (!sdl_events_update()) {

@@ -22,6 +22,7 @@
 #include "joystick.h"
 #include "keyboard.h"
 #include "options_menu.h"
+#include "midi_overlay.h"
 #include "smc.h"
 #include "symbols.h"
 #include "timing.h"
@@ -41,6 +42,7 @@ bool Show_VERA_palette     = false;
 bool Show_VERA_layers      = false;
 bool Show_VERA_sprites     = false;
 bool Show_VERA_PSG_monitor = false;
+bool Show_midi_overlay     = false;
 
 imgui_vram_dump vram_dump;
 
@@ -1410,9 +1412,13 @@ static void draw_menu_bar()
 				vera_video_enable_safety_frame(safety_frame);
 			}
 
+			ImGui::Checkbox("MIDI Control", &Show_midi_overlay);
+
+#if defined(_DEBUG)
 			if (ImGui::Checkbox("Show ImGui Demo", &Show_imgui_demo)) {
 				// Nothing to do.
 			}
+#endif
 			ImGui::EndMenu();
 		}
 
@@ -1527,6 +1533,13 @@ void overlay_draw()
 			draw_debugger_vera_psg();
 		}
 		ImGui::End();
+	}
+
+	if (Show_midi_overlay) {
+		if (ImGui::Begin("MIDI Control", &Show_midi_overlay)) {
+			draw_midi_overlay();
+		}
+		ImGui::End();		
 	}
 }
 

@@ -100,7 +100,7 @@
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat;$(VendorDir)\rtmidi</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\rtmidi;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat;$(VendorDir)\rtmidi</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -131,7 +131,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Com
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat;$(VendorDir)\rtmidi</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\rtmidi;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\SDL2_image-2.0.5\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(SrcDir)\compat;$(VendorDir)\rtmidi</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -160,7 +160,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Com
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\rtmidi;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
@@ -187,7 +187,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\rtmidi;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
@@ -233,10 +233,12 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClCompile Include="..\..\src\loadsave.cpp" />
     <ClCompile Include="..\..\src\main.cpp" />
     <ClCompile Include="..\..\src\memory.cpp" />
+    <ClCompile Include="..\..\src\midi.cpp" />
     <ClCompile Include="..\..\src\options.cpp" />
     <ClCompile Include="..\..\src\overlay\cpu_visualization.cpp" />
     <ClCompile Include="..\..\src\overlay\disasm.cpp" />
     <ClCompile Include="..\..\src\overlay\memory_dump.cpp" />
+    <ClCompile Include="..\..\src\overlay\midi_overlay.cpp" />
     <ClCompile Include="..\..\src\overlay\options_menu.cpp" />
     <ClCompile Include="..\..\src\overlay\overlay.cpp" />
     <ClCompile Include="..\..\src\overlay\ram_dump.cpp" />
@@ -289,10 +291,12 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClInclude Include="..\..\src\keyboard.h" />
     <ClInclude Include="..\..\src\loadsave.h" />
     <ClInclude Include="..\..\src\memory.h" />
+    <ClInclude Include="..\..\src\midi.h" />
     <ClInclude Include="..\..\src\options.h" />
     <ClInclude Include="..\..\src\overlay\cpu_visualization.h" />
     <ClInclude Include="..\..\src\overlay\disasm.h" />
     <ClInclude Include="..\..\src\overlay\memory_dump.h" />
+    <ClInclude Include="..\..\src\overlay\midi_overlay.h" />
     <ClInclude Include="..\..\src\overlay\options_menu.h" />
     <ClInclude Include="..\..\src\overlay\overlay.h" />
     <ClInclude Include="..\..\src\overlay\ram_dump.h" />

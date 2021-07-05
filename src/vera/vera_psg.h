@@ -6,6 +6,8 @@
 
 #include <stdint.h>
 
+#define PSG_NUM_CHANNELS (16)
+
 enum waveform {
 	WF_PULSE = 0,
 	WF_SAWTOOTH,

@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static psg_channel Channels[16];
+static psg_channel Channels[PSG_NUM_CHANNELS];
 
 static uint8_t volume_lut[64] = { 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 28, 29, 31, 33, 35, 37, 39, 42, 44, 47, 50, 52, 56, 59, 63 };
 
@@ -46,7 +46,7 @@ static void render(int16_t *left, int16_t *right)
 	int l = 0;
 	int r = 0;
 
-	for (int i = 0; i < 16; i++) {
+	for (int i = 0; i < PSG_NUM_CHANNELS; i++) {
 		struct psg_channel *ch = &Channels[i];
 
 		unsigned new_phase = (ch->phase + ch->freq) & 0x1FFFF;
@@ -91,7 +91,7 @@ void psg_render(int16_t *buf, unsigned int num_samples)
 
 const psg_channel *psg_get_channel(unsigned int channel)
 {
-	if (channel > 16) {
+	if (channel > PSG_NUM_CHANNELS) {
 		return nullptr;
 	}
 
@@ -100,7 +100,7 @@ const psg_channel *psg_get_channel(unsigned int channel)
 
 psg_channel *psg_get_channel_debug(unsigned int channel)
 {
-	if (channel >= 16) {
+	if (channel >= PSG_NUM_CHANNELS) {
 		return nullptr;
 	}
 
@@ -109,42 +109,42 @@ psg_channel *psg_get_channel_debug(unsigned int channel)
 
 void psg_set_channel_frequency(unsigned int channel, uint16_t freq)
 {
-	if (channel < 16) {
+	if (channel < PSG_NUM_CHANNELS) {
 		Channels[channel].freq = freq;
 	}
 }
 
 void psg_set_channel_left(unsigned int channel, bool left)
 {
-	if (channel < 16) {
+	if (channel < PSG_NUM_CHANNELS) {
 		Channels[channel].left = left;
 	}
 }
 
 void psg_set_channel_right(unsigned int channel, bool right)
 {
-	if (channel < 16) {
+	if (channel < PSG_NUM_CHANNELS) {
 		Channels[channel].right = right;
 	}
 }
 
 void psg_set_channel_volume(unsigned int channel, uint8_t volume)
 {
-	if (channel < 16) {
+	if (channel < PSG_NUM_CHANNELS) {
 		Channels[channel].volume = volume & 0x3f;
 	}
 }
 
 void psg_set_channel_waveform(unsigned int channel, uint8_t waveform)
 {
-	if (channel < 16) {
+	if (channel < PSG_NUM_CHANNELS) {
 		Channels[channel].waveform = waveform;
 	}
 }
 
 void psg_set_channel_pulse_width(unsigned int channel, uint8_t pw)
 {
-	if (channel < 16) {
+	if (channel < PSG_NUM_CHANNELS) {
 		Channels[channel].pw = pw & 0x3f;
 	}
 }

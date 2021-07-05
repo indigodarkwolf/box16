@@ -168,6 +168,12 @@
     <ClCompile Include="..\..\src\overlay\options_menu.cpp">
       <Filter>Source Files\overlay</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\overlay\midi_overlay.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\midi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\compat\compat.h">
@@ -346,6 +352,12 @@
     </ClInclude>
     <ClInclude Include="..\..\src\overlay\options_menu.h">
       <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\midi_overlay.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\midi.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
