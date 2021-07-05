@@ -3,7 +3,10 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <sstream>
 #include <unordered_map>
+
+#include "debugger.h"
 
 using symbol_address_type      = uint32_t;
 using loaded_symbol_type       = std::tuple<symbol_address_type, std::string>;
@@ -88,45 +91,75 @@ bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
 		return false;
 	}
 
-	infile >> std::hex;
-
 	std::string cmd;
-	uint32_t    addr;
-	std::string label;
 
 	std::list<loaded_symbol_type> file_symbols;
 
-	while (!infile.eof()) {
-		infile >> cmd >> addr >> label;
-		if (cmd != "al") {
-			continue;
+	std::string line;
+	while (std::getline(infile, line)) {
+		int start = 0;
+		while (!isprint(line[start]) && (start < line.size())) {
+			++start;
 		}
-		if (addr > 0xffff) {
-			continue;
+
+		int end = start;
+		while ((line[end] != ';') && (end < line.size())) {
+			++end;
 		}
-		if (label.size() == 0) {
-			continue;
-		}
-		if (Ignore_list.find(label) != Ignore_list.end()) {
+
+		if (start == end) {
 			continue;
 		}
 
-		if (addr < 0xa000) {
-			bank = 0;
-		}
+		std::istringstream sline(line.substr(start, end - start));
+		sline >> cmd;
 
-		symbol_address_type symbol_addr = (bank << 16) + addr;
+		if (cmd == "al") {
+			uint32_t    addr;
+			std::string label;
 
-		bool already_exists = false;
-		for (auto &[address, symbol] : file_symbols) {
-			if ((symbol_addr == address) && !symbol.compare(label)) {
-				already_exists = true;
-				break;
+			sline >> std::hex;
+
+			sline >> addr >> label;
+
+			if (addr > 0xffff) {
+				continue;
 			}
-		}
+			if (label.size() == 0) {
+				continue;
+			}
+			if (Ignore_list.find(label) != Ignore_list.end()) {
+				continue;
+			}
 
-		if (!already_exists) {
-			file_symbols.push_back(std::tuple{ symbol_addr, label });
+			if (addr < 0xa000) {
+				bank = 0;
+			}
+
+			symbol_address_type symbol_addr = (bank << 16) + addr;
+
+			bool already_exists = false;
+			for (auto &[address, symbol] : file_symbols) {
+				if ((symbol_addr == address) && !symbol.compare(label)) {
+					already_exists = true;
+					break;
+				}
+			}
+
+			if (!already_exists) {
+				file_symbols.push_back(std::tuple{ symbol_addr, label });
+			}
+		} else if (cmd == "break") {
+			uint32_t    addr;
+			std::string addr_str;
+			
+			sline >> addr_str;
+			if (addr_str[0] == '$') {
+				std::istringstream saddr_str(addr_str.substr(1, addr_str.size()-1));
+				saddr_str >> std::hex;
+				saddr_str >> addr;
+			}
+			debugger_add_breakpoint(addr);
 		}
 	}
 
