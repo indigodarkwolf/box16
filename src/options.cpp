@@ -10,6 +10,8 @@
 
 options       Options;
 const options Default_options;
+char          Options_base_path[PATH_MAX];
+char          Options_ini_path[PATH_MAX];
 
 static void usage()
 {
@@ -396,6 +398,35 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 	}
 }
 
+static void fixup_directory(char *directory, size_t len)
+{
+	// If the path specified ended in a directory separator, remove it.
+	if (len > 0) {
+		const size_t last_char = len - 1;
+		const char   term      = directory[last_char];
+#if defined(WIN32)
+		if (term == '\\' || term == '/') {
+			directory[last_char] = '\0';
+		}
+#else
+		if (term == '/') {
+			directory[last_char] = '\0';
+		}
+#endif
+	}
+}
+
+static void fixup_directory(char *directory)
+{
+	fixup_directory(directory, strlen(directory));
+}
+
+static void apply_directory(char *directory, const std::string &src)
+{
+	strcpy(directory, src.c_str());
+	fixup_directory(directory, src.length());
+}
+
 static void set_options(mINI::INIStructure &ini)
 {
 	if (ini["main"].has("rom")) {
@@ -418,22 +449,7 @@ static void set_options(mINI::INIStructure &ini)
 	}
 
 	if (ini["main"].has("hypercall_path")) {
-		std::string &path = ini["main"]["hypercall_path"];
-		strcpy(Options.hyper_path, path.c_str());
-		// If the path specified ended in a directory separator, remove it.
-		if (path.length() > 0) {
-			const size_t last_char = path.length() - 1;
-			const char   term      = Options.hyper_path[last_char];
-#if defined(WIN32)
-			if (term == '\\' || term == '/') {
-				Options.hyper_path[last_char] = '\0';
-			}
-#else
-			if (term == '/') {
-				Options.hyper_path[last_char] = '\0';
-			}
-#endif
-		}
+		apply_directory(Options.hyper_path, ini["main"]["hypercall_path"]);
 	}
 
 	if (ini["main"].has("keymap")) {
@@ -615,9 +631,20 @@ static void set_options(mINI::INIStructure &ini)
 	}
 }
 
-void load_options(int argc, char **argv)
+void load_options(const char *path, int argc, char **argv)
 {
-	mINI::INIFile      file("box16.ini");
+	if (path != nullptr) {
+		strncpy(Options_base_path, path, PATH_MAX);
+		fixup_directory(Options_base_path);
+		snprintf(Options_ini_path, PATH_MAX, "%s/box16.ini", Options_base_path);
+		Options_ini_path[PATH_MAX - 1] = 0;
+	} else {
+		Options_base_path[0] = 0;
+		snprintf(Options_ini_path, PATH_MAX, "box16.ini");
+		Options_ini_path[PATH_MAX - 1] = 0;
+	}
+
+	mINI::INIFile      file(Options_ini_path);
 	mINI::INIStructure ini;
 
 	bool force_write = !file.read(ini);
@@ -633,7 +660,7 @@ void load_options(int argc, char **argv)
 
 void load_options()
 {
-	mINI::INIFile      file("box16.ini");
+	mINI::INIFile      file(Options_ini_path);
 	mINI::INIStructure ini;
 
 	bool force_write = !file.read(ini);
@@ -643,12 +670,11 @@ void load_options()
 	} else {
 		save_options(true);
 	}
-
 }
 
 void save_options(bool all)
 {
-	mINI::INIFile      file("box16.ini");
+	mINI::INIFile      file(Options_ini_path);
 	mINI::INIStructure ini;
 
 	std::stringstream value;
@@ -749,4 +775,38 @@ void save_options(bool all)
 	save_option("rtc", Options.set_system_time, Default_options.set_system_time);
 
 	file.generate(ini);
+}
+
+static int options_get_derived_path(char *derived_path, const char *path, const char *base_path)
+{
+	int path_len = 0;
+
+#if defined(WIN32)
+	auto is_absolute_path = [](const char *path) -> bool {
+		return isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
+	};
+#else
+	auto is_absolute_path = [](const char *path) -> bool {
+		return path[0] == '/';
+	};
+#endif
+	if (is_absolute_path(path) || strlen(base_path) == 0 || strcmp(base_path, ".") == 0) {
+		path_len = sprintf(derived_path, "%s", path);
+	} else {
+		path_len = snprintf(derived_path, PATH_MAX, "%s/%s", base_path, path);
+		path_len = path_len < (PATH_MAX - 1) ? path_len : (PATH_MAX - 1);
+
+		derived_path[path_len] = '\0';
+	}
+	return path_len;
+}
+
+int options_get_base_path(char *real_path, const char *path)
+{
+	return options_get_derived_path(real_path, path, Options_base_path);
+}
+
+int options_get_hyper_path(char *hyper_path, const char *path)
+{
+	return options_get_derived_path(hyper_path, path, Options.hyper_path);
 }

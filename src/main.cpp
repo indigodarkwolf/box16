@@ -126,7 +126,8 @@ static bool is_kernal()
 #undef main
 int main(int argc, char **argv)
 {
-	load_options(argc, argv);
+	const char *base_path = SDL_GetBasePath();
+	load_options(base_path, argc, argv);
 
 	if (Options.log_video) {
 		vera_video_set_log_video(true);
@@ -136,14 +137,21 @@ int main(int argc, char **argv)
 		vera_video_set_cheat_mask(0x3f);
 	}
 
-	SDL_RWops *f = SDL_RWFromFile(Options.rom_path, "rb");
-	if (!f) {
-		printf("Cannot open ROM file %s!\n", Options.rom_path);
-		exit(1);
+	// Load ROM
+	{
+		char path_buffer[PATH_MAX];
+		int  path_len = options_get_base_path(path_buffer, Options.rom_path);
+
+		SDL_RWops *f = SDL_RWFromFile(path_buffer, "rb");
+		if (!f) {
+			printf("Cannot open ROM file %s from %s!\n", Options.rom_path, path_buffer);
+			exit(1);
+		}
+		
+		size_t rom_size = SDL_RWread(f, ROM, ROM_SIZE, 1);
+		(void)rom_size;
+		SDL_RWclose(f);
 	}
-	size_t rom_size = SDL_RWread(f, ROM, ROM_SIZE, 1);
-	(void)rom_size;
-	SDL_RWclose(f);
 
 	if (strlen(Options.nvram_path) > 0) {
 		SDL_RWops *f = SDL_RWFromFile(Options.nvram_path, "rb");
@@ -162,24 +170,7 @@ int main(int argc, char **argv)
 	prg_override_start = -1;
 	if (strlen(Options.prg_path) > 0) {
 		char path_buffer[PATH_MAX];
-		int  path_len = 0;
-#if defined(WIN32)
-		auto is_absolute_path = [](const char *path) -> bool {
-			return isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
-		};
-#else
-		auto is_absolute_path = [](const char *path) -> bool {
-			return path[0] == '/';
-		};
-#endif
-		if (is_absolute_path(Options.prg_path) || strlen(Options.hyper_path) == 0 || strcmp(Options.hyper_path, ".") == 0) {
-			path_len = sprintf(path_buffer, "%s", Options.prg_path);
-		} else {
-			path_len = snprintf(path_buffer, PATH_MAX, "%s/%s", Options.hyper_path, Options.prg_path);
-			path_len = path_len < (PATH_MAX - 1) ? path_len : (PATH_MAX - 1);
-
-			path_buffer[path_len] = '\0';
-		}
+		int  path_len = options_get_hyper_path(path_buffer, Options.prg_path);
 
 		auto find_comma = [](char *path_buffer, int path_len) -> char * {
 			char *c = path_buffer + path_len - 1;
@@ -268,6 +259,8 @@ int main(int argc, char **argv)
 #else
 	emulator_loop();
 #endif
+
+	SDL_free(const_cast<char *>(base_path));
 
 	audio_close();
 	gif_recorder_shutdown();

@@ -75,8 +75,8 @@ bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 	std::vector<unsigned char> icons_buf;
 	unsigned                   icons_w;
 	unsigned                   icons_h;
-	if (lodepng::decode(icons_buf, icons_w, icons_h, "icons.png", LCT_RGBA) != 0) {
-		printf("Unable load icon resources\n");
+	if (lodepng::decode(icons_buf, icons_w, icons_h, filename, LCT_RGBA) != 0) {
+		printf("Unable to load file %s\n", filename);
 		return false;
 	}
 	SDL_Surface *icons = SDL_CreateRGBSurfaceWithFormatFrom(icons_buf.data(), icons_w, icons_h, 32, icons_w * 4, SDL_PIXELFORMAT_RGBA8888);
@@ -457,8 +457,12 @@ bool display_init(const display_settings &settings)
 		std::vector<unsigned char> icons_buf;
 		unsigned                   icons_w;
 		unsigned                   icons_h;
-		if (lodepng::decode(icons_buf, icons_w, icons_h, "icons.png", LCT_RGBA) != 0) {
-			printf("Unable load icon resources\n");
+
+		char icons_path[PATH_MAX];
+		options_get_base_path(icons_path, "icons.png");
+
+		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path, LCT_RGBA) != 0) {
+			printf("Unable to load icon resources from %s\n", icons_path);
 			return false;
 		}
 		SDL_Surface *icons = SDL_CreateRGBSurfaceWithFormatFrom(icons_buf.data(), icons_w, icons_h, 32, icons_w * 4, SDL_PIXELFORMAT_RGBA8888);

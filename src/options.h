@@ -55,8 +55,11 @@ struct options {
 
 extern options Options;
 
+void load_options(const char *base_dir, int argc, char **argv);
 void load_options();
-void load_options(int argc, char **argv);
 void save_options(bool all);
+
+int options_get_base_path(char *real_path, const char *path);
+int options_get_hyper_path(char *hyper_path, const char *path);
 
 #endif
