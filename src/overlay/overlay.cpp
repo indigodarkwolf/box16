@@ -1241,7 +1241,8 @@ static void draw_debugger_vera_psg()
 	}
 	ImGui::Columns(1);
 
-	const int16_t *psg_buffer = audio_get_psg_buffer();
+	int16_t psg_buffer[2 * SAMPLES_PER_BUFFER];
+	audio_get_psg_buffer(psg_buffer);
 	{
 		float left_samples[SAMPLES_PER_BUFFER];
 		float right_samples[SAMPLES_PER_BUFFER];

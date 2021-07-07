@@ -42,7 +42,7 @@ void timing_update()
 
 	int32_t diff_time = 1000 * frames_elapsed / 60 - ticks_elapsed;
 	if (Options.warp_factor == 0 && diff_time > 0) {
-		usleep(1000 * diff_time);
+		usleep(900 * diff_time);
 	}
 
 	int nominal_frames_elapsed = 1 + ticks_elapsed * 60 / 1000;

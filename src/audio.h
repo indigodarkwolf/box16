@@ -12,12 +12,19 @@
 #	define SAMPLES_PER_BUFFER (256)
 #endif
 
+class audio_lock_scope
+{
+public:
+	audio_lock_scope();
+	~audio_lock_scope();
+};
+
 void audio_init(const char *dev_name, int num_audio_buffers);
 void audio_close(void);
 void audio_render(int cpu_clocks);
 
 void audio_usage(void);
 
-const int16_t *audio_get_psg_buffer();
-const int16_t *audio_get_pcm_buffer();
-const int16_t *audio_get_ym_buffer();
+void audio_get_psg_buffer(int16_t *dst);
+void audio_get_pcm_buffer(int16_t *dst);
+void audio_get_ym_buffer(int16_t *dst);
