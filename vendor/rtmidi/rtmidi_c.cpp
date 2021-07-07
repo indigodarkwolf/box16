@@ -1,3 +1,5 @@
+#define _CRT_SECURE_NO_WARNINGS 1
+
 #include <string.h>
 #include <stdlib.h>
 #include "rtmidi_c.h"
@@ -132,16 +134,18 @@ unsigned int rtmidi_get_port_count (RtMidiPtr device)
     }
 }
 
-const char* rtmidi_get_port_name (RtMidiPtr device, unsigned int portNumber)
+bool rtmidi_get_port_name (char* name, int name_length, RtMidiPtr device, unsigned int portNumber)
 {
     try {
-        std::string name = ((RtMidi*) device->ptr)->getPortName (portNumber);
-        return strdup (name.c_str ());
+        std::string port_name = ((RtMidi*) device->ptr)->getPortName (portNumber);
+        strncpy(name, port_name.c_str(), name_length);
+        name[name_length - 1] = 0;
+        return true;
 
     } catch (const RtMidiError & err) {
         device->ok  = false;
         device->msg = err.what ();
-        return "";
+        return false;
     }
 }
 
