@@ -83,8 +83,14 @@ void cpu_visualization_step()
 		switch (Coloring_type) {
 			case cpu_visualization_coloring::ADDRESS:
 				return { hsv_to_rgb((float)pc / 65536.0f, sv, sv) };
-			case cpu_visualization_coloring::INSTRUCTION:
-				return { hsv_to_rgb((float)debug_read6502(pc) / 256.0f, sv, sv) };
+			case cpu_visualization_coloring::INSTRUCTION: {
+				uint8_t instruction = debug_read6502(pc);
+				if (instruction == 0xCB) {
+					return { 0, 0, 0, 0 };
+				} else {
+					return { hsv_to_rgb((float)instruction / 256.0f, sv, sv) };
+				}
+			}
 			case cpu_visualization_coloring::TEST: {
 				static int count = 0;
 				count            = (count + 1) % (256 << 4);
