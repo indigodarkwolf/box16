@@ -69,12 +69,12 @@ memmap_table_entry memmap_table_io[] = {
 	{ 0x00, 0x10 - 1, MEMMAP_IO_VIA1 },
 	{ 0x10, 0x20 - 1, MEMMAP_IO_VIA2 },
 	{ 0x20, 0x40 - 1, MEMMAP_IO_VIDEO },
-	{ 0x40, 0x80 - 1, MEMMAP_NULL },
+	{ 0x40, 0x50 - 1, MEMMAP_IO_SOUND },
+	{ 0x50, 0x80 - 1, MEMMAP_NULL },
 	{ 0x80, 0xa0 - 1, MEMMAP_IO_RTC },
 	{ 0xa0, 0xb0 - 1, MEMMAP_IO_MOUSE },
 	{ 0xb0, 0xc0 - 1, MEMMAP_IO_EMU },
-	{ 0xc0, 0xe0 - 1, MEMMAP_NULL },
-	{ 0xe0, 0xff, MEMMAP_IO_SOUND },
+	{ 0xc0, 0xff, MEMMAP_NULL },
 };
 
 uint8_t memory_map_hi[0x100];
@@ -240,8 +240,6 @@ static void sound_write(uint16_t address, uint8_t value)
 	} else if (address == 1) {
 		YM_write_reg(lastAudioAdr, value);
 	}
-	// TODO:
-	//   $9F42 & $9F43: SAA1099P
 }
 
 //
