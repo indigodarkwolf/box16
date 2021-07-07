@@ -38,8 +38,6 @@ Missing Features
 	* Interlaced modes (NTSC/RGB) don't render at the full horizontal fidelity
 * VIA
 	* Does not support counters/timers/IRQs
-* Sound
-	* No SAA support
 
 
 Binaries & Compiling
