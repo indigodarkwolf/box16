@@ -129,7 +129,7 @@ namespace mINI
 #else
 		const char* const endl = "\n";
 #endif
-	};
+	}
 
 	template<typename T>
 	class INIMap
@@ -324,7 +324,7 @@ namespace mINI
 			}
 			return PDataType::PDATA_UNKNOWN;
 		}
-	};
+	}
 
 	class INIReader
 	{

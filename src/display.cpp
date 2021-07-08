@@ -650,4 +650,4 @@ namespace ImGui
 		return result;
 	}
 
-}; // namespace ImGui
+} // namespace ImGui

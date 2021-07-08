@@ -105,7 +105,7 @@ namespace ImGui
 		PopID();
 		return result;
 	}
-}; // namespace ImGui
+} // namespace ImGui
 
 static uint16_t get_mem16(uint16_t address, uint8_t bank)
 {
