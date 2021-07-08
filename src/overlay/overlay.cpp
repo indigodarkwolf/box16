@@ -834,70 +834,38 @@ static void draw_breakpoints()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 		if (ImGui::TreeNodeEx("Breakpoints", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			ImGui::Columns(5);
-			ImGui::SetColumnWidth(0, 27);
-			ImGui::SetColumnWidth(1, 27);
-			ImGui::SetColumnWidth(2, ImGui::CalcTextSize("Address  ").x);
-			ImGui::SetColumnWidth(3, ImGui::CalcTextSize("Bank      ").x);
+			if (ImGui::BeginTable("breakpoints", 5, ImGuiTableFlags_Resizable)) {
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
+				ImGui::TableSetupColumn("Address");
+				ImGui::TableSetupColumn("Bank");
+				ImGui::TableSetupColumn("Symbol");
+				ImGui::TableHeadersRow();
 
-			ImGui::Dummy(ImVec2(10, 10));
-			ImGui::NextColumn();
-
-			ImGui::Dummy(ImVec2(10, 10));
-			ImGui::NextColumn();
-
-			ImGui::Text("Address");
-			ImGui::NextColumn();
-
-			ImGui::Text("Bank");
-			ImGui::NextColumn();
-
-			ImGui::Text("Symbol");
-			ImGui::NextColumn();
-
-			ImGui::Separator();
-
-			const auto &breakpoints = debugger_get_breakpoints();
-			for (auto [address, bank] : breakpoints) {
-				if (ImGui::TileButton(ICON_REMOVE)) {
-					debugger_remove_breakpoint(address, bank);
-					break;
-				}
-				ImGui::NextColumn();
-
-				if (debugger_breakpoint_is_active(address, bank)) {
-					if (ImGui::TileButton(ICON_CHECKED)) {
-						debugger_deactivate_breakpoint(address, bank);
+				const auto &breakpoints = debugger_get_breakpoints();
+				for (auto &[address, bank] : breakpoints) {
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					if (ImGui::TileButton(ICON_REMOVE)) {
+						debugger_remove_breakpoint(address, bank);
+						break;
 					}
-				} else {
-					if (ImGui::TileButton(ICON_UNCHECKED)) {
-						debugger_activate_breakpoint(address, bank);
+
+					ImGui::TableNextColumn();
+					if (debugger_breakpoint_is_active(address, bank)) {
+						if (ImGui::TileButton(ICON_CHECKED)) {
+							debugger_deactivate_breakpoint(address, bank);
+						}
+					} else {
+						if (ImGui::TileButton(ICON_UNCHECKED)) {
+							debugger_activate_breakpoint(address, bank);
+						}
 					}
-				}
-				ImGui::NextColumn();
 
-				char addr_text[5];
-				sprintf(addr_text, "%04X", address);
-				if (ImGui::Selectable(addr_text, false, ImGuiSelectableFlags_AllowDoubleClick)) {
-					disasm.set_dump_start(address);
-					if (address >= 0xc000) {
-						disasm.set_rom_bank(bank);
-					} else if (address >= 0xa000) {
-						disasm.set_ram_bank(bank);
-					}
-				}
-
-				ImGui::NextColumn();
-
-				if (address < 0xa000) {
-					ImGui::Text("--");
-				} else {
-					ImGui::Text("%s %02X", address < 0xc000 ? "RAM" : "ROM", bank);
-				}
-				ImGui::NextColumn();
-
-				for (auto &sym : symbols_find(address)) {
-					if (ImGui::Selectable(sym.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
+					ImGui::TableNextColumn();
+					char addr_text[5];
+					sprintf(addr_text, "%04X", address);
+					if (ImGui::Selectable(addr_text, false, ImGuiSelectableFlags_AllowDoubleClick)) {
 						disasm.set_dump_start(address);
 						if (address >= 0xc000) {
 							disasm.set_rom_bank(bank);
@@ -905,12 +873,29 @@ static void draw_breakpoints()
 							disasm.set_ram_bank(bank);
 						}
 					}
-				}
-				ImGui::NextColumn();
-			}
 
-			ImGui::Columns(1);
-			ImGui::Separator();
+					ImGui::TableNextColumn();
+					if (address < 0xa000) {
+						ImGui::Text("--");
+					} else {
+						ImGui::Text("%s %02X", address < 0xc000 ? "RAM" : "ROM", bank);
+					}
+
+					ImGui::TableNextColumn();
+					for (auto &sym : symbols_find(address)) {
+						if (ImGui::Selectable(sym.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
+							disasm.set_dump_start(address);
+							if (address >= 0xc000) {
+								disasm.set_rom_bank(bank);
+							} else if (address >= 0xa000) {
+								disasm.set_ram_bank(bank);
+							}
+						}
+					}
+				}
+
+				ImGui::EndTable();
+			}
 
 			static uint16_t new_address = 0;
 			static uint8_t  new_bank    = 0;
@@ -1003,67 +988,63 @@ static void draw_symbols_files()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 		if (ImGui::TreeNodeEx("Loaded Symbol Files", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			ImGui::Columns(3);
-			ImGui::SetColumnWidth(0, 27);
-			ImGui::SetColumnWidth(1, 27);
+			if (ImGui::BeginTable("symbols", 3, ImGuiTableFlags_Resizable)) {
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
+				ImGui::TableSetupColumn("Path");
+				ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+				ImGui::TableSetColumnIndex(1);
 
-			ImGui::Dummy(ImVec2(16, 16));
-			ImGui::NextColumn();
+				const auto &files = symbols_get_loaded_files();
 
-			const auto &files = symbols_get_loaded_files();
-
-			if (symbols_file_all_are_visible()) {
-				if (ImGui::TileButton(ICON_CHECKED)) {
-					for (auto file : files) {
-						symbols_hide_file(file);
-					}
-				}
-			} else if (symbols_file_any_is_visible()) {
-				if (ImGui::TileButton(ICON_CHECK_UNCERTAIN)) {
-					for (auto file : files) {
-						symbols_hide_file(file);
-					}
-				}
-			} else {
-				if (ImGui::TileButton(ICON_UNCHECKED)) {
-					for (auto file : files) {
-						symbols_show_file(file);
-					}
-				}
-			}
-			ImGui::NextColumn();
-
-			ImGui::Text("Path");
-			ImGui::NextColumn();
-
-			ImGui::Separator();
-
-			for (auto file : files) {
-				ImGui::PushID(file.c_str());
-				if (ImGui::TileButton(ICON_REMOVE)) {
-					symbols_unload_file(file);
-					ImGui::PopID();
-					break;
-				}
-				ImGui::NextColumn();
-
-				if (symbols_file_is_visible(file)) {
+				if (symbols_file_all_are_visible()) {
 					if (ImGui::TileButton(ICON_CHECKED)) {
-						symbols_hide_file(file);
+						for (auto file : files) {
+							symbols_hide_file(file);
+						}
+					}
+				} else if (symbols_file_any_is_visible()) {
+					if (ImGui::TileButton(ICON_CHECK_UNCERTAIN)) {
+						for (auto file : files) {
+							symbols_hide_file(file);
+						}
 					}
 				} else {
 					if (ImGui::TileButton(ICON_UNCHECKED)) {
-						symbols_show_file(file);
+						for (auto file : files) {
+							symbols_show_file(file);
+						}
 					}
 				}
-				ImGui::PopID();
-				ImGui::NextColumn();
 
-				ImGui::Text("%s", file.c_str());
-				ImGui::NextColumn();
+				for (auto file : files) {
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::PushID(file.c_str());
+					if (ImGui::TileButton(ICON_REMOVE)) {
+						symbols_unload_file(file);
+						ImGui::PopID();
+						break;
+					}
+
+					ImGui::TableNextColumn();
+					if (symbols_file_is_visible(file)) {
+						if (ImGui::TileButton(ICON_CHECKED)) {
+							symbols_hide_file(file);
+						}
+					} else {
+						if (ImGui::TileButton(ICON_UNCHECKED)) {
+							symbols_show_file(file);
+						}
+					}
+					ImGui::PopID();
+
+					ImGui::TableNextColumn();
+					ImGui::Text("%s", file.c_str());
+				}
+				ImGui::EndTable();
 			}
 
-			ImGui::Columns(1);
 			static uint8_t ram_bank = 0;
 			if (ImGui::Button("Load Symbols")) {
 				char *open_path = nullptr;
@@ -1165,111 +1146,116 @@ static void draw_debugger_controls()
 
 static void draw_debugger_vera_psg()
 {
-	ImGui::Columns(8, nullptr, false);
-	ImGui::SetColumnWidth(0, 24);  // ch
-	ImGui::SetColumnWidth(1, 128); // raw bytes
-	ImGui::SetColumnWidth(3, 128); // wave
-	ImGui::SetColumnWidth(5, 32);  // l
-	ImGui::SetColumnWidth(6, 32);  // r
+	if (ImGui::BeginTable("psg mon", 8)) {
+		ImGui::TableSetupColumn("Ch", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Raw Bytes", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Freq", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Wave", ImGuiTableColumnFlags_WidthFixed, 88);
+		ImGui::TableSetupColumn("Width", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("L", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("R", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Vol", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
 
-	static const char *labels[] = {
-		"Ch",
-		"Raw Bytes",
-		"Freq",
-		"Wave",
-		"Width",
-		"L",
-		"R",
-		"Vol"
-	};
-	for (int i = 0; i < 8; ++i) {
-		ImGui::Text("%s", labels[i]);
-		ImGui::NextColumn();
-	}
-
-	static char chtxt[3];
-	for (unsigned int i = 0; i < 16; ++i) {
-		std::sprintf(chtxt, "%d", i);
-		ImGui::PushID(i);
-		const psg_channel *channel = psg_get_channel(i);
-
-		ImGui::Text(chtxt);
-		ImGui::NextColumn();
-
-		ImGui::PushID("raw");
-		uint8_t ch_data[4];
-		ch_data[0] = channel->freq & 0xff;
-		ch_data[1] = channel->freq >> 8;
-		ch_data[2] = channel->volume | (channel->left << 6) | (channel->right << 7);
-		ch_data[3] = channel->pw | channel->waveform << 6;
-		for (int j = 0; j < 4; ++j) {
-			if (j) {
-				ImGui::SameLine();
+		static char chtxt[3];
+		for (unsigned int i = 0; i < 16; ++i) {
+			ImGui::TableNextRow();
+			if (i == 0) {
+				ImGui::TableSetColumnIndex(2); // freq
+				ImGui::PushItemWidth(-FLT_MIN); // Right-aligned
+				ImGui::TableSetColumnIndex(3); // wave
+				ImGui::PushItemWidth(-FLT_MIN);
+				ImGui::TableSetColumnIndex(4); // width
+				ImGui::PushItemWidth(-FLT_MIN);
+				ImGui::TableSetColumnIndex(7); // vol
+				ImGui::PushItemWidth(-FLT_MIN);
+				ImGui::TableSetColumnIndex(0);
+			} else {
+				ImGui::TableNextColumn();
 			}
-			if (ImGui::InputHex(j, ch_data[j])) {
-				psg_writereg(i * 4 + j, ch_data[j]);
+
+			std::sprintf(chtxt, "%d", i);
+			ImGui::PushID(i);
+			const psg_channel *channel = psg_get_channel(i);
+
+			ImGui::Text(chtxt);
+
+			ImGui::TableNextColumn();
+			ImGui::PushID("raw");
+			uint8_t ch_data[4];
+			ch_data[0] = channel->freq & 0xff;
+			ch_data[1] = channel->freq >> 8;
+			ch_data[2] = channel->volume | (channel->left << 6) | (channel->right << 7);
+			ch_data[3] = channel->pw | channel->waveform << 6;
+			for (int j = 0; j < 4; ++j) {
+				if (j) {
+					ImGui::SameLine();
+				}
+				if (ImGui::InputHex(j, ch_data[j])) {
+					psg_writereg(i * 4 + j, ch_data[j]);
+				}
 			}
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
+			ImGui::PopID();
 
-		float freq = channel->freq;
-		ImGui::PushID("freq");
-		if (ImGui::SliderFloat("", &freq, 0, 0xffff, "%.0f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
-			psg_set_channel_frequency(i, (uint16_t) freq);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
+			ImGui::TableNextColumn();
+			float freq = channel->freq;
+			ImGui::PushID("freq");
+			if (ImGui::SliderFloat("", &freq, 0, 0xffff, "%.0f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
+				psg_set_channel_frequency(i, (uint16_t)freq);
+			}
+			ImGui::PopID();
 
-		static const char *waveforms[] = {
-			"Pulse",
-			"Sawtooth",
-			"Triangle",
-			"Noise"
-		};
-		int wf = channel->waveform;
-		ImGui::PushID("waveforms");
-		if (ImGui::Combo("", &wf, waveforms, IM_ARRAYSIZE(waveforms))) {
-			psg_set_channel_waveform(i, wf);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
+			ImGui::TableNextColumn();
+			static const char *waveforms[] = {
+				"Pulse",
+				"Sawtooth",
+				"Triangle",
+				"Noise"
+			};
+			int wf = channel->waveform;
+			ImGui::PushID("waveforms");
+			if (ImGui::Combo("", &wf, waveforms, IM_ARRAYSIZE(waveforms))) {
+				psg_set_channel_waveform(i, wf);
+			}
+			ImGui::PopID();
 
-		int pulse_width = channel->pw;
-		ImGui::PushID("pulse_width");
-		if (ImGui::SliderInt("", &pulse_width, 0, 63)) {
-			psg_set_channel_pulse_width(i, pulse_width);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
+			ImGui::TableNextColumn();
+			int pulse_width = channel->pw;
+			ImGui::PushID("pulse_width");
+			if (ImGui::SliderInt("", &pulse_width, 0, 63)) {
+				psg_set_channel_pulse_width(i, pulse_width);
+			}
+			ImGui::PopID();
 
-		bool left = channel->left;
-		ImGui::PushID("left");
-		if (ImGui::Checkbox("", &left)) {
-			psg_set_channel_left(i, left);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
+			ImGui::TableNextColumn();
+			bool left = channel->left;
+			ImGui::PushID("left");
+			if (ImGui::Checkbox("", &left)) {
+				psg_set_channel_left(i, left);
+			}
+			ImGui::PopID();
 
-		bool right = channel->right;
-		ImGui::PushID("right");
-		if (ImGui::Checkbox("", &right)) {
-			psg_set_channel_right(i, right);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
+			ImGui::TableNextColumn();
+			bool right = channel->right;
+			ImGui::PushID("right");
+			if (ImGui::Checkbox("", &right)) {
+				psg_set_channel_right(i, right);
+			}
+			ImGui::PopID();
 
-		int volume = channel->volume;
-		ImGui::PushID("volume");
-		if (ImGui::SliderInt("", &volume, 0, 63)) {
-			psg_set_channel_volume(i, volume);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
+			ImGui::TableNextColumn();
+			int volume = channel->volume;
+			ImGui::PushID("volume");
+			if (ImGui::SliderInt("", &volume, 0, 63)) {
+				psg_set_channel_volume(i, volume);
+			}
+			ImGui::PopID();
 
-		ImGui::PopID();
+			ImGui::PopID();
+		}
+
+		ImGui::EndTable();
 	}
-	ImGui::Columns(1);
 
 	int16_t psg_buffer[2 * SAMPLES_PER_BUFFER];
 	audio_get_psg_buffer(psg_buffer);
