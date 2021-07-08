@@ -1165,28 +1165,80 @@ static void draw_debugger_controls()
 
 static void draw_debugger_vera_psg()
 {
-	ImGui::Columns(6);
+	ImGui::Columns(8, nullptr, false);
+	ImGui::SetColumnWidth(0, 24);  // ch
+	ImGui::SetColumnWidth(1, 128); // raw bytes
+	ImGui::SetColumnWidth(3, 128); // wave
+	ImGui::SetColumnWidth(5, 32);  // l
+	ImGui::SetColumnWidth(6, 32);  // r
+
 	static const char *labels[] = {
+		"Ch",
+		"Raw Bytes",
 		"Freq",
-		"Left",
-		"Right",
-		"Vol",
 		"Wave",
-		"Width"
+		"Width",
+		"L",
+		"R",
+		"Vol"
 	};
-	for (int i = 0; i < 6; ++i) {
+	for (int i = 0; i < 8; ++i) {
 		ImGui::Text("%s", labels[i]);
 		ImGui::NextColumn();
 	}
 
+	static char chtxt[3];
 	for (unsigned int i = 0; i < 16; ++i) {
+		std::sprintf(chtxt, "%d", i);
 		ImGui::PushID(i);
 		const psg_channel *channel = psg_get_channel(i);
 
-		int freq = channel->freq;
+		ImGui::Text(chtxt);
+		ImGui::NextColumn();
+
+		ImGui::PushID("raw");
+		uint8_t ch_data[4];
+		ch_data[0] = channel->freq & 0xff;
+		ch_data[1] = channel->freq >> 8;
+		ch_data[2] = channel->volume | (channel->left << 6) | (channel->right << 7);
+		ch_data[3] = channel->pw | channel->waveform << 6;
+		for (int j = 0; j < 4; ++j) {
+			if (j) {
+				ImGui::SameLine();
+			}
+			if (ImGui::InputHex(j, ch_data[j])) {
+				psg_writereg(i * 4 + j, ch_data[j]);
+			}
+		}
+		ImGui::PopID();
+		ImGui::NextColumn();
+
+		float freq = channel->freq;
 		ImGui::PushID("freq");
-		if (ImGui::InputInt("", &freq)) {
-			psg_set_channel_frequency(i, freq);
+		if (ImGui::SliderFloat("", &freq, 0, 0xffff, "%.0f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
+			psg_set_channel_frequency(i, (uint16_t) freq);
+		}
+		ImGui::PopID();
+		ImGui::NextColumn();
+
+		static const char *waveforms[] = {
+			"Pulse",
+			"Sawtooth",
+			"Triangle",
+			"Noise"
+		};
+		int wf = channel->waveform;
+		ImGui::PushID("waveforms");
+		if (ImGui::Combo("", &wf, waveforms, IM_ARRAYSIZE(waveforms))) {
+			psg_set_channel_waveform(i, wf);
+		}
+		ImGui::PopID();
+		ImGui::NextColumn();
+
+		int pulse_width = channel->pw;
+		ImGui::PushID("pulse_width");
+		if (ImGui::SliderInt("", &pulse_width, 0, 63)) {
+			psg_set_channel_pulse_width(i, pulse_width);
 		}
 		ImGui::PopID();
 		ImGui::NextColumn();
@@ -1209,30 +1261,8 @@ static void draw_debugger_vera_psg()
 
 		int volume = channel->volume;
 		ImGui::PushID("volume");
-		if (ImGui::InputInt("", &volume)) {
+		if (ImGui::SliderInt("", &volume, 0, 63)) {
 			psg_set_channel_volume(i, volume);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
-
-		static const char *waveforms[] = {
-			"Pulse",
-			"Sawtooth",
-			"Triangle",
-			"Noise"
-		};
-		int wf = channel->waveform;
-		ImGui::PushID("waveforms");
-		if (ImGui::Combo("", &wf, waveforms, IM_ARRAYSIZE(waveforms))) {
-			psg_set_channel_waveform(i, wf);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
-
-		int pulse_width = channel->pw;
-		ImGui::PushID("pulse_width");
-		if (ImGui::InputInt("", &pulse_width)) {
-			psg_set_channel_pulse_width(i, pulse_width);
 		}
 		ImGui::PopID();
 		ImGui::NextColumn();
