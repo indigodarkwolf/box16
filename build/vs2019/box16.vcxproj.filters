@@ -205,6 +205,8 @@
     </ClCompile>
     <ClCompile Include="..\..\vendor\ymfm\src\ymfm_ssg.cpp">
       <Filter>Vendor Source Files\ymfm</Filter>
+    <ClCompile Include="..\..\src\imgui\imgui_tables.cpp">
+      <Filter>Source Files\imgui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
