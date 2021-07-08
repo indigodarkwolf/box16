@@ -11,6 +11,7 @@
 #include "keyboard.h"
 #include "ps2.h"
 #include "vera/sdcard.h"
+#include "options.h"
 
 #ifdef __APPLE__
 #	define LSHORTCUT_KEY SDL_SCANCODE_LGUI
@@ -71,44 +72,46 @@ bool sdl_events_update()
 					Show_cpu_monitor = true;
 					debugger_pause_execution();
 				}
-				if (cmd_down) {
-					switch (event.key.keysym.sym) {
-						case SDLK_s:
-							machine_dump();
-							consumed = true;
-							break;
-						case SDLK_r:
-							machine_reset();
-							consumed = true;
-							break;
-						case SDLK_v:
-							keyboard_add_text(SDL_GetClipboardText());
-							consumed = true;
-							break;
-						case SDLK_f:
-						case SDLK_RETURN:
-							display_toggle_fullscreen();
-							consumed = true;
-							break;
-						case SDLK_PLUS:
-						case SDLK_EQUALS:
-							machine_toggle_warp();
-							consumed = true;
-							break;
-						case SDLK_a:
-							sdcard_attach();
-							consumed = true;
-							break;
-						case SDLK_d:
-							sdcard_detach();
-							consumed = true;
-							break;
+				if (!Options.no_keybinds) {
+					if (cmd_down) {
+						switch (event.key.keysym.sym) {
+							case SDLK_s:
+								machine_dump();
+								consumed = true;
+								break;
+							case SDLK_r:
+								machine_reset();
+								consumed = true;
+								break;
+							case SDLK_v:
+								keyboard_add_text(SDL_GetClipboardText());
+								consumed = true;
+								break;
+							case SDLK_f:
+							case SDLK_RETURN:
+								display_toggle_fullscreen();
+								consumed = true;
+								break;
+							case SDLK_PLUS:
+							case SDLK_EQUALS:
+								machine_toggle_warp();
+								consumed = true;
+								break;
+							case SDLK_a:
+								sdcard_attach();
+								consumed = true;
+								break;
+							case SDLK_d:
+								sdcard_detach();
+								consumed = true;
+								break;
+						}
 					}
-				}
-				if (!consumed) {
 					if (event.key.keysym.scancode == LSHORTCUT_KEY || event.key.keysym.scancode == RSHORTCUT_KEY) {
 						cmd_down = true;
 					}
+				}
+				if (!consumed) {
 					keyboard_add_event(true, event.key.keysym.scancode);
 				}
 				break;

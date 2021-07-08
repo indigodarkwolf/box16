@@ -1289,14 +1289,14 @@ static void draw_menu_bar()
 		}
 
 		if (ImGui::BeginMenu("Machine")) {
-			if (ImGui::MenuItem("Reset", "Ctrl-R")) {
+			if (ImGui::MenuItem("Reset", Options.no_keybinds ? nullptr : "Ctrl-R")) {
 				machine_reset();
 			}
 			if (ImGui::MenuItem("NMI")) {
 				nmi6502();
 				debugger_interrupt();
 			}
-			if (ImGui::MenuItem("Save Dump", "Ctrl-S")) {
+			if (ImGui::MenuItem("Save Dump", Options.no_keybinds ? nullptr : "Ctrl-S")) {
 				machine_dump();
 			}
 			if (ImGui::BeginMenu("Controller Ports")) {

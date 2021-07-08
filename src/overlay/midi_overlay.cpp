@@ -63,6 +63,11 @@ void draw_midi_overlay()
 					}
 				}
 
+				bool velocity = settings->use_velocity;
+				if (ImGui::Checkbox("Use Key Velocity", &velocity)) {
+					midi_port_set_channel_use_velocity(port, i, velocity);
+				}
+
 				ImGui::TreePop();
 				ImGui::PopID();
 			}

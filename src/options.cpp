@@ -89,6 +89,8 @@ static void usage()
 	printf("\tbut will increase audio latency.\n");
 	printf("-rtc\n");
 	printf("\tSet the real-time-clock to the current system time and date.\n");
+	printf("-nobinds\n");
+	printf("\tDisable most emulator keyboard shortcuts.\n");
 	printf("-version\n");
 	printf("\tPrint additional version information the emulator and ROM.\n");
 	printf("\n");
@@ -386,6 +388,11 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			argv++;
 			ini["main"]["rtc"] = "true";
 
+		} else if (!strcmp(argv[0], "-nobinds")) {
+			argc--;
+			argv++;
+			ini["main"]["nobinds"] = "true";
+
 		} else if (!strcmp(argv[0], "-version")) {
 			printf("%s %s", VER_NUM, VER_NAME);
 			argc--;
@@ -629,6 +636,12 @@ static void set_options(mINI::INIStructure &ini)
 			Options.set_system_time = true;
 		}
 	}
+
+	if (ini["main"].has("nobinds")) {
+		if (!strcmp(ini["main"]["nobinds"].c_str(), "true")) {
+			Options.no_keybinds = true;
+		}
+	}
 }
 
 void load_options(const char *path, int argc, char **argv)
@@ -773,6 +786,7 @@ void save_options(bool all)
 	save_option("sound", Options.audio_dev_name, Default_options.audio_dev_name);
 	save_option("abufs", Options.audio_buffers, Default_options.audio_buffers);
 	save_option("rtc", Options.set_system_time, Default_options.set_system_time);
+	save_option("nobinds", Options.no_keybinds, Default_options.no_keybinds);
 
 	file.generate(ini);
 }

@@ -51,6 +51,7 @@ struct options {
 	int  audio_buffers            = 8;
 
 	bool set_system_time = false;
+	bool no_keybinds     = false;
 };
 
 extern options Options;

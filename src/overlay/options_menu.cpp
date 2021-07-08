@@ -40,6 +40,11 @@ void draw_options_menu()
 		}
 	};
 
+	//===============================
+	// System Paths
+	//
+	//-------------------------------
+
 	ImGui::TextDisabled("System Paths");
 	ImGui::Separator();
 	ImGui::BeginGroup();
@@ -65,6 +70,12 @@ void draw_options_menu()
 	file_option("bin;img;sdcard", Options.sdcard_path, "SD Card path", "Location of SD card image file, if any.\nCommand line: -sdcard <path>");
 
 	ImGui::NewLine();
+
+	//===============================
+	// Boot Options
+	//
+	//-------------------------------
+
 	ImGui::TextDisabled("Boot Options");
 	ImGui::Separator();
 	file_option("prg", Options.prg_path, "PRG path", "PRG file to LOAD after boot, if any.\nCommand line: -prg <path>");
@@ -106,6 +117,12 @@ void draw_options_menu()
 	}
 
 	ImGui::NewLine();
+
+	//===============================
+	// Logging and Exit Dumps
+	//
+	//-------------------------------
+
 	ImGui::TextDisabled("Logging and Exit Dumps");
 	ImGui::Separator();
 	bool_option(Options.log_keyboard, "Log Keyboard", "Log keyboard activity.\nCommand line: -log k");
@@ -134,6 +151,12 @@ void draw_options_menu()
 	}
 
 	ImGui::NewLine();
+
+	//===============================
+	// Machine Options
+	//
+	//-------------------------------
+
 	ImGui::TextDisabled("Machine Options");
 	ImGui::Separator();
 
@@ -163,6 +186,12 @@ void draw_options_menu()
 	}
 
 	ImGui::NewLine();
+
+	//===============================
+	// Misc. Options
+	//
+	//-------------------------------
+
 	ImGui::TextDisabled("Misc. Options");
 	ImGui::Separator();
 
@@ -207,7 +236,15 @@ void draw_options_menu()
 	file_option("gif", Options.gif_path, "GIF path", "Location to save gifs\nCommand line: -gif <path>[,wait]");
 	bool_option(Options.load_standard_symbols, "Load Standard Symbols", "Load all symbols files typically included with ROM distributions.\nCommand line: -stds");
 
+	bool_option(Options.no_keybinds, "No Keybinds", "Disable all emulator keyboard bindings.\nDoes not affect F12 (emulator debug break) or key shortcuts when the ASM Monitor is open.\nCommand line: -nobinds");
+
 	ImGui::NewLine();
+
+	//===============================
+	// Audio
+	//
+	//-------------------------------
+
 	ImGui::TextDisabled("Audio");
 	ImGui::Separator();
 
@@ -223,6 +260,6 @@ void draw_options_menu()
 
 	ImGui::InputInt("Audio Buffers", &Options.audio_buffers);
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Number of audio buffers.\nCommand line: -abufs <qty>");
+		ImGui::SetTooltip("Number of audio buffers.\n(Deprecated: No longer has any effect.)\nCommand line: -abufs <qty>");
 	}
 }
