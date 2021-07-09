@@ -397,7 +397,7 @@ bool display_init(const display_settings &settings)
 		// attach texture to framebuffer
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, Display_framebuffer_texture_handle, 0);
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			printf("Unable to create framebuffer for render to texture.\n");
+			printf("Unable to create framebuffer for render to texture: %d.\n", glCheckFramebufferStatus(GL_FRAMEBUFFER));
 			return false;
 		}
 	}

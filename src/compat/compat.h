@@ -10,7 +10,9 @@
 #	ifndef PATH_MAX
 #		include <windows.h>
 #		define PATH_MAX MAX_PATH
-#	endif
+#       undef max
+#		undef min
+#		endif
 #endif
 
 #include <stdio.h>

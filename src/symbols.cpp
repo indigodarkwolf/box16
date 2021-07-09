@@ -97,12 +97,12 @@ bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
 
 	std::string line;
 	while (std::getline(infile, line)) {
-		int start = 0;
+		uint32_t start = 0;
 		while (!isprint(line[start]) && (start < line.size())) {
 			++start;
 		}
 
-		int end = start;
+		uint32_t end = start;
 		while ((line[end] != ';') && (end < line.size())) {
 			++end;
 		}

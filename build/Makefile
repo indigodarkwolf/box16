@@ -1,42 +1,88 @@
+#=========================
+#
+# variables
+#
+#-------------------------
+
 PROJECT := box16
 
 REPODIR := ..
 OBJDIR := obj
-VENDORDIR := $(REPODIR)/vendor
+SRCDIR := $(REPODIR)/src
 OUTDIR := box16
 
-SDL2CONFIG := /usr/bin/sdl2-config
+VENDORSRC := $(REPODIR)/vendor
+VENDOROBJ := $(OBJDIR)/vendor
+
 PKGCONFIG := pkg-config
 
-NFD_SRCDIR := $(VENDORDIR)/nativefiledialog/src
+CFLAGS := --std=c++17 -O3
+CWARNS := -Wformat -Wformat-security -Wpedantic
+
+#
+# nativefiledialog
+#
+NFD_SRCDIR := $(VENDORSRC)/nativefiledialog/src
 NFD_OBJDIR := $(OBJDIR)/nativefiledialog/obj
 
-NFD_CFLAGS := $(shell $(PKGCONFIG) --cflags gtk+-3.0) -I$(NFD_SRCDIR) -I$(NFD_SRCDIR)/include $(MYFLAGS)
-NFD_LDFLAGS := $(shell $(PKGCONFIG) --libs gtk+-3.0) $(MYFLAGS)
-NFD_ARFLAGS := rcs
+NFD_CFLAGS := $(shell $(PKGCONFIG) --cflags gtk+-3.0) $(CFLAGS) -I$(NFD_SRCDIR) -I$(NFD_SRCDIR)/include $(MYFLAGS)
+NFD_LDFLAGS := $(shell $(PKGCONFIG) --libs gtk+-3.0)
 
 NFD_SRCS := $(NFD_SRCDIR)/nfd_gtk.c $(NFD_SRCDIR)/nfd_common.c
 NFD_OBJS := $(NFD_OBJDIR)/nfd_gtk.o $(NFD_OBJDIR)/nfd_common.o
 
-LPNG_SRCDIR := $(VENDORDIR)/lodepng
+#
+# lodepng
+#
+LPNG_SRCDIR := $(VENDORSRC)/lodepng
 LPNG_OBJDIR := $(OBJDIR)/lodepng
+
+LPNG_CFLAGS := --std=c++17 -O3 $(CFLAGS) $(CWARNS)
 
 LPNG_SRCS := $(LPNG_SRCDIR)/lodepng.cpp
 LPNG_OBJS := $(LPNG_OBJDIR)/lodepng.o
 
-RTMIDI_SRCDIR := $(VENDORDIR)/rtmidi
+#
+# RtMidi
+#
+RTMIDI_SRCDIR := $(VENDORSRC)/rtmidi
 RTMIDI_OBJDIR := $(OBJDIR)/rtmidi
+
+RTMIDI_CFLAGS := --std=c++17 -O3 $(CFLAGS) $(CWARNS)
 
 RTMIDI_SRCS := $(RTMIDI_SRCDIR)/RtMidi.cpp
 RTMIDI_OBJS := $(RTMIDI_OBJDIR)/RtMidi.o
 
+#
+# ymfm
+#
+YMFM_SRCDIR := $(VENDORSRC)/ymfm/src
+YMFM_OBJDIR := $(OBJDIR)/ymfm
+
+YMFM_CFLAGS := --std=c++17 -O3 $(CFLAGS) $(CWARNS)
+
+YMFM_SRCS := $(wildcard $(YMFM_SRCDIR)/*.cpp)
+YMFM_OBJS := $(patsubst $(YMFM_SRCDIR)/%.cpp,$(YMFM_OBJDIR)/%.o,$(YMFM_SRCS))
+
+#
+# box16
+#
 BOX16_SRCDIR := $(REPODIR)/src
 BOX16_OBJDIR := $(OBJDIR)/box16/obj
 
+BOX16_OBJDIRS := $(BOX16_OBJDIR) $(BOX16_OBJDIR)/compat $(BOX16_OBJDIR)/cpu $(BOX16_OBJDIR)/gif $(BOX16_OBJDIR)/imgui $(BOX16_OBJDIR)/overlay $(BOX16_OBJDIR)/vera $(BOX16_OBJDIR)/ym2151
+BOX16_INCDIRS := -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORSRC)/mINI/src/mini -I$(LPNG_SRCDIR) -I$(VENDORSRC)/rtmidi -I$(VENDORSRC)/ymfm/src
+
 BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
-BOX16_CFLAGS := $(shell $(PKGCONFIG) --cflags sdl2 gl glew) --std=c++17 -O3 -Wformat -Wformat-security -Wpedantic -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORDIR)/mINI/src/mini -I$(LPNG_SRCDIR) -I$(VENDORDIR)/rtmidi -include $(BOX16_SRCDIR)/compat/compat.h $(MYFLAGS)
+BOX16_CFLAGS := $(shell $(PKGCONFIG) --cflags sdl2 gl glew) $(CFLAGS) $(CWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h $(MYFLAGS)
 BOX16_LDFLAGS := -O3 $(MYFLAGS) $(shell $(PKGCONFIG) --libs sdl2 gl glew)
+
+#=========================
+#
+# targets
+#
+#-------------------------
 
 .PHONY: all
 
@@ -45,8 +91,18 @@ default:
 
 all: $(OUTDIR)/box16
 
-# $(NFD_OBJDIR)/nfd.a: $(NFD_OBJS)
-# 	ar $(NFD_ARFLAGS) $@ $^
+clean:
+	rm -rf obj
+
+#=========================
+#
+# recipes
+#
+#-------------------------
+
+#
+# nativefiledialog
+#
 
 $(NFD_OBJDIR)/%.o: $(NFD_SRCDIR)/%.c | $(NFD_OBJDIR)
 	g++ $(NFD_CFLAGS) -c $< -o $@
@@ -54,29 +110,48 @@ $(NFD_OBJDIR)/%.o: $(NFD_SRCDIR)/%.c | $(NFD_OBJDIR)
 $(NFD_OBJDIR):
 	mkdir -p $@
 
+#
+# lodepng
+#
+
 $(LPNG_OBJDIR)/%.o: $(LPNG_SRCDIR)/%.cpp | $(LPNG_OBJDIR)
-	g++ $(BOX16_CFLAGS) -c $< -o $@
+	g++ $(LPNG_CFLAGS) -c $< -o $@
 
 $(LPNG_OBJDIR):
 	mkdir -p $@
 
+#
+# RtMidi
+#
+
 $(RTMIDI_OBJDIR)/%.o: $(RTMIDI_SRCDIR)/%.cpp | $(RTMIDI_OBJDIR)
-	g++ $(BOX16_CFLAGS) -c $< -o $@
+	g++ $(RTMIDI_CFLAGS) -c $< -o $@
 
 $(RTMIDI_OBJDIR):
 	mkdir -p $@
 
-$(OUTDIR)/box16: $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(BOX16_OBJS)
+#
+# ymfm
+#
+
+$(YMFM_OBJDIR)/%.o: $(YMFM_SRCDIR)/%.cpp | $(YMFM_OBJDIR)
+	g++ $(YMFM_CFLAGS) -c $< -o $@
+
+$(YMFM_OBJDIR):
+	mkdir -p $@
+
+#
+# box16
+#
+
+$(BOX16_OBJDIR)/%.o: $(BOX16_SRCDIR)/%.cpp | $(BOX16_OBJDIRS)
+	g++ $(BOX16_CFLAGS) -c $< -o $@
+
+$(BOX16_OBJDIRS):
+	mkdir -p $@
+
+$(OUTDIR)/box16: $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(YMFM_OBJS) $(BOX16_OBJS)
 	mkdir -p $(OUTDIR)
 	g++ $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS)
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
 	cp -r $(REPODIR)/resources/r39/* $(OUTDIR)/
-
-$(BOX16_OBJDIR)/%.o: $(BOX16_SRCDIR)/%.cpp | $(BOX16_OBJDIR) $(BOX16_OBJDIR)/compat $(BOX16_OBJDIR)/cpu $(BOX16_OBJDIR)/gif $(BOX16_OBJDIR)/imgui $(BOX16_OBJDIR)/overlay $(BOX16_OBJDIR)/vera $(BOX16_OBJDIR)/ym2151
-	g++ $(BOX16_CFLAGS) -c $< -o $@
-
-$(BOX16_OBJDIR) $(BOX16_OBJDIR)/compat $(BOX16_OBJDIR)/cpu $(BOX16_OBJDIR)/gif $(BOX16_OBJDIR)/imgui $(BOX16_OBJDIR)/overlay $(BOX16_OBJDIR)/vera $(BOX16_OBJDIR)/ym2151:
-	mkdir -p $@
-
-clean:
-	rm -rf obj

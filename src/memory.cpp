@@ -234,11 +234,15 @@ void emu_write(uint8_t reg, uint8_t value)
 
 static void sound_write(uint16_t address, uint8_t value)
 {
-	static uint8_t lastAudioAdr = 0;
+	YM_write(static_cast<uint8_t>(address & 1), value);
+}
+
+static uint8_t sound_read(uint16_t address)
+{
 	if (address == 0) {
-		lastAudioAdr = value;
+		return 0;
 	} else if (address == 1) {
-		YM_write_reg(lastAudioAdr, value);
+		YM_read_status();
 	}
 }
 

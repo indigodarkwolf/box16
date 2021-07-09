@@ -9,10 +9,6 @@
       <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
       <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
     </Filter>
-    <Filter Include="Resource Files">
-      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
-      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
-    </Filter>
     <Filter Include="Source Files\compat">
       <UniqueIdentifier>{0fcad539-e3cf-4e49-b68b-4a6fd5d101e9}</UniqueIdentifier>
     </Filter>
@@ -33,6 +29,15 @@
     </Filter>
     <Filter Include="Source Files\ym2151">
       <UniqueIdentifier>{ea74ec66-b5eb-4c0c-8618-2b6701b7cee1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vendor Source Files">
+      <UniqueIdentifier>{c04a1359-8bdf-4b9d-92b5-a0f14e5f6be1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vendor Source Files\lodepng">
+      <UniqueIdentifier>{985ab406-9c50-473f-8005-d47e82c32605}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vendor Source Files\ymfm">
+      <UniqueIdentifier>{fca5edb5-d4aa-4604-9c4c-5d7be7f83bda}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -162,9 +167,6 @@
     <ClCompile Include="..\..\src\overlay\cpu_visualization.cpp">
       <Filter>Source Files\overlay</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\vendor\lodepng\lodepng.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\overlay\options_menu.cpp">
       <Filter>Source Files\overlay</Filter>
     </ClCompile>
@@ -173,6 +175,36 @@
     </ClCompile>
     <ClCompile Include="..\..\src\midi.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\lodepng\lodepng.cpp">
+      <Filter>Vendor Source Files\lodepng</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_adpcm.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_misc.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opl.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opm.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opn.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opq.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opz.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_pcm.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_ssg.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -358,6 +390,45 @@
     </ClInclude>
     <ClInclude Include="..\..\src\midi.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_adpcm.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.ipp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_misc.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opl.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opm.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opn.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opq.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opz.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_pcm.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_ssg.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\lodepng\lodepng.h">
+      <Filter>Vendor Source Files\lodepng</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

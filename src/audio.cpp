@@ -17,6 +17,7 @@ static SDL_AudioDeviceID Audio_dev = 0;
 static int               Vera_clks = 0;
 static int               Cpu_clks  = 0;
 static int16_t *         Buffer    = nullptr;
+static int               Obtained_sample_rate = 0;
 
 static int16_t Psg_buffer[2 * SAMPLES_PER_BUFFER];
 static int16_t Pcm_buffer[2 * SAMPLES_PER_BUFFER];
@@ -44,7 +45,7 @@ static void audio_callback(void *, Uint8 *stream, int len)
 
 	psg_render(Psg_buffer, SAMPLES_PER_BUFFER);
 	pcm_render(Pcm_buffer, SAMPLES_PER_BUFFER);
-	YM_stream_update((uint16_t *)Ym_buffer, SAMPLES_PER_BUFFER);
+	YM_render(Ym_buffer, SAMPLES_PER_BUFFER, (uint32_t)Obtained_sample_rate);
 
 	// Mix PSG, PCM and YM output
 	for (int i = 0; i < 2 * SAMPLES_PER_BUFFER; i++) {
@@ -82,9 +83,10 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 		exit(-1);
 	}
 
+	Obtained_sample_rate = obtained.freq;
 	// Init YM2151 emulation. 4 MHz clock
-	YM_Create(3579545);
-	YM_init(obtained.freq, 60);
+	//YM_Create(3579545);
+	//YM_init(obtained.freq, 60);
 
 	// Start playback
 	SDL_PauseAudioDevice(Audio_dev, 0);
