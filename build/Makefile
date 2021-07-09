@@ -61,7 +61,7 @@ YMFM_OBJDIR := $(OBJDIR)/ymfm
 
 YMFM_CFLAGS := --std=c++17 -O3 $(CFLAGS) $(CWARNS)
 
-YMFM_SRCS := $(wildcard $(YMFM_SRCDIR)/*.cpp)
+YMFM_SRCS := $(YMFM_SRCDIR)/ymfm_opm.cpp
 YMFM_OBJS := $(patsubst $(YMFM_SRCDIR)/%.cpp,$(YMFM_OBJDIR)/%.o,$(YMFM_SRCS))
 
 #
