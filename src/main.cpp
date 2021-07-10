@@ -139,17 +139,45 @@ int main(int argc, char **argv)
 
 	// Load ROM
 	{
-		char path_buffer[PATH_MAX];
-		int  path_len = options_get_base_path(path_buffer, Options.rom_path);
+		SDL_RWops *f = nullptr;
 
-		SDL_RWops *f = SDL_RWFromFile(path_buffer, "rb");
-		if (!f) {
-			printf("Cannot open ROM file %s from %s!\n", Options.rom_path, path_buffer);
-			exit(1);
+		option_source optsrc  = option_get_source("rom");
+		char const *  srcname = option_get_source_name(optsrc);
+
+		char rel_path_buffer[PATH_MAX];
+		int  rel_path_len = options_get_relative_path(rel_path_buffer, Options.rom_path);
+
+		char base_path_buffer[PATH_MAX];
+		int  base_path_len = options_get_base_path(base_path_buffer, Options.rom_path);
+
+		if (optsrc == option_source::DEFAULT) {
+			f = SDL_RWFromFile(base_path_buffer, "rb");
+			if (f) {
+				goto have_rom;
+			}
+
+			f = SDL_RWFromFile(rel_path_buffer, "rb");
+			if (f) {
+				goto have_rom;
+			}
+		} else {
+			f = SDL_RWFromFile(rel_path_buffer, "rb");
+			if (f) {
+				goto have_rom;
+			}
+
+			f = SDL_RWFromFile(base_path_buffer, "rb");
+			if (f) {
+				goto have_rom;
+			}
 		}
-		
-		size_t rom_size = SDL_RWread(f, ROM, ROM_SIZE, 1);
-		(void)rom_size;
+
+		printf("Could not find ROM in the following locations:\n\t%s\n\t%s\n\n-rom sourced from: %s", rel_path_buffer, base_path_buffer, srcname);
+		exit(1);
+
+	have_rom:
+		printf("Using ROM at %s\n\t-rom sourced from: %s\n", base_path_buffer, srcname);
+		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
 	}
 

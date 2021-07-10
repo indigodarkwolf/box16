@@ -13,6 +13,9 @@ const options Default_options;
 char          Options_base_path[PATH_MAX];
 char          Options_ini_path[PATH_MAX];
 
+mINI::INIStructure Cmdline_ini;
+mINI::INIStructure Inifile_ini;
+
 static void usage()
 {
 	printf("\nCommander X16 Emulator r%s (%s)\n", VER_NUM, VER_NAME);
@@ -644,55 +647,11 @@ static void set_options(mINI::INIStructure &ini)
 	}
 }
 
-void load_options(const char *path, int argc, char **argv)
+static void set_ini(mINI::INIStructure &ini, bool all)
 {
-	if (path != nullptr) {
-		strncpy(Options_base_path, path, PATH_MAX);
-		fixup_directory(Options_base_path);
-		snprintf(Options_ini_path, PATH_MAX, "%s/box16.ini", Options_base_path);
-		Options_ini_path[PATH_MAX - 1] = 0;
-	} else {
-		Options_base_path[0] = 0;
-		snprintf(Options_ini_path, PATH_MAX, "box16.ini");
-		Options_ini_path[PATH_MAX - 1] = 0;
-	}
-
-	mINI::INIFile      file(Options_ini_path);
-	mINI::INIStructure ini;
-
-	bool force_write = !file.read(ini);
-
-	parse_cmdline(ini, argc, argv);
-
-	set_options(ini);
-
-	if (force_write) {
-		save_options(true);
-	}
-}
-
-void load_options()
-{
-	mINI::INIFile      file(Options_ini_path);
-	mINI::INIStructure ini;
-
-	bool force_write = !file.read(ini);
-
-	if (!force_write) {
-		set_options(ini);
-	} else {
-		save_options(true);
-	}
-}
-
-void save_options(bool all)
-{
-	mINI::INIFile      file(Options_ini_path);
-	mINI::INIStructure ini;
-
 	std::stringstream value;
 
-	auto save_option = [&](const char *name, auto option_value, auto default_value) {
+	auto set_option = [&](const char *name, auto option_value, auto default_value) {
 		if constexpr (std::is_same<decltype(option_value), char *>::value) {
 			if (all || strcmp(option_value, default_value)) {
 				ini["main"][name] = option_value;
@@ -733,19 +692,19 @@ void save_options(bool all)
 		return "nearest";
 	};
 
-	save_option("rom", Options.rom_path, Default_options.rom_path);
-	save_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
-	save_option("keymap", keymaps[Options.keymap], keymaps[Default_options.keymap]);
-	save_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
-	save_option("prg", Options.prg_path, Default_options.prg_path);
-	save_option("run", Options.run_after_load, Default_options.run_after_load);
-	save_option("bas", Options.bas_path, Default_options.bas_path);
-	save_option("geos", Options.run_geos, Default_options.run_geos);
-	save_option("test", Options.test_number, Default_options.test_number);
-	save_option("nvram", Options.nvram_path, Default_options.nvram_path);
-	save_option("sdcard", Options.sdcard_path, Default_options.sdcard_path);
-	save_option("warp", Options.warp_factor > 0, Default_options.warp_factor > 0);
-	save_option("echo", echo_mode_str(Options.echo_mode), echo_mode_str(Default_options.echo_mode));
+	set_option("rom", Options.rom_path, Default_options.rom_path);
+	set_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
+	set_option("keymap", keymaps[Options.keymap], keymaps[Default_options.keymap]);
+	set_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
+	set_option("prg", Options.prg_path, Default_options.prg_path);
+	set_option("run", Options.run_after_load, Default_options.run_after_load);
+	set_option("bas", Options.bas_path, Default_options.bas_path);
+	set_option("geos", Options.run_geos, Default_options.run_geos);
+	set_option("test", Options.test_number, Default_options.test_number);
+	set_option("nvram", Options.nvram_path, Default_options.nvram_path);
+	set_option("sdcard", Options.sdcard_path, Default_options.sdcard_path);
+	set_option("warp", Options.warp_factor > 0, Default_options.warp_factor > 0);
+	set_option("echo", echo_mode_str(Options.echo_mode), echo_mode_str(Default_options.echo_mode));
 
 	if (all || Options.log_keyboard != Default_options.log_keyboard || Options.log_speed != Default_options.log_speed || Options.log_video != Default_options.log_video) {
 		if (Options.log_keyboard) {
@@ -778,32 +737,90 @@ void save_options(bool all)
 		value.str(std::string());
 	}
 
-	save_option("gif", Options.gif_path, Default_options.gif_path);
-	save_option("stds", Options.load_standard_symbols, Default_options.load_standard_symbols);
-	save_option("scale", Options.window_scale, Default_options.window_scale);
-	save_option("quality", quality_str(Options.scale_quality), quality_str(Default_options.scale_quality));
-	save_option("nosound", Options.no_sound, Default_options.no_sound);
-	save_option("sound", Options.audio_dev_name, Default_options.audio_dev_name);
-	save_option("abufs", Options.audio_buffers, Default_options.audio_buffers);
-	save_option("rtc", Options.set_system_time, Default_options.set_system_time);
-	save_option("nobinds", Options.no_keybinds, Default_options.no_keybinds);
+	set_option("gif", Options.gif_path, Default_options.gif_path);
+	set_option("stds", Options.load_standard_symbols, Default_options.load_standard_symbols);
+	set_option("scale", Options.window_scale, Default_options.window_scale);
+	set_option("quality", quality_str(Options.scale_quality), quality_str(Default_options.scale_quality));
+	set_option("nosound", Options.no_sound, Default_options.no_sound);
+	set_option("sound", Options.audio_dev_name, Default_options.audio_dev_name);
+	set_option("abufs", Options.audio_buffers, Default_options.audio_buffers);
+	set_option("rtc", Options.set_system_time, Default_options.set_system_time);
+	set_option("nobinds", Options.no_keybinds, Default_options.no_keybinds);
+}
+
+void apply_ini(mINI::INIStructure &dst, const mINI::INIStructure &src)
+{
+	for (const auto& i : src) {
+		dst.set(i.first, i.second);
+	}
+}
+
+
+void load_options(const char *path, int argc, char **argv)
+{
+	if (path != nullptr) {
+		strncpy(Options_base_path, path, PATH_MAX);
+		fixup_directory(Options_base_path);
+		snprintf(Options_ini_path, PATH_MAX, "%s/box16.ini", Options_base_path);
+		Options_ini_path[PATH_MAX - 1] = 0;
+	} else {
+		Options_base_path[0] = 0;
+		snprintf(Options_ini_path, PATH_MAX, "box16.ini");
+		Options_ini_path[PATH_MAX - 1] = 0;
+	}
+
+	mINI::INIFile      file(Options_ini_path);
+	bool force_write = !file.read(Inifile_ini);
+	set_options(Inifile_ini);
+
+	parse_cmdline(Cmdline_ini, argc, argv);
+	set_options(Cmdline_ini);
+
+	if (force_write) {
+		save_options(true);
+	}
+}
+
+void load_options()
+{
+	mINI::INIFile      file(Options_ini_path);
+	mINI::INIStructure ini;
+
+	bool force_write = !file.read(ini);
+
+	if (!force_write) {
+		set_options(ini);
+	} else {
+		save_options(true);
+	}
+}
+
+void save_options(bool all)
+{
+	mINI::INIFile      file(Options_ini_path);
+	mINI::INIStructure ini;
+
+	set_ini(ini, all);
 
 	file.generate(ini);
 }
+
+#if defined(WIN32)
+static bool is_absolute_path(const char *path)
+{
+	return (isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) || (path[0] == '\\' && path[1] == '\\');
+}
+#else
+static bool is_absolute_path(const char *path)
+{
+	return path[0] == '/';
+}
+#endif
 
 static int options_get_derived_path(char *derived_path, const char *path, const char *base_path)
 {
 	int path_len = 0;
 
-#if defined(WIN32)
-	auto is_absolute_path = [](const char *path) -> bool {
-		return isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/');
-	};
-#else
-	auto is_absolute_path = [](const char *path) -> bool {
-		return path[0] == '/';
-	};
-#endif
 	if (is_absolute_path(path) || strlen(base_path) == 0 || strcmp(base_path, ".") == 0) {
 		path_len = sprintf(derived_path, "%s", path);
 	} else {
@@ -820,7 +837,43 @@ int options_get_base_path(char *real_path, const char *path)
 	return options_get_derived_path(real_path, path, Options_base_path);
 }
 
+int options_get_relative_path(char *real_path, const char *path)
+{
+	return options_get_derived_path(real_path, path, "./");
+}
+
 int options_get_hyper_path(char *hyper_path, const char *path)
 {
 	return options_get_derived_path(hyper_path, path, Options.hyper_path);
+}
+
+bool option_cmdline_option_was_set(char const *cmdline_option)
+{
+	return Cmdline_ini.has(cmdline_option);
+}
+
+bool option_inifile_option_was_set(char const *cmdline_option)
+{
+	return Inifile_ini.has(cmdline_option);
+}
+
+option_source option_get_source(char const *cmdline_option)
+{
+	if (Cmdline_ini.has(cmdline_option)) {
+		return option_source::CMDLINE;
+	}
+	if (Inifile_ini.has(cmdline_option)) {
+		return option_source::INIFILE;
+	}
+	return option_source::DEFAULT;
+}
+
+char const *option_get_source_name(option_source source)
+{
+	switch (source) {
+		case option_source::DEFAULT: return "Default";
+		case option_source::CMDLINE: return "Command-line parameter";
+		case option_source::INIFILE: return "Ini file";
+	}
+	return "Unknown";
 }

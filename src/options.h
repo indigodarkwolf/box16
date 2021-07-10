@@ -15,6 +15,12 @@ enum class scale_quality_t {
 	BEST
 };
 
+enum class option_source {
+	DEFAULT,
+	INIFILE,
+	CMDLINE
+};
+
 struct options {
 	char hyper_path[PATH_MAX]  = ".";
 	char rom_path[PATH_MAX]    = "rom.bin";
@@ -61,6 +67,13 @@ void load_options();
 void save_options(bool all);
 
 int options_get_base_path(char *real_path, const char *path);
+int options_get_relative_path(char *real_path, const char *path);
 int options_get_hyper_path(char *hyper_path, const char *path);
+
+bool option_cmdline_option_was_set(char const *cmdline_option);
+bool option_inifile_option_was_set(char const *cmdline_option);
+
+option_source option_get_source(char const *cmdline_option);
+char const *  option_get_source_name(option_source source);
 
 #endif
