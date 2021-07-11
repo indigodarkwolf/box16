@@ -60,6 +60,7 @@ static bool Initd_video_framebuffer   = false;
 static bool Initd_imgui               = false;
 static bool Initd_imgui_sdl2          = false;
 static bool Initd_imgui_opengl        = false;
+static bool Initd_appicon             = false;
 static bool Initd_icons               = false;
 
 #if defined(GL_EXT_texture_filter_anisotropic)
@@ -346,7 +347,7 @@ bool display_init(const display_settings &settings)
 			return false;
 		}
 
-//		SDL_SetWindowIcon(Display_window, CommanderX16Icon());
+		// SDL_SetWindowTitle(Display_window, "Box16 Emulator for Commander X16");
 	}
 	Initd_sdl_gl = true;
 
@@ -451,6 +452,25 @@ bool display_init(const display_settings &settings)
 		return false;
 	}
 	Initd_imgui_opengl = true;
+
+	// Load app icon
+	{
+		std::vector<unsigned char> icons_buf;
+		unsigned                   icons_w;
+		unsigned                   icons_h;
+
+		char icons_path[PATH_MAX];
+		options_get_base_path(icons_path, "box16-icon56-24.png");
+
+		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path, LCT_RGB) != 0) {
+			printf("Unable to load icon resources from %s\n", icons_path);
+			return false;
+		}
+		
+		SDL_Surface *icon = SDL_CreateRGBSurfaceWithFormatFrom(icons_buf.data(), icons_w, icons_h, 24, icons_w * 3, SDL_PIXELFORMAT_RGB24);
+		SDL_SetWindowIcon(Display_window, icon);
+	}
+	Initd_appicon = true;
 
 	// Load icons
 	{
