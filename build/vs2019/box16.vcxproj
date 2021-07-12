@@ -226,6 +226,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClCompile Include="..\..\src\imgui\imgui_draw.cpp" />
     <ClCompile Include="..\..\src\imgui\imgui_impl_opengl2.cpp" />
     <ClCompile Include="..\..\src\imgui\imgui_impl_sdl.cpp" />
+    <ClCompile Include="..\..\src\imgui\imgui_tables.cpp" />
     <ClCompile Include="..\..\src\imgui\imgui_widgets.cpp" />
     <ClCompile Include="..\..\src\javascript_interface.cpp" />
     <ClCompile Include="..\..\src\joystick.cpp" />
@@ -259,15 +260,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClCompile Include="..\..\src\via.cpp" />
     <ClCompile Include="..\..\src\ym2151\ym2151.cpp" />
     <ClCompile Include="..\..\vendor\lodepng\lodepng.cpp" />
-    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_adpcm.cpp" />
-    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_misc.cpp" />
-    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opl.cpp" />
     <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opm.cpp" />
-    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opn.cpp" />
-    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opq.cpp" />
-    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opz.cpp" />
-    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_pcm.cpp" />
-    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_ssg.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\audio.h" />
@@ -332,17 +325,9 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClInclude Include="..\..\src\ym2151\ym2151.h" />
     <ClInclude Include="..\..\vendor\lodepng\lodepng.h" />
     <ClInclude Include="..\..\vendor\ymfm\src\ymfm.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_adpcm.h" />
     <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.h" />
     <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.ipp" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_misc.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opl.h" />
     <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opm.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opn.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opq.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opz.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_pcm.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_ssg.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\cpu\6502.opcodes" />

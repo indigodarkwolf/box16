@@ -3,6 +3,7 @@
 #include <SDL.h>
 
 #include <functional>
+#include <string>
 #include <nfd.h>
 
 #include "imgui/imgui.h"
@@ -29,6 +30,7 @@
 #include "vera/sdcard.h"
 #include "vera/vera_psg.h"
 #include "vera/vera_video.h"
+#include "ym2151/ym2151.h"
 
 bool Show_options          = false;
 bool Show_imgui_demo       = false;
@@ -42,6 +44,7 @@ bool Show_VERA_palette     = false;
 bool Show_VERA_layers      = false;
 bool Show_VERA_sprites     = false;
 bool Show_VERA_PSG_monitor = false;
+bool Show_YM2151_monitor   = false;
 bool Show_midi_overlay     = false;
 
 imgui_vram_dump vram_dump;
@@ -834,70 +837,38 @@ static void draw_breakpoints()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 		if (ImGui::TreeNodeEx("Breakpoints", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			ImGui::Columns(5);
-			ImGui::SetColumnWidth(0, 27);
-			ImGui::SetColumnWidth(1, 27);
-			ImGui::SetColumnWidth(2, ImGui::CalcTextSize("Address  ").x);
-			ImGui::SetColumnWidth(3, ImGui::CalcTextSize("Bank      ").x);
+			if (ImGui::BeginTable("breakpoints", 5, ImGuiTableFlags_Resizable)) {
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
+				ImGui::TableSetupColumn("Address");
+				ImGui::TableSetupColumn("Bank");
+				ImGui::TableSetupColumn("Symbol");
+				ImGui::TableHeadersRow();
 
-			ImGui::Dummy(ImVec2(10, 10));
-			ImGui::NextColumn();
-
-			ImGui::Dummy(ImVec2(10, 10));
-			ImGui::NextColumn();
-
-			ImGui::Text("Address");
-			ImGui::NextColumn();
-
-			ImGui::Text("Bank");
-			ImGui::NextColumn();
-
-			ImGui::Text("Symbol");
-			ImGui::NextColumn();
-
-			ImGui::Separator();
-
-			const auto &breakpoints = debugger_get_breakpoints();
-			for (auto [address, bank] : breakpoints) {
-				if (ImGui::TileButton(ICON_REMOVE)) {
-					debugger_remove_breakpoint(address, bank);
-					break;
-				}
-				ImGui::NextColumn();
-
-				if (debugger_breakpoint_is_active(address, bank)) {
-					if (ImGui::TileButton(ICON_CHECKED)) {
-						debugger_deactivate_breakpoint(address, bank);
+				const auto &breakpoints = debugger_get_breakpoints();
+				for (auto &[address, bank] : breakpoints) {
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					if (ImGui::TileButton(ICON_REMOVE)) {
+						debugger_remove_breakpoint(address, bank);
+						break;
 					}
-				} else {
-					if (ImGui::TileButton(ICON_UNCHECKED)) {
-						debugger_activate_breakpoint(address, bank);
+
+					ImGui::TableNextColumn();
+					if (debugger_breakpoint_is_active(address, bank)) {
+						if (ImGui::TileButton(ICON_CHECKED)) {
+							debugger_deactivate_breakpoint(address, bank);
+						}
+					} else {
+						if (ImGui::TileButton(ICON_UNCHECKED)) {
+							debugger_activate_breakpoint(address, bank);
+						}
 					}
-				}
-				ImGui::NextColumn();
 
-				char addr_text[5];
-				sprintf(addr_text, "%04X", address);
-				if (ImGui::Selectable(addr_text, false, ImGuiSelectableFlags_AllowDoubleClick)) {
-					disasm.set_dump_start(address);
-					if (address >= 0xc000) {
-						disasm.set_rom_bank(bank);
-					} else if (address >= 0xa000) {
-						disasm.set_ram_bank(bank);
-					}
-				}
-
-				ImGui::NextColumn();
-
-				if (address < 0xa000) {
-					ImGui::Text("--");
-				} else {
-					ImGui::Text("%s %02X", address < 0xc000 ? "RAM" : "ROM", bank);
-				}
-				ImGui::NextColumn();
-
-				for (auto &sym : symbols_find(address)) {
-					if (ImGui::Selectable(sym.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
+					ImGui::TableNextColumn();
+					char addr_text[5];
+					sprintf(addr_text, "%04X", address);
+					if (ImGui::Selectable(addr_text, false, ImGuiSelectableFlags_AllowDoubleClick)) {
 						disasm.set_dump_start(address);
 						if (address >= 0xc000) {
 							disasm.set_rom_bank(bank);
@@ -905,12 +876,29 @@ static void draw_breakpoints()
 							disasm.set_ram_bank(bank);
 						}
 					}
-				}
-				ImGui::NextColumn();
-			}
 
-			ImGui::Columns(1);
-			ImGui::Separator();
+					ImGui::TableNextColumn();
+					if (address < 0xa000) {
+						ImGui::Text("--");
+					} else {
+						ImGui::Text("%s %02X", address < 0xc000 ? "RAM" : "ROM", bank);
+					}
+
+					ImGui::TableNextColumn();
+					for (auto &sym : symbols_find(address)) {
+						if (ImGui::Selectable(sym.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
+							disasm.set_dump_start(address);
+							if (address >= 0xc000) {
+								disasm.set_rom_bank(bank);
+							} else if (address >= 0xa000) {
+								disasm.set_ram_bank(bank);
+							}
+						}
+					}
+				}
+
+				ImGui::EndTable();
+			}
 
 			static uint16_t new_address = 0;
 			static uint8_t  new_bank    = 0;
@@ -1003,67 +991,63 @@ static void draw_symbols_files()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 		if (ImGui::TreeNodeEx("Loaded Symbol Files", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			ImGui::Columns(3);
-			ImGui::SetColumnWidth(0, 27);
-			ImGui::SetColumnWidth(1, 27);
+			if (ImGui::BeginTable("symbols", 3, ImGuiTableFlags_Resizable)) {
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
+				ImGui::TableSetupColumn("Path");
+				ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+				ImGui::TableSetColumnIndex(1);
 
-			ImGui::Dummy(ImVec2(16, 16));
-			ImGui::NextColumn();
+				const auto &files = symbols_get_loaded_files();
 
-			const auto &files = symbols_get_loaded_files();
-
-			if (symbols_file_all_are_visible()) {
-				if (ImGui::TileButton(ICON_CHECKED)) {
-					for (auto file : files) {
-						symbols_hide_file(file);
-					}
-				}
-			} else if (symbols_file_any_is_visible()) {
-				if (ImGui::TileButton(ICON_CHECK_UNCERTAIN)) {
-					for (auto file : files) {
-						symbols_hide_file(file);
-					}
-				}
-			} else {
-				if (ImGui::TileButton(ICON_UNCHECKED)) {
-					for (auto file : files) {
-						symbols_show_file(file);
-					}
-				}
-			}
-			ImGui::NextColumn();
-
-			ImGui::Text("Path");
-			ImGui::NextColumn();
-
-			ImGui::Separator();
-
-			for (auto file : files) {
-				ImGui::PushID(file.c_str());
-				if (ImGui::TileButton(ICON_REMOVE)) {
-					symbols_unload_file(file);
-					ImGui::PopID();
-					break;
-				}
-				ImGui::NextColumn();
-
-				if (symbols_file_is_visible(file)) {
+				if (symbols_file_all_are_visible()) {
 					if (ImGui::TileButton(ICON_CHECKED)) {
-						symbols_hide_file(file);
+						for (auto file : files) {
+							symbols_hide_file(file);
+						}
+					}
+				} else if (symbols_file_any_is_visible()) {
+					if (ImGui::TileButton(ICON_CHECK_UNCERTAIN)) {
+						for (auto file : files) {
+							symbols_hide_file(file);
+						}
 					}
 				} else {
 					if (ImGui::TileButton(ICON_UNCHECKED)) {
-						symbols_show_file(file);
+						for (auto file : files) {
+							symbols_show_file(file);
+						}
 					}
 				}
-				ImGui::PopID();
-				ImGui::NextColumn();
 
-				ImGui::Text("%s", file.c_str());
-				ImGui::NextColumn();
+				for (auto file : files) {
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::PushID(file.c_str());
+					if (ImGui::TileButton(ICON_REMOVE)) {
+						symbols_unload_file(file);
+						ImGui::PopID();
+						break;
+					}
+
+					ImGui::TableNextColumn();
+					if (symbols_file_is_visible(file)) {
+						if (ImGui::TileButton(ICON_CHECKED)) {
+							symbols_hide_file(file);
+						}
+					} else {
+						if (ImGui::TileButton(ICON_UNCHECKED)) {
+							symbols_show_file(file);
+						}
+					}
+					ImGui::PopID();
+
+					ImGui::TableNextColumn();
+					ImGui::Text("%s", file.c_str());
+				}
+				ImGui::EndTable();
 			}
 
-			ImGui::Columns(1);
 			static uint8_t ram_bank = 0;
 			if (ImGui::Button("Load Symbols")) {
 				char *open_path = nullptr;
@@ -1165,81 +1149,116 @@ static void draw_debugger_controls()
 
 static void draw_debugger_vera_psg()
 {
-	ImGui::Columns(6);
-	static const char *labels[] = {
-		"Freq",
-		"Left",
-		"Right",
-		"Vol",
-		"Wave",
-		"Width"
-	};
-	for (int i = 0; i < 6; ++i) {
-		ImGui::Text("%s", labels[i]);
-		ImGui::NextColumn();
+	if (ImGui::BeginTable("psg mon", 8)) {
+		ImGui::TableSetupColumn("Ch", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Raw Bytes", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Freq", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("Wave", ImGuiTableColumnFlags_WidthFixed, 88);
+		ImGui::TableSetupColumn("Width", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableSetupColumn("L", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("R", ImGuiTableColumnFlags_WidthFixed);
+		ImGui::TableSetupColumn("Vol", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
+
+		static char chtxt[3];
+		for (unsigned int i = 0; i < 16; ++i) {
+			ImGui::TableNextRow();
+			if (i == 0) {
+				ImGui::TableSetColumnIndex(2); // freq
+				ImGui::PushItemWidth(-FLT_MIN); // Right-aligned
+				ImGui::TableSetColumnIndex(3); // wave
+				ImGui::PushItemWidth(-FLT_MIN);
+				ImGui::TableSetColumnIndex(4); // width
+				ImGui::PushItemWidth(-FLT_MIN);
+				ImGui::TableSetColumnIndex(7); // vol
+				ImGui::PushItemWidth(-FLT_MIN);
+				ImGui::TableSetColumnIndex(0);
+			} else {
+				ImGui::TableNextColumn();
+			}
+
+			std::sprintf(chtxt, "%d", i);
+			ImGui::PushID(i);
+			const psg_channel *channel = psg_get_channel(i);
+
+			ImGui::Text(chtxt);
+
+			ImGui::TableNextColumn();
+			ImGui::PushID("raw");
+			uint8_t ch_data[4];
+			ch_data[0] = channel->freq & 0xff;
+			ch_data[1] = channel->freq >> 8;
+			ch_data[2] = channel->volume | (channel->left << 6) | (channel->right << 7);
+			ch_data[3] = channel->pw | channel->waveform << 6;
+			for (int j = 0; j < 4; ++j) {
+				if (j) {
+					ImGui::SameLine();
+				}
+				if (ImGui::InputHex(j, ch_data[j])) {
+					psg_writereg(i * 4 + j, ch_data[j]);
+				}
+			}
+			ImGui::PopID();
+
+			ImGui::TableNextColumn();
+			float freq = channel->freq;
+			ImGui::PushID("freq");
+			if (ImGui::SliderFloat("", &freq, 0, 0xffff, "%.0f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
+				psg_set_channel_frequency(i, (uint16_t)freq);
+			}
+			ImGui::PopID();
+
+			ImGui::TableNextColumn();
+			static const char *waveforms[] = {
+				"Pulse",
+				"Sawtooth",
+				"Triangle",
+				"Noise"
+			};
+			int wf = channel->waveform;
+			ImGui::PushID("waveforms");
+			if (ImGui::Combo("", &wf, waveforms, IM_ARRAYSIZE(waveforms))) {
+				psg_set_channel_waveform(i, wf);
+			}
+			ImGui::PopID();
+
+			ImGui::TableNextColumn();
+			int pulse_width = channel->pw;
+			ImGui::PushID("pulse_width");
+			if (ImGui::SliderInt("", &pulse_width, 0, 63)) {
+				psg_set_channel_pulse_width(i, pulse_width);
+			}
+			ImGui::PopID();
+
+			ImGui::TableNextColumn();
+			bool left = channel->left;
+			ImGui::PushID("left");
+			if (ImGui::Checkbox("", &left)) {
+				psg_set_channel_left(i, left);
+			}
+			ImGui::PopID();
+
+			ImGui::TableNextColumn();
+			bool right = channel->right;
+			ImGui::PushID("right");
+			if (ImGui::Checkbox("", &right)) {
+				psg_set_channel_right(i, right);
+			}
+			ImGui::PopID();
+
+			ImGui::TableNextColumn();
+			int volume = channel->volume;
+			ImGui::PushID("volume");
+			if (ImGui::SliderInt("", &volume, 0, 63)) {
+				psg_set_channel_volume(i, volume);
+			}
+			ImGui::PopID();
+
+			ImGui::PopID();
+		}
+
+		ImGui::EndTable();
 	}
-
-	for (unsigned int i = 0; i < 16; ++i) {
-		ImGui::PushID(i);
-		const psg_channel *channel = psg_get_channel(i);
-
-		int freq = channel->freq;
-		ImGui::PushID("freq");
-		if (ImGui::InputInt("", &freq)) {
-			psg_set_channel_frequency(i, freq);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
-
-		bool left = channel->left;
-		ImGui::PushID("left");
-		if (ImGui::Checkbox("", &left)) {
-			psg_set_channel_left(i, left);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
-
-		bool right = channel->right;
-		ImGui::PushID("right");
-		if (ImGui::Checkbox("", &right)) {
-			psg_set_channel_right(i, right);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
-
-		int volume = channel->volume;
-		ImGui::PushID("volume");
-		if (ImGui::InputInt("", &volume)) {
-			psg_set_channel_volume(i, volume);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
-
-		static const char *waveforms[] = {
-			"Pulse",
-			"Sawtooth",
-			"Triangle",
-			"Noise"
-		};
-		int wf = channel->waveform;
-		ImGui::PushID("waveforms");
-		if (ImGui::Combo("", &wf, waveforms, IM_ARRAYSIZE(waveforms))) {
-			psg_set_channel_waveform(i, wf);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
-
-		int pulse_width = channel->pw;
-		ImGui::PushID("pulse_width");
-		if (ImGui::InputInt("", &pulse_width)) {
-			psg_set_channel_pulse_width(i, pulse_width);
-		}
-		ImGui::PopID();
-		ImGui::NextColumn();
-
-		ImGui::PopID();
-	}
-	ImGui::Columns(1);
 
 	int16_t psg_buffer[2 * SAMPLES_PER_BUFFER];
 	audio_get_psg_buffer(psg_buffer);
@@ -1262,6 +1281,505 @@ static void draw_debugger_vera_psg()
 
 		ImGui::PlotLines("Left", left_samples, SAMPLES_PER_BUFFER, 0, nullptr, INT16_MIN, INT16_MAX, ImVec2(0, 80.0f));
 		ImGui::PlotLines("Right", right_samples, SAMPLES_PER_BUFFER, 0, nullptr, INT16_MIN, INT16_MAX, ImVec2(0, 80.0f));
+	}
+}
+
+static void ym2151_reg_input(uint8_t *regs, uint8_t idx)
+{
+	ImGui::TableSetColumnIndex((idx & 0xf) + 1);
+	if (ImGui::InputHex(idx, regs[idx])) {
+		YM_debug_write(idx, regs[idx]);
+	}
+}
+
+template<typename T>
+constexpr T bit_set_or_res(T val, T mask, bool cond)
+{
+	return cond ? (val | mask) : (val & ~mask);
+}
+
+static void draw_debugger_ym2151()
+{
+	uint8_t regs[256];
+	uint8_t status = YM_read_status();
+	for (int i = 0; i < 256; i++) {
+		regs[i] = YM_debug_read(i);
+	}
+	if (ImGui::TreeNodeEx("Interface", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		uint8_t addr = YM_last_address();
+		uint8_t data = YM_last_data();
+		if (ImGui::InputHexLabel("Address", addr)) {
+			YM_write(0, addr);
+		}
+		ImGui::SameLine();
+		if (ImGui::InputHexLabel("Data", data)) {
+			YM_write(1, data);
+		}
+		ImGui::SameLine();
+		ImGui::InputHexLabel("Status", status);
+
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNodeEx("Raw Bytes", ImGuiTreeNodeFlags_Framed)) {
+		if (ImGui::BeginTable("ym raw bytes", 17, ImGuiTableFlags_SizingFixedFit)) {
+			static const char *row_txts[16] = {
+				"0x", "1x", "2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "Ax", "Bx", "Cx", "Dx", "Ex", "Fx"
+			};
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text(row_txts[0]);
+			ym2151_reg_input(regs, 0x01); // TEST
+			ym2151_reg_input(regs, 0x08); // KEYON
+			ym2151_reg_input(regs, 0x0F); // NOISE
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text(row_txts[1]);
+			ym2151_reg_input(regs, 0x10); // CLKA1
+			ym2151_reg_input(regs, 0x11); // CLKA2
+			ym2151_reg_input(regs, 0x12); // CLKB
+			ym2151_reg_input(regs, 0x14); // CONTROL
+			ym2151_reg_input(regs, 0x18); // LFRQ
+			ym2151_reg_input(regs, 0x19); // PMD/AMD
+			ym2151_reg_input(regs, 0x1B); // CT/W
+			// no unused registers at this point
+			for (int i = 2; i < 16; i++) {
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text(row_txts[i]);
+				for (int j = 0; j < 16; j++) {
+					ym2151_reg_input(regs, i * 16 + j);
+				}
+			}
+			ImGui::EndTable();
+		}
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNodeEx("Timer & Control", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		if (ImGui::BeginTable("ym timer & control", 7)) {
+			struct {
+				bool en, irq, ovf;
+				int  reload, cur; 
+			} timer[2];
+			bool csm = regs[0x14] & (1 << 7);
+			bool ct1 = regs[0x1B] & (1 << 6);
+			bool ct2 = regs[0x1B] & (1 << 7);
+
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+
+			for (int i = 0; i < 2; i++) {
+				const uint8_t EN_MASK  = 1 << (i + 0);
+				const uint8_t IRQ_MASK = 1 << (i + 2);
+				const uint8_t RES_MASK = 1 << (i + 4);
+				const uint8_t OVF_MASK = 1 << (i + 0);
+				const int     TIM_MAX  = i ? 255 : 1023;
+				auto          tim      = &timer[i];
+				tim->en                = regs[0x14] & EN_MASK;
+				tim->irq               = regs[0x14] & IRQ_MASK;
+				tim->ovf               = status & OVF_MASK;
+				tim->reload            = i ? regs[0x12] : regs[0x10] * 4 + (regs[0x11] & 0x03);
+				tim->cur               = YM_get_timer_counter(i);
+
+				ImGui::PushID(i);
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text(i ? "Timer B" : "Timer A");
+				ImGui::TableNextColumn();
+				if (ImGui::Checkbox("Enable", &tim->en)) {
+					YM_debug_write(0x14, bit_set_or_res(regs[0x14], EN_MASK, tim->en));
+				}
+				ImGui::TableNextColumn();
+				if (ImGui::Checkbox("IRQ Enable", &tim->irq)) {
+					YM_debug_write(0x14, bit_set_or_res(regs[0x14], IRQ_MASK, tim->irq));
+				}
+				ImGui::TableNextColumn();
+				ImGui::Checkbox("Overflow", &tim->ovf);
+				ImGui::TableNextColumn();
+				if (ImGui::Button("Reset")) {
+					YM_debug_write(0x14, regs[0x14] | RES_MASK);
+				}
+				ImGui::TableNextColumn();
+				if (ImGui::SliderInt("Reload", &tim->reload, 0, TIM_MAX)) {
+					if (i) {
+						// timer b
+						YM_debug_write(0x12, tim->reload);
+					} else {
+						// timer a
+						YM_debug_write(0x10, tim->reload >> 2);
+						YM_debug_write(0x11, regs[0x11] & ~0x03 | (tim->reload & 0x03));
+					}
+				}
+				ImGui::TableNextColumn();
+				char buf[5];
+				std::sprintf(buf, "%d", tim->cur);
+				ImGui::ProgressBar(tim->cur / (float)TIM_MAX, ImVec2(0, 0), buf);
+				ImGui::SameLine();
+				ImGui::Text("Counter");
+
+				ImGui::PopID();
+			}
+
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(1);
+			if (ImGui::Checkbox("CSM", &csm)) {
+				YM_debug_write(0x14, bit_set_or_res(regs[0x14], (uint8_t)(1 << 7), csm));
+			}
+			ImGui::TableNextColumn();
+			if (ImGui::Checkbox("CT1", &ct1)) {
+				YM_debug_write(0x1B, bit_set_or_res(regs[0x1B], (uint8_t)(1 << 6), ct1));
+			}
+			ImGui::TableNextColumn();
+			if (ImGui::Checkbox("CT2", &ct2)) {
+				YM_debug_write(0x1B, bit_set_or_res(regs[0x1B], (uint8_t)(1 << 7), ct2));
+			}
+			ImGui::EndTable();
+		}
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNodeEx("LFO & Noise", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		if (ImGui::BeginTable("ym lfo & noise", 2, ImGuiTableFlags_SizingStretchSame)) {
+			static const char *waveforms[] = {
+				"Sawtooth",
+				"Square",
+				"Triangle",
+				"Noise"
+			};
+			const uint8_t LRES_MASK = (1 << 1);
+			const uint8_t LW_MASK   = 0x03;
+			bool          lres      = regs[0x01] & LRES_MASK;
+			int           lw        = regs[0x1B] & LW_MASK;
+			int           lfrq      = regs[0x18];
+			float         lcnt      = YM_get_LFO_phase();
+			int           amd       = YM_get_AMD();
+			int           pmd       = YM_get_PMD();
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("LFO");
+			ImGui::SameLine(72);
+			if (ImGui::Checkbox("Reset", &lres)) {
+				YM_debug_write(0x01, bit_set_or_res(regs[0x01], LRES_MASK, lres));
+			}
+			ImGui::TableNextColumn();
+			if (ImGui::Combo("Waveform", &lw, waveforms, 4)) {
+				YM_debug_write(0x1B, regs[0x1B] & ~LW_MASK | lw);
+			}
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			if (ImGui::SliderInt("LFO Freq", &lfrq, 0, 255)) {
+				YM_debug_write(0x18, lfrq);
+			}
+			ImGui::TableNextColumn();
+			char buf[4];
+			std::sprintf(buf, "%d", (int)(lcnt * 256));
+			ImGui::ProgressBar(lcnt, ImVec2(0, 0), buf);
+			ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
+			ImGui::Text("Cur. Phase");
+
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			if (ImGui::SliderInt("AMD", &amd, 0, 127)) {
+				YM_debug_write(0x19, amd);
+			}
+			ImGui::TableNextColumn();
+			if (ImGui::SliderInt("PMD", &pmd, 0, 127)) {
+				YM_debug_write(0x19, pmd | 0x80);
+			}
+
+			const uint8_t NEN_MASK  = (1 << 7);
+			const uint8_t NFRQ_MASK = 0x1F;
+			bool          nen       = regs[0x0F] & NEN_MASK;
+			int           nfrq      = regs[0x0F] & NFRQ_MASK;
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+			ImGui::Text("Noise");
+			ImGui::SameLine(72);
+			if (ImGui::Checkbox("Enable", &nen)) {
+				YM_debug_write(0x0F, bit_set_or_res(regs[0x0F], NEN_MASK, nen));
+			}
+			ImGui::TableNextColumn();
+			if (ImGui::SliderInt("Frequency", &nfrq, 31, 0)) {
+				YM_debug_write(0x0F, regs[0x0F] & ~NFRQ_MASK | nfrq);
+			}
+
+			ImGui::EndTable();
+		}
+		ImGui::TreePop();
+	}
+	if (ImGui::TreeNodeEx("Channels", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		if (ImGui::BeginTable("ym channels", 4, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersInnerV)) {
+			static const uint8_t slot_map[4] = { 0, 16, 8, 24 };
+			static struct {
+				int  con, fb;
+				bool l, r;
+				float kc;
+				int  ams, pms;
+				bool  debug_kon[4] = { 1, 1, 1, 1};
+				int   dkob_state   = 0;
+				struct {
+					int  dt1, dt2, mul;
+					int  ar, d1r, d1l, d2r, rr, ks;
+					int  tl;
+					bool ame;
+				} slot[4];
+			} channel[8];
+
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed); // chan num
+			ImGui::TableSetupColumn("", 0, 0.4f); // chan regs
+			ImGui::TableSetupColumn(""); // slot regs
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed); // slot con
+
+			for (int i = 0; i < 8; i++) {
+				const uint8_t confb  = 0x20 + i;
+				const uint8_t kc     = 0x28 + i;
+				const uint8_t kf     = 0x30 + i;
+				const uint8_t amspms = 0x38 + i;
+				const uint8_t tmp_kc = regs[kc] & 0x7f;
+				auto          ch     = &channel[i];
+
+				ch->l    = regs[confb] & (1 << 6);
+				ch->r    = regs[confb] & (1 << 7);
+				ch->con  = regs[confb] & 0x07;
+				ch->fb   = (regs[confb] >> 3) & 0x07;
+				ch->kc   = (tmp_kc - ((tmp_kc + 1) >> 2)) + (regs[kf] / 256.f);
+				ch->ams  = regs[amspms] & 0x03;
+				ch->pms  = (regs[amspms] >> 4) & 0x07;
+				int fpkc = (int)(ch->kc * 256);
+
+				ImGui::PushID(i);
+				ImGui::TableNextRow();
+				ImGui::TableNextColumn();
+				ImGui::Text("%d", i);
+
+				// Channel
+				ImGui::TableNextColumn();
+				ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(2, 0));
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(2, 2));
+				ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, 8);
+				if (ImGui::BeginTable("confb", 4)) {
+					ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+					ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+					ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed);
+
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(12);
+					if (ImGui::Checkbox("L", &ch->l)) {
+						YM_debug_write(confb, bit_set_or_res(regs[confb], (uint8_t)(1 << 6), ch->l));
+					}
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(12);
+					if (ImGui::Checkbox("R", &ch->r)) {
+						YM_debug_write(confb, bit_set_or_res(regs[confb], (uint8_t)(1 << 7), ch->r));
+					}
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(12);
+					if (ImGui::DragInt("CON", &ch->con, 1, 0, 7)) {
+						YM_debug_write(confb, regs[confb] & ~0x07 | ch->con);
+					}
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-28);
+					if (ImGui::SliderInt("FB", &ch->fb, 0, 7)) {
+						YM_debug_write(confb, regs[confb] & ~0x38 | (ch->fb << 3));
+					}
+					ImGui::EndTable();
+				}
+
+				if (ImGui::BeginTable("amspms", 2)) {
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-28);
+					if (ImGui::SliderInt("AMS", &ch->ams, 0, 3)) {
+						YM_debug_write(amspms, regs[amspms] & ~0x03 | ch->ams);
+					}
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-28);
+					if (ImGui::SliderInt("PMS", &ch->pms, 0, 7)) {
+						YM_debug_write(amspms, regs[amspms] & ~0x70 | (ch->pms << 4));
+					}
+					ImGui::EndTable();
+				}
+
+				const char    notes[] = "C-C#D-D#E-F-F#G-G#A-A#B-";
+				float         cents   = (fpkc & 0xFF) * 100.f / 256.f;
+				if (cents > 50) {
+					cents = cents - 100;
+				}
+				const uint8_t note    = (fpkc >> 8) + (cents < 0) + 1;
+				const uint8_t ni      = (note % 12) * 2;
+				const uint8_t oct     = note / 12;
+				// C#8 +00.0
+				char kcinfo[12];
+				std::sprintf(kcinfo, "%c%c%d %+05.1f", notes[ni], notes[ni + 1], oct, cents);
+				ImGui::SetNextItemWidth(-28);
+				if (ImGui::SliderFloat("KC", &ch->kc, 0, 96, kcinfo, ImGuiSliderFlags_NoRoundToFormat)) {
+					fpkc = std::min((int)(ch->kc * 256), (96 * 256) - 1);
+					YM_debug_write(kc, (fpkc >> 8) * 4 / 3);
+					YM_debug_write(kf, fpkc & 0xFF);
+				}
+
+				ImGui::Button("KeyOn");
+				ch->dkob_state = (ch->dkob_state << 1) | (int)ImGui::IsItemActive();
+				switch (ch->dkob_state & 0b11) {
+					case 0b01: // keyon checked slots
+						YM_debug_write(0x08, i | (ch->debug_kon[0] << 3) | (ch->debug_kon[1] << 4) | (ch->debug_kon[2] << 5) | (ch->debug_kon[3] << 6));
+						break;
+					case 0b10: // keyoff all slots
+						YM_debug_write(0x08, i);
+						break;
+				}
+				ImGui::PushID("konslots");
+				for (int j = 0; j < 4; j++) {
+					ImGui::PushID(j);
+					ImGui::SameLine();
+					ImGui::Checkbox("", &ch->debug_kon[j]);
+					ImGui::PopID();
+				}
+				ImGui::PopID();
+				ImGui::PopStyleVar(3);
+				
+				// Slot
+				ImGui::TableNextColumn();
+				ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(2, 2));
+				ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 0));
+				ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, 6);
+				if (ImGui::BeginTable("slot", 15)) {
+					ImGui::TableSetupColumn("Sl", ImGuiTableColumnFlags_WidthFixed);
+					ImGui::TableSetupColumn("DT1");
+					ImGui::TableSetupColumn("DT2");
+					ImGui::TableSetupColumn("MUL");
+					ImGui::TableSetupColumn("=Freq", ImGuiTableColumnFlags_WidthFixed, 44);
+					ImGui::TableSetupColumn("AR");
+					ImGui::TableSetupColumn("D1R");
+					ImGui::TableSetupColumn("D1L");
+					ImGui::TableSetupColumn("D2R");
+					ImGui::TableSetupColumn("RR");
+					ImGui::TableSetupColumn("KS");
+					ImGui::TableSetupColumn("Env");
+					ImGui::TableSetupColumn("TL");
+					ImGui::TableSetupColumn("AM", ImGuiTableColumnFlags_WidthFixed);
+					ImGui::TableSetupColumn("Out");
+					ImGui::TableHeadersRow();
+
+					for (int j = 0; j < 4; j++) {
+						const int     slnum  = slot_map[j] + i;
+						const uint8_t muldt1 = 0x40 + slnum;
+						const uint8_t tl     = 0x60 + slnum;
+						const uint8_t arks   = 0x80 + slnum;
+						const uint8_t d1rame = 0xA0 + slnum;
+						const uint8_t d2rdt2 = 0xC0 + slnum;
+						const uint8_t rrd1l  = 0xE0 + slnum;
+						auto          slot   = &(channel[i].slot[j]);
+
+						slot->mul = regs[muldt1] & 0x0F;
+						slot->dt1 = (regs[muldt1] >> 4) & 0x07;
+						slot->tl  = regs[tl] & 0x7F;
+						slot->ar  = regs[arks] & 0x1F;
+						slot->ks  = regs[arks] >> 6;
+						slot->d1r = regs[d1rame] & 0x1F;
+						slot->ame = regs[d1rame] & 0x80;
+						slot->d2r = regs[d2rdt2] & 0x1F;
+						slot->dt2 = regs[d2rdt2] >> 6;
+						slot->rr  = regs[rrd1l] & 0x0F;
+						slot->d1l = regs[rrd1l] >> 4;
+
+						ImGui::PushID(j);
+						ImGui::TableNextRow();
+						ImGui::TableNextColumn();
+						ImGui::Text("%d", slot_map[j] + i);
+						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("dt1", &slot->dt1, 0, 7)) {
+							YM_debug_write(muldt1, regs[muldt1] & ~0x70 | (slot->dt1 << 4));
+						}
+						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("dt2", &slot->dt2, 0, 3)) {
+							YM_debug_write(d2rdt2, regs[d2rdt2] & ~0xC0 | (slot->dt2 << 6));
+						}
+						ImGui::TableNextColumn();
+						char buf[3] = ".5";
+						if (slot->mul > 0) {
+							std::sprintf(buf, "%d", slot->mul);
+						}
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("mul", &slot->mul, 0, 15, buf)) {
+							YM_debug_write(muldt1, regs[muldt1] & ~0x0F | slot->mul);
+						}
+						ImGui::TableNextColumn();
+						ImGui::Text("%d", YM_get_freq(slnum));
+						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("ar", &slot->ar, 31, 0)) {
+							YM_debug_write(arks, regs[arks] & ~0x1F | slot->ar);
+						}
+						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("d1r", &slot->d1r, 31, 0)) {
+							YM_debug_write(d1rame, regs[d1rame] & ~0x1F | slot->d1r);
+						}
+						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("d1l", &slot->d1l, 15, 0)) {
+							YM_debug_write(rrd1l, regs[rrd1l] & ~0xF0 | (slot->d1l << 4));
+						}
+						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("d2r", &slot->d2r, 31, 0)) {
+							YM_debug_write(d2rdt2, regs[d2rdt2] & ~0x1F | slot->d2r);
+						}
+						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("rr", &slot->rr, 15, 0)) {
+							YM_debug_write(rrd1l, regs[rrd1l] & ~0x0F | slot->rr);
+						}
+						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("ks", &slot->ks, 0, 3)) {
+							YM_debug_write(arks, regs[arks] & ~0xC0 | (slot->ks << 6));
+						}
+						ImGui::TableNextColumn();
+						char envstate_txt[] = " ";
+						envstate_txt[0]     = " ADSR"[YM_get_env_state(slnum)];
+						ImGui::ProgressBar(YM_get_EG_output(slnum), ImVec2(-FLT_MIN, 0), envstate_txt);
+						ImGui::TableNextColumn();
+						ImGui::SetNextItemWidth(-FLT_MIN);
+						if (ImGui::SliderInt("tl", &slot->tl, 127, 0)) {
+							YM_debug_write(tl, regs[tl] & ~0x7F | slot->tl);
+						}
+						ImGui::TableNextColumn();
+						ImGui::PushID("amelia");
+						if (ImGui::Checkbox("", &slot->ame)) {
+							YM_debug_write(d1rame, bit_set_or_res(regs[d1rame], (uint8_t) 0x80, slot->ame));
+						}
+						ImGui::PopID();
+						float out = YM_get_final_env(slnum);
+						char  buf2[5];
+						std::sprintf(buf2, "%d", (int)((1 - out) * 1024));
+						ImGui::TableNextColumn();
+						ImGui::ProgressBar(out, ImVec2(-FLT_MIN, 0), buf2);
+
+						ImGui::PopID();
+					}
+					ImGui::EndTable();
+				}
+				ImGui::PopStyleVar(3);
+
+				// CON gfx
+				ImGui::TableNextColumn();
+				ImGui::Dummy(ImVec2(16, 15));
+				// this is so ugly
+				ImGui::Tile((display_icons)((int)ICON_FM_ALG + ch->con), ImVec2(16, 64));
+
+				ImGui::PopID();
+			}
+			ImGui::EndTable();
+		}
+		ImGui::TreePop();
 	}
 }
 
@@ -1406,6 +1924,7 @@ static void draw_menu_bar()
 				ImGui::EndMenu();
 			}
 			ImGui::Checkbox("PSG Monitor", &Show_VERA_PSG_monitor);
+			ImGui::Checkbox("YM2151 Monitor", &Show_YM2151_monitor);
 			ImGui::Separator();
 
 			bool safety_frame = vera_video_safety_frame_is_enabled();
@@ -1532,6 +2051,13 @@ void overlay_draw()
 	if (Show_VERA_PSG_monitor) {
 		if (ImGui::Begin("VERA PSG", &Show_VERA_PSG_monitor)) {
 			draw_debugger_vera_psg();
+		}
+		ImGui::End();
+	}
+
+	if (Show_YM2151_monitor) {
+		if (ImGui::Begin("YM2151", &Show_YM2151_monitor)) {
+			draw_debugger_ym2151();
 		}
 		ImGui::End();
 	}

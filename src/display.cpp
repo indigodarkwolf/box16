@@ -628,6 +628,13 @@ namespace ImGui
 		Image((void *)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, ImVec4(1, 1, 1, alpha));
 	}
 
+	void Tile(display_icons icon, ImVec2 size, float alpha /* = 1.0f */)
+	{
+		ImVec2 topleft{ (float)((int)icon % 16) / 16.0f, (float)((int)icon >> 4) / 16.0f };
+		ImVec2 botright{ topleft.x + size.x / 256.0f, topleft.y + size.y / 256.0f };
+		Image((void *)(intptr_t)Icon_tilemap, size, topleft, botright, ImVec4(1, 1, 1, alpha));
+	}
+
 	void TileDisabled(display_icons icon)
 	{
 		ImVec2 topleft{ (float)((int)icon % 16) / 16.0f, (float)((int)icon >> 4) / 16.0f };

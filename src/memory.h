@@ -29,4 +29,6 @@ uint8_t memory_get_rom_bank();
 
 uint8_t memory_get_current_bank(uint16_t address);
 
+void    sound_write(uint16_t address, uint8_t value);
+
 #endif
