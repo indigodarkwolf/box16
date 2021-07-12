@@ -1,130 +1,411 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="..\..\src\audio.cpp" />
-    <ClCompile Include="..\..\src\compat\compat.cpp" />
-    <ClCompile Include="..\..\src\compat\getopt.cpp" />
-    <ClCompile Include="..\..\src\cpu\fake6502.cpp" />
-    <ClCompile Include="..\..\src\debugger.cpp" />
-    <ClCompile Include="..\..\src\display.cpp" />
-    <ClCompile Include="..\..\src\gif_recorder.cpp" />
-    <ClCompile Include="..\..\src\i2c.cpp" />
-    <ClCompile Include="..\..\src\imgui\imgui.cpp" />
-    <ClCompile Include="..\..\src\imgui\imgui_demo.cpp" />
-    <ClCompile Include="..\..\src\imgui\imgui_draw.cpp" />
-    <ClCompile Include="..\..\src\imgui\imgui_impl_opengl2.cpp" />
-    <ClCompile Include="..\..\src\imgui\imgui_impl_sdl.cpp" />
-    <ClCompile Include="..\..\src\imgui\imgui_tables.cpp" />
-    <ClCompile Include="..\..\src\imgui\imgui_widgets.cpp" />
-    <ClCompile Include="..\..\src\javascript_interface.cpp" />
-    <ClCompile Include="..\..\src\joystick.cpp" />
-    <ClCompile Include="..\..\src\keyboard.cpp" />
-    <ClCompile Include="..\..\src\loadsave.cpp" />
-    <ClCompile Include="..\..\src\main.cpp" />
-    <ClCompile Include="..\..\src\memory.cpp" />
-    <ClCompile Include="..\..\src\midi.cpp" />
-    <ClCompile Include="..\..\src\options.cpp" />
-    <ClCompile Include="..\..\src\overlay\cpu_visualization.cpp" />
-    <ClCompile Include="..\..\src\overlay\disasm.cpp" />
-    <ClCompile Include="..\..\src\overlay\memory_dump.cpp" />
-    <ClCompile Include="..\..\src\overlay\midi_overlay.cpp" />
-    <ClCompile Include="..\..\src\overlay\options_menu.cpp" />
-    <ClCompile Include="..\..\src\overlay\overlay.cpp" />
-    <ClCompile Include="..\..\src\overlay\ram_dump.cpp" />
-    <ClCompile Include="..\..\src\overlay\util.cpp" />
-    <ClCompile Include="..\..\src\overlay\vram_dump.cpp" />
-    <ClCompile Include="..\..\src\ps2.cpp" />
-    <ClCompile Include="..\..\src\rtc.cpp" />
-    <ClCompile Include="..\..\src\sdl_events.cpp" />
-    <ClCompile Include="..\..\src\smc.cpp" />
-    <ClCompile Include="..\..\src\symbols.cpp" />
-    <ClCompile Include="..\..\src\timing.cpp" />
-    <ClCompile Include="..\..\src\unicode.cpp" />
-    <ClCompile Include="..\..\src\vera\sdcard.cpp" />
-    <ClCompile Include="..\..\src\vera\vera_pcm.cpp" />
-    <ClCompile Include="..\..\src\vera\vera_psg.cpp" />
-    <ClCompile Include="..\..\src\vera\vera_spi.cpp" />
-    <ClCompile Include="..\..\src\vera\vera_video.cpp" />
-    <ClCompile Include="..\..\src\via.cpp" />
-    <ClCompile Include="..\..\src\ym2151\ym2151.cpp" />
-    <ClCompile Include="..\..\vendor\lodepng\lodepng.cpp" />
-    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opm.cpp" />
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Source Files\compat">
+      <UniqueIdentifier>{0fcad539-e3cf-4e49-b68b-4a6fd5d101e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\cpu">
+      <UniqueIdentifier>{a9c1d0de-f4df-446d-a4a9-a730c5e9da39}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\gif">
+      <UniqueIdentifier>{de09e9d4-adcf-43fd-98e4-f3da5ba03e59}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\imgui">
+      <UniqueIdentifier>{1fbd7809-0957-46b1-8335-b10c883a50bf}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\overlay">
+      <UniqueIdentifier>{e8a4a522-a32e-43ba-b796-5b1a8b5e5126}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\vera">
+      <UniqueIdentifier>{c739793d-6a4d-42a7-9283-fd35a0bee8fc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ym2151">
+      <UniqueIdentifier>{ea74ec66-b5eb-4c0c-8618-2b6701b7cee1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vendor Source Files">
+      <UniqueIdentifier>{c04a1359-8bdf-4b9d-92b5-a0f14e5f6be1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vendor Source Files\lodepng">
+      <UniqueIdentifier>{985ab406-9c50-473f-8005-d47e82c32605}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Vendor Source Files\ymfm">
+      <UniqueIdentifier>{fca5edb5-d4aa-4604-9c4c-5d7be7f83bda}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\audio.h" />
-    <ClInclude Include="..\..\src\compat\compat.h" />
-    <ClInclude Include="..\..\src\compat\dirent.h" />
-    <ClInclude Include="..\..\src\compat\getopt.h" />
-    <ClInclude Include="..\..\src\compat\unistd.h" />
-    <ClInclude Include="..\..\src\cpu\fake6502.h" />
-    <ClInclude Include="..\..\src\cpu\instructions_6502.h" />
-    <ClInclude Include="..\..\src\cpu\instructions_65c02.h" />
-    <ClInclude Include="..\..\src\cpu\mnemonics.h" />
-    <ClInclude Include="..\..\src\cpu\modes.h" />
-    <ClInclude Include="..\..\src\cpu\support.h" />
-    <ClInclude Include="..\..\src\cpu\tables.h" />
-    <ClInclude Include="..\..\src\debugger.h" />
-    <ClInclude Include="..\..\src\display.h" />
-    <ClInclude Include="..\..\src\gif\gif.h" />
-    <ClInclude Include="..\..\src\gif_recorder.h" />
-    <ClInclude Include="..\..\src\glue.h" />
-    <ClInclude Include="..\..\src\i2c.h" />
-    <ClInclude Include="..\..\src\imgui\imconfig.h" />
-    <ClInclude Include="..\..\src\imgui\imgui.h" />
-    <ClInclude Include="..\..\src\imgui\imgui_impl_opengl2.h" />
-    <ClInclude Include="..\..\src\imgui\imgui_impl_sdl.h" />
-    <ClInclude Include="..\..\src\imgui\imgui_internal.h" />
-    <ClInclude Include="..\..\src\imgui\imstb_rectpack.h" />
-    <ClInclude Include="..\..\src\imgui\imstb_textedit.h" />
-    <ClInclude Include="..\..\src\imgui\imstb_truetype.h" />
-    <ClInclude Include="..\..\src\joystick.h" />
-    <ClInclude Include="..\..\src\keyboard.h" />
-    <ClInclude Include="..\..\src\loadsave.h" />
-    <ClInclude Include="..\..\src\memory.h" />
-    <ClInclude Include="..\..\src\midi.h" />
-    <ClInclude Include="..\..\src\options.h" />
-    <ClInclude Include="..\..\src\overlay\cpu_visualization.h" />
-    <ClInclude Include="..\..\src\overlay\disasm.h" />
-    <ClInclude Include="..\..\src\overlay\memory_dump.h" />
-    <ClInclude Include="..\..\src\overlay\midi_overlay.h" />
-    <ClInclude Include="..\..\src\overlay\options_menu.h" />
-    <ClInclude Include="..\..\src\overlay\overlay.h" />
-    <ClInclude Include="..\..\src\overlay\ram_dump.h" />
-    <ClInclude Include="..\..\src\overlay\util.h" />
-    <ClInclude Include="..\..\src\overlay\vram_dump.h" />
-    <ClInclude Include="..\..\src\ps2.h" />
-    <ClInclude Include="..\..\src\ring_buffer.h" />
-    <ClInclude Include="..\..\src\rom_symbols.h" />
-    <ClInclude Include="..\..\src\rtc.h" />
-    <ClInclude Include="..\..\src\sdl_events.h" />
-    <ClInclude Include="..\..\src\smc.h" />
-    <ClInclude Include="..\..\src\symbols.h" />
-    <ClInclude Include="..\..\src\timing.h" />
-    <ClInclude Include="..\..\src\unicode.h" />
-    <ClInclude Include="..\..\src\utf8.h" />
-    <ClInclude Include="..\..\src\utf8_encode.h" />
-    <ClInclude Include="..\..\src\vera\sdcard.h" />
-    <ClInclude Include="..\..\src\vera\vera_pcm.h" />
-    <ClInclude Include="..\..\src\vera\vera_psg.h" />
-    <ClInclude Include="..\..\src\vera\vera_spi.h" />
-    <ClInclude Include="..\..\src\vera\vera_video.h" />
-    <ClInclude Include="..\..\src\version.h" />
-    <ClInclude Include="..\..\src\via.h" />
-    <ClInclude Include="..\..\src\ym2151\ym2151.h" />
-    <ClInclude Include="..\..\vendor\lodepng\lodepng.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.h" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.ipp" />
-    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opm.h" />
+    <ClCompile Include="..\..\src\audio.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\debugger.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\display.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\gif_recorder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\i2c.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\javascript_interface.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\joystick.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\keyboard.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\loadsave.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\memory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\options.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ps2.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\rtc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\sdl_events.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\smc.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\symbols.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\timing.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\unicode.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\via.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\compat\compat.cpp">
+      <Filter>Source Files\compat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\compat\getopt.cpp">
+      <Filter>Source Files\compat</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpu\fake6502.cpp">
+      <Filter>Source Files\cpu</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\imgui\imgui.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\imgui\imgui_demo.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\imgui\imgui_draw.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\imgui\imgui_impl_opengl2.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\imgui\imgui_impl_sdl.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\imgui\imgui_widgets.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\disasm.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\memory_dump.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\overlay.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\ram_dump.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\util.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\vram_dump.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vera\sdcard.cpp">
+      <Filter>Source Files\vera</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vera\vera_pcm.cpp">
+      <Filter>Source Files\vera</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vera\vera_psg.cpp">
+      <Filter>Source Files\vera</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vera\vera_spi.cpp">
+      <Filter>Source Files\vera</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\vera\vera_video.cpp">
+      <Filter>Source Files\vera</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\ym2151\ym2151.cpp">
+      <Filter>Source Files\ym2151</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\cpu_visualization.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\options_menu.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\midi_overlay.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\midi.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\lodepng\lodepng.cpp">
+      <Filter>Vendor Source Files\lodepng</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opm.cpp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\imgui\imgui_tables.cpp">
+      <Filter>Source Files\imgui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="..\..\src\cpu\6502.opcodes" />
-    <None Include="..\..\src\cpu\65c02.opcodes" />
-    <None Include="..\..\src\cpu\buildtables.py" />
-    <None Include="..\..\src\cpu\extract.py" />
-    <None Include="..\..\src\cpu\README" />
+    <ClInclude Include="..\..\src\compat\compat.h">
+      <Filter>Source Files\compat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\compat\dirent.h">
+      <Filter>Source Files\compat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\compat\getopt.h">
+      <Filter>Source Files\compat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\compat\unistd.h">
+      <Filter>Source Files\compat</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\cpu\fake6502.h">
+      <Filter>Source Files\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\cpu\instructions_65c02.h">
+      <Filter>Source Files\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\cpu\instructions_6502.h">
+      <Filter>Source Files\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\cpu\mnemonics.h">
+      <Filter>Source Files\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\cpu\modes.h">
+      <Filter>Source Files\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\cpu\support.h">
+      <Filter>Source Files\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\cpu\tables.h">
+      <Filter>Source Files\cpu</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\gif\gif.h">
+      <Filter>Source Files\gif</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\imgui\imconfig.h">
+      <Filter>Source Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\imgui\imgui.h">
+      <Filter>Source Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\imgui\imgui_impl_opengl2.h">
+      <Filter>Source Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\imgui\imgui_impl_sdl.h">
+      <Filter>Source Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\imgui\imgui_internal.h">
+      <Filter>Source Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\imgui\imstb_rectpack.h">
+      <Filter>Source Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\imgui\imstb_textedit.h">
+      <Filter>Source Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\imgui\imstb_truetype.h">
+      <Filter>Source Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\disasm.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\memory_dump.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\overlay.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\ram_dump.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\util.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\vram_dump.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vera\sdcard.h">
+      <Filter>Source Files\vera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vera\vera_pcm.h">
+      <Filter>Source Files\vera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vera\vera_psg.h">
+      <Filter>Source Files\vera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vera\vera_spi.h">
+      <Filter>Source Files\vera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\vera\vera_video.h">
+      <Filter>Source Files\vera</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ym2151\ym2151.h">
+      <Filter>Source Files\ym2151</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\cpu_visualization.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\audio.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\debugger.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\display.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\gif_recorder.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\glue.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\i2c.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\joystick.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\keyboard.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\loadsave.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\memory.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\options.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ps2.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\ring_buffer.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\rom_symbols.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\rtc.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\sdl_events.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\smc.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\symbols.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\timing.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\unicode.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\utf8.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\utf8_encode.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\version.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\via.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\cpu_visualization.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\options_menu.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\midi_overlay.h">
+      <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\midi.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.ipp">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opm.h">
+      <Filter>Vendor Source Files\ymfm</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\lodepng\lodepng.h">
+      <Filter>Vendor Source Files\lodepng</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Text Include="..\..\src\imgui\LICENSE.txt" />
+    <None Include="..\..\src\cpu\65c02.opcodes">
+      <Filter>Source Files\cpu</Filter>
+    </None>
+    <None Include="..\..\src\cpu\6502.opcodes">
+      <Filter>Source Files\cpu</Filter>
+    </None>
+    <None Include="..\..\src\cpu\buildtables.py">
+      <Filter>Source Files\cpu</Filter>
+    </None>
+    <None Include="..\..\src\cpu\extract.py">
+      <Filter>Source Files\cpu</Filter>
+    </None>
+    <None Include="..\..\src\cpu\README">
+      <Filter>Source Files\cpu</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\src\imgui\LICENSE.txt">
+      <Filter>Source Files\imgui</Filter>
+    </Text>
   </ItemGroup>
 </Project>
