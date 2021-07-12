@@ -1702,7 +1702,7 @@ static void draw_debugger_ym2151()
 							YM_debug_write(d2rdt2, regs[d2rdt2] & ~0xC0 | (slot->dt2 << 6));
 						}
 						ImGui::TableNextColumn();
-						char buf[3] = ".5";
+						char buf[11] = ".5";
 						if (slot->mul > 0) {
 							std::sprintf(buf, "%d", slot->mul);
 						}
