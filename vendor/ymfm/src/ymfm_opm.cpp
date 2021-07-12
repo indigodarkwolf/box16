@@ -462,6 +462,20 @@ uint8_t ym2151::read(uint32_t offset)
 
 
 //-------------------------------------------------
+//  get_registers - get internal registers for debug purposes
+//-------------------------------------------------
+
+opm_registers &ym2151::get_registers()
+{
+	return m_fm.regs();
+}
+
+fm_operator<opm_registers> *ym2151::get_debug_op(uint32_t index) const
+{
+	return m_fm.debug_operator(index);
+}
+
+//-------------------------------------------------
 //  write_address - handle a write to the address
 //  register
 //-------------------------------------------------
@@ -478,7 +492,7 @@ void ym2151::write_address(uint8_t data)
 //  interface
 //-------------------------------------------------
 
-void ym2151::write_data(uint8_t data)
+void ym2151::write_data(uint8_t data, bool debug)
 {
 	// write the FM register
 	m_fm.write(m_address, data);
@@ -491,7 +505,7 @@ void ym2151::write_data(uint8_t data)
 	}
 
 	// mark busy for a bit
-	m_fm.intf().ymfm_set_busy_end(32 * m_fm.clock_prescale());
+	if (!debug) m_fm.intf().ymfm_set_busy_end(32 * m_fm.clock_prescale());
 }
 
 
