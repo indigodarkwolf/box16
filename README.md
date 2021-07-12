@@ -103,6 +103,7 @@ You can start `box16`/`box16.exe` either by double-clicking it, or from the comm
 	* `V`: Video RAM and registers (128 KiB VRAM, 32 B composer registers, 512 B pallete, 16 B layer0 registers, 16 B layer1 registers, 16 B sprite registers, 2 KiB sprite attributes)
 * `-sound` can be used to specify the output sound device.
 * `-abufs` can be used to specify the number of audio buffers (defaults to 8). If you're experiencing stuttering in the audio try to increase this number. This will result in additional audio latency though.
+* `-nosound` can be used to specify that the audio subsystem should not be enabled in the first place.
 
 Run `box16 -h` to see all command line options.
 
