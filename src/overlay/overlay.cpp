@@ -1225,7 +1225,7 @@ static void draw_debugger_vera_psg()
 			ImGui::TableNextColumn();
 			int pulse_width = channel->pw;
 			ImGui::PushID("pulse_width");
-			if (ImGui::SliderInt("", &pulse_width, 0, 63)) {
+			if (ImGui::SliderInt("", &pulse_width, 0, 63, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 				psg_set_channel_pulse_width(i, pulse_width);
 			}
 			ImGui::PopID();
@@ -1249,7 +1249,7 @@ static void draw_debugger_vera_psg()
 			ImGui::TableNextColumn();
 			int volume = channel->volume;
 			ImGui::PushID("volume");
-			if (ImGui::SliderInt("", &volume, 0, 63)) {
+			if (ImGui::SliderInt("", &volume, 0, 63, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 				psg_set_channel_volume(i, volume);
 			}
 			ImGui::PopID();
@@ -1402,7 +1402,7 @@ static void draw_debugger_ym2151()
 					YM_debug_write(0x14, regs[0x14] | RES_MASK);
 				}
 				ImGui::TableNextColumn();
-				if (ImGui::SliderInt("Reload", &tim->reload, 0, TIM_MAX)) {
+				if (ImGui::SliderInt("Reload", &tim->reload, 0, TIM_MAX, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 					if (i) {
 						// timer b
 						YM_debug_write(0x12, tim->reload);
@@ -1470,7 +1470,7 @@ static void draw_debugger_ym2151()
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			if (ImGui::SliderInt("LFO Freq", &lfrq, 0, 255)) {
+			if (ImGui::SliderInt("LFO Freq", &lfrq, 0, 255, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 				YM_debug_write(0x18, lfrq);
 			}
 			ImGui::TableNextColumn();
@@ -1482,11 +1482,11 @@ static void draw_debugger_ym2151()
 
 			ImGui::TableNextRow();
 			ImGui::TableNextColumn();
-			if (ImGui::SliderInt("AMD", &amd, 0, 127)) {
+			if (ImGui::SliderInt("AMD", &amd, 0, 127, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 				YM_debug_write(0x19, amd);
 			}
 			ImGui::TableNextColumn();
-			if (ImGui::SliderInt("PMD", &pmd, 0, 127)) {
+			if (ImGui::SliderInt("PMD", &pmd, 0, 127, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 				YM_debug_write(0x19, pmd | 0x80);
 			}
 
@@ -1502,7 +1502,7 @@ static void draw_debugger_ym2151()
 				YM_debug_write(0x0F, bit_set_or_res(regs[0x0F], NEN_MASK, nen));
 			}
 			ImGui::TableNextColumn();
-			if (ImGui::SliderInt("Frequency", &nfrq, 31, 0)) {
+			if (ImGui::SliderInt("Frequency", &nfrq, 31, 0, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 				YM_debug_write(0x0F, regs[0x0F] & ~NFRQ_MASK | nfrq);
 			}
 
@@ -1511,7 +1511,7 @@ static void draw_debugger_ym2151()
 		ImGui::TreePop();
 	}
 	if (ImGui::TreeNodeEx("Channels", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-		if (ImGui::BeginTable("ym channels", 4, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersInnerV)) {
+		if (ImGui::BeginTable("ym channels", 4, ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_BordersInner)) {
 			static const uint8_t slot_map[4] = { 0, 16, 8, 24 };
 			static struct {
 				int  con, fb;
@@ -1578,12 +1578,12 @@ static void draw_debugger_ym2151()
 					}
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(12);
-					if (ImGui::DragInt("CON", &ch->con, 1, 0, 7)) {
+					if (ImGui::DragInt("CON", &ch->con, 1, 0, 7, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 						YM_debug_write(confb, regs[confb] & ~0x07 | ch->con);
 					}
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(-28);
-					if (ImGui::SliderInt("FB", &ch->fb, 0, 7)) {
+					if (ImGui::SliderInt("FB", &ch->fb, 0, 7, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 						YM_debug_write(confb, regs[confb] & ~0x38 | (ch->fb << 3));
 					}
 					ImGui::EndTable();
@@ -1593,12 +1593,12 @@ static void draw_debugger_ym2151()
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(-28);
-					if (ImGui::SliderInt("AMS", &ch->ams, 0, 3)) {
+					if (ImGui::SliderInt("AMS", &ch->ams, 0, 3, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 						YM_debug_write(amspms, regs[amspms] & ~0x03 | ch->ams);
 					}
 					ImGui::TableNextColumn();
 					ImGui::SetNextItemWidth(-28);
-					if (ImGui::SliderInt("PMS", &ch->pms, 0, 7)) {
+					if (ImGui::SliderInt("PMS", &ch->pms, 0, 7, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 						YM_debug_write(amspms, regs[amspms] & ~0x70 | (ch->pms << 4));
 					}
 					ImGui::EndTable();
@@ -1616,7 +1616,7 @@ static void draw_debugger_ym2151()
 				char kcinfo[12];
 				std::sprintf(kcinfo, "%c%c%d %+05.1f", notes[ni], notes[ni + 1], oct, cents);
 				ImGui::SetNextItemWidth(-28);
-				if (ImGui::SliderFloat("KC", &ch->kc, 0, 96, kcinfo, ImGuiSliderFlags_NoRoundToFormat)) {
+				if (ImGui::SliderFloat("KC", &ch->kc, 0, 96, kcinfo, ImGuiSliderFlags_NoRoundToFormat | ImGuiSliderFlags_AlwaysClamp)) {
 					fpkc = std::min((int)(ch->kc * 256), (96 * 256) - 1);
 					YM_debug_write(kc, (fpkc >> 8) * 4 / 3);
 					YM_debug_write(kf, fpkc & 0xFF);
@@ -1693,12 +1693,12 @@ static void draw_debugger_ym2151()
 						ImGui::Text("%d", slot_map[j] + i);
 						ImGui::TableNextColumn();
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("dt1", &slot->dt1, 0, 7)) {
+						if (ImGui::SliderInt("dt1", &slot->dt1, 0, 7, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(muldt1, regs[muldt1] & ~0x70 | (slot->dt1 << 4));
 						}
 						ImGui::TableNextColumn();
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("dt2", &slot->dt2, 0, 3)) {
+						if (ImGui::SliderInt("dt2", &slot->dt2, 0, 3, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(d2rdt2, regs[d2rdt2] & ~0xC0 | (slot->dt2 << 6));
 						}
 						ImGui::TableNextColumn();
@@ -1707,39 +1707,39 @@ static void draw_debugger_ym2151()
 							std::sprintf(buf, "%d", slot->mul);
 						}
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("mul", &slot->mul, 0, 15, buf)) {
+						if (ImGui::SliderInt("mul", &slot->mul, 0, 15, buf, ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(muldt1, regs[muldt1] & ~0x0F | slot->mul);
 						}
 						ImGui::TableNextColumn();
 						ImGui::Text("%d", YM_get_freq(slnum));
 						ImGui::TableNextColumn();
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("ar", &slot->ar, 31, 0)) {
+						if (ImGui::SliderInt("ar", &slot->ar, 31, 0, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(arks, regs[arks] & ~0x1F | slot->ar);
 						}
 						ImGui::TableNextColumn();
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("d1r", &slot->d1r, 31, 0)) {
+						if (ImGui::SliderInt("d1r", &slot->d1r, 31, 0, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(d1rame, regs[d1rame] & ~0x1F | slot->d1r);
 						}
 						ImGui::TableNextColumn();
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("d1l", &slot->d1l, 15, 0)) {
+						if (ImGui::SliderInt("d1l", &slot->d1l, 15, 0, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(rrd1l, regs[rrd1l] & ~0xF0 | (slot->d1l << 4));
 						}
 						ImGui::TableNextColumn();
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("d2r", &slot->d2r, 31, 0)) {
+						if (ImGui::SliderInt("d2r", &slot->d2r, 31, 0, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(d2rdt2, regs[d2rdt2] & ~0x1F | slot->d2r);
 						}
 						ImGui::TableNextColumn();
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("rr", &slot->rr, 15, 0)) {
+						if (ImGui::SliderInt("rr", &slot->rr, 15, 0, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(rrd1l, regs[rrd1l] & ~0x0F | slot->rr);
 						}
 						ImGui::TableNextColumn();
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("ks", &slot->ks, 0, 3)) {
+						if (ImGui::SliderInt("ks", &slot->ks, 0, 3, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(arks, regs[arks] & ~0xC0 | (slot->ks << 6));
 						}
 						ImGui::TableNextColumn();
@@ -1748,7 +1748,7 @@ static void draw_debugger_ym2151()
 						ImGui::ProgressBar(YM_get_EG_output(slnum), ImVec2(-FLT_MIN, 0), envstate_txt);
 						ImGui::TableNextColumn();
 						ImGui::SetNextItemWidth(-FLT_MIN);
-						if (ImGui::SliderInt("tl", &slot->tl, 127, 0)) {
+						if (ImGui::SliderInt("tl", &slot->tl, 127, 0, "%d", ImGuiSliderFlags_AlwaysClamp)) {
 							YM_debug_write(tl, regs[tl] & ~0x7F | slot->tl);
 						}
 						ImGui::TableNextColumn();
