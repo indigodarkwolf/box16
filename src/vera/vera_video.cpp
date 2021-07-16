@@ -819,8 +819,9 @@ static void render_line(uint16_t y)
 			for (uint16_t x = 0; x < hstart; ++x) {
 				col_line[x] = border_color;
 			}
-			for (uint16_t x = hstart; x < hstop; ++x) {
-				col_line[x] = calculate_line_col_index(sprite_line_z[x], sprite_line_col[x], layer_line[0][x], layer_line[1][x]);
+			uint16_t hwidth = hstop - hstart;
+			for (uint16_t x = 0; x < hwidth; ++x) {
+				col_line[hstart + x] = calculate_line_col_index(sprite_line_z[x], sprite_line_col[x], layer_line[0][x], layer_line[1][x]);
 			}
 			for (uint16_t x = hstop; x < SCREEN_WIDTH; ++x) {
 				col_line[x] = border_color;
