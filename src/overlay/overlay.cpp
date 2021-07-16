@@ -4,6 +4,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 #include <nfd.h>
 
 #include "imgui/imgui.h"
@@ -372,6 +373,24 @@ static void draw_debugger_vera_palette()
 	ImGui::EndGroup();
 }
 
+static void vera_video_get_expanded_vram_with_wraparound_handling(uint32_t address, int bpp, uint8_t *dest, uint32_t dest_size)
+{
+	// vera_video_get_expanded_vram doesn't handle the case where the VRAM address is above 0x1FFFF and wraps back to 0
+	while (dest_size > 0) {
+		const uint32_t this_run = std::min((0x20000 - address) * 8 / bpp, dest_size);
+		vera_video_get_expanded_vram(address, bpp, dest, this_run);
+		address = 0;
+		dest += this_run;
+		dest_size -= this_run;
+	}
+}
+
+template <typename T>
+constexpr T bit_set_or_res(T val, T mask, bool cond)
+{
+	return cond ? (val | mask) : (val & ~mask);
+}
+
 static void draw_debugger_vera_sprite()
 {
 	static icon_set sprite_preview;
@@ -409,7 +428,7 @@ static void draw_debugger_vera_sprite()
 		}
 
 		const uint32_t num_dots = 1 << (sprite_props.sprite_width_log2 + sprite_props.sprite_height_log2);
-		vera_video_get_expanded_vram(sprite_props.sprite_address, 4 << sprite_props.color_mode, uncompressed_vera_memory, num_dots);
+		vera_video_get_expanded_vram_with_wraparound_handling(sprite_props.sprite_address, 4 << sprite_props.color_mode, uncompressed_vera_memory, num_dots);
 		const uint32_t *palette = vera_video_get_palette_argb32();
 		for (uint32_t i = 0; i < num_dots; ++i) {
 			sprite_pixels[i] = (palette[uncompressed_vera_memory[i] + sprite_props.palette_offset] << 8) | 0xff;
@@ -626,7 +645,7 @@ public:
 
 		if (graphics_props.bitmap_mode) {
 			const uint32_t num_dots = graphics_props.tilew * 256;
-			vera_video_get_expanded_vram(graphics_props.tile_base, 1 << graphics_props.color_depth, uncompressed_vera_memory, num_dots);
+			vera_video_get_expanded_vram_with_wraparound_handling(graphics_props.tile_base, 1 << graphics_props.color_depth, uncompressed_vera_memory, num_dots);
 
 			const uint32_t *palette = vera_video_get_palette_argb32();
 			for (uint32_t i = 0; i < num_dots; ++i) {
@@ -636,7 +655,7 @@ public:
 			tiles_preview.load_memory(tile_pixels, graphics_props.tilew, 256, graphics_props.tilew, 256);
 		} else {
 			constexpr const uint32_t num_dots = 128 * 256;
-			vera_video_get_expanded_vram(graphics_props.tile_base, 1 << graphics_props.color_depth, uncompressed_vera_memory, num_dots);
+			vera_video_get_expanded_vram_with_wraparound_handling(graphics_props.tile_base, 1 << graphics_props.color_depth, uncompressed_vera_memory, num_dots);
 
 			const uint32_t *palette = vera_video_get_palette_argb32();
 			for (uint32_t i = 0; i < num_dots; ++i) {
@@ -694,11 +713,231 @@ private:
 	};
 };
 
+class tmap_visualizer
+{
+public:
+	void draw_preview()
+	{
+		capture_vram();
+
+		ImGui::BeginGroup();
+		ImGui::TextDisabled("Preview");
+
+		ImVec2 avail = ImGui::GetContentRegionAvail();
+		avail.x -= 256;
+		avail.y -= 24;
+		ImGui::BeginChild("tiles", avail, false, ImGuiWindowFlags_HorizontalScrollbar);
+		{
+			const ImVec2 topleft = ImGui::GetCursorScreenPos();
+			ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), ImVec2(total_width, total_height));
+			if (!bitmap_mode) {
+				ImDrawList * draw_list = ImGui::GetWindowDrawList();
+				const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
+				ImVec2       winsize    = ImGui::GetWindowSize();
+				ImVec2       wintopleft = topleft;
+				wintopleft.x += scroll.x;
+				wintopleft.y += scroll.y;
+				ImVec2 winbotright(wintopleft.x + std::min((float)total_width, winsize.x), wintopleft.y + std::min((float)total_height, winsize.y));
+				ImVec2 mouse_pos = ImGui::GetMousePos();
+				mouse_pos.x -= topleft.x;
+				mouse_pos.y -= topleft.y;
+				if (ImGui::IsItemHovered()) {
+					if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+						cur_tile = ((int)mouse_pos.x / tile_width) + ((int)mouse_pos.y / tile_height) * map_width;
+					}
+				}
+				draw_list->PushClipRect(wintopleft, winbotright, true);
+				if (!bitmap_mode && show_grid) {
+					const uint32_t col  = IM_COL32(0x08, 0x7F, 0xF6, 0xFF);
+					float          hcnt = std::floorf(scroll.x / tile_width) * tile_width + topleft.x;
+					while (hcnt < winbotright.x) {
+						draw_list->AddLine(ImVec2(hcnt, wintopleft.y), ImVec2(hcnt, winbotright.y), col);
+						hcnt += tile_width;
+					}
+					float vcnt = std::floorf(scroll.y / tile_height) * tile_height + topleft.y;
+					while (vcnt < winbotright.y) {
+						draw_list->AddLine(ImVec2(wintopleft.x, vcnt), ImVec2(winbotright.x, vcnt), col);
+						vcnt += tile_height;
+					}
+				}
+				if (!bitmap_mode && show_scroll) {
+					auto screen_rect = [this, draw_list](float start_x, float start_y) -> void {
+						const ImVec2 p0(start_x, start_y);
+						const ImVec2 p1(start_x + screen_width, start_y + screen_height);
+						draw_list->AddRectFilled(p0, p1, IM_COL32(0xFF, 0xFF, 0xFF, 0x55));
+						draw_list->AddRect(p0, p1, IM_COL32(0x4C, 0x4C, 0x4C, 0xFF));
+					};
+					const float base_x = topleft.x + scroll_x;
+					const float base_y = topleft.y + scroll_y;
+					screen_rect(base_x - total_width, base_y - total_height);
+					screen_rect(base_x - total_width, base_y);
+					screen_rect(base_x, base_y - total_height);
+					screen_rect(base_x, base_y);
+				}
+				draw_list->PopClipRect();
+				// selected tile indicator
+				const float sel_x = (cur_tile % map_width) * tile_width + topleft.x;
+				const float sel_y = (cur_tile / map_width) * tile_height + topleft.y;
+				draw_list->AddRect(ImVec2(sel_x - 2, sel_y - 2), ImVec2(sel_x + tile_width + 2, sel_y + tile_height + 2), IM_COL32_BLACK);
+				draw_list->AddRect(ImVec2(sel_x - 1, sel_y - 1), ImVec2(sel_x + tile_width + 1, sel_y + tile_height + 1), IM_COL32_WHITE);
+			}
+			ImGui::EndChild();
+		}
+		ImGui::Checkbox("Show Tile Grid", &show_grid);
+		ImGui::SameLine();
+		ImGui::Checkbox("Show Scroll Overlay", &show_scroll);
+
+		ImGui::EndGroup();
+	}
+
+	void capture_vram()
+	{
+		uint8_t               tile_data[640 * 480]; // 640*480 > 16*16*1024
+		std::vector<uint32_t> pixels;
+		uint32_t              palette[256];
+		const uint32_t *      palette_argb = vera_video_get_palette_argb32();
+
+		for (int i = 0; i < 256; i++) {
+			// convert argb to rgba
+			palette[i] = (palette_argb[i] << 8) | 0xff;
+		}
+
+		// get DC registers and determine a screen size
+		screen_width = (float)(vera_video_get_dc_hstop() - vera_video_get_dc_hstart()) * vera_video_get_dc_hscale() / 32.f;
+		screen_height = (float)(vera_video_get_dc_vstop() - vera_video_get_dc_vstart()) * vera_video_get_dc_vscale() / 64.f;
+
+		if (bitmap_mode) {
+			const uint32_t num_dots = tile_width * 480;
+			pixels.resize(num_dots);
+			vera_video_get_expanded_vram_with_wraparound_handling(tile_base, bpp, tile_data, num_dots);
+
+			for (uint32_t i = 0; i < num_dots; i++) {
+				uint8_t tdat = tile_data[i];
+				if (tdat > 0 && tdat < 16) // 8bpp quirk handling
+					tdat += palette_offset;
+				pixels[i] = palette[tdat];
+			}
+		} else {
+			const uint32_t num_dots = total_width * total_height;
+			uint8_t        map_data[256 * 256 * 2];
+			pixels.resize(num_dots);
+			vera_video_get_expanded_vram_with_wraparound_handling(tile_base, bpp, tile_data, tile_width * tile_height * 1024);
+			vera_video_space_read_range(map_data, map_base, map_width * map_height * 2);
+
+			int tidx = 0;
+			if (bpp == 1) {
+				// 1bpp tile mode is ""special""
+				for (int mi = 0; mi < map_height; mi++) {
+					uint32_t dst = mi * tile_height * total_width;
+					for (int mj = 0; mj < map_width; mj++) {
+						const uint16_t tinfo = map_data[tidx] + (map_data[tidx + 1] << 8);
+						const uint16_t tnum  = tinfo & 0xFF;
+						const uint32_t fg_px = palette[t256c ? (tinfo >> 8) : ((tinfo >> 8) & 0x0F)];
+						const uint32_t bg_px = palette[t256c ? 0 : (tinfo >> 12)];
+						uint32_t       src   = tnum * tile_width * tile_height;
+						for (int ti = 0; ti < tile_height; ti++) {
+							uint32_t dst2 = dst + ti * total_width;
+							for (int tj = 0; tj < tile_width; tj++) {
+								pixels[dst2++] = tile_data[src++] ? fg_px : bg_px;
+							}
+						}
+						dst += tile_width;
+						tidx += 2;
+					}
+				}
+			} else {
+				for (int mi = 0; mi < map_height; mi++) {
+					uint32_t dst = mi * tile_height * total_width;
+					for (int mj = 0; mj < map_width; mj++) {
+						const uint16_t tinfo = map_data[tidx] + (map_data[tidx + 1] << 8);
+						const bool     hflip = tinfo & (1 << 10);
+						const bool     vflip = tinfo & (1 << 11);
+						const uint16_t tnum  = tinfo & 0x3FF;
+						const uint8_t  pal   = (tinfo >> 12) * 16;
+						const int      src2_add = hflip ? -1 : 1;
+						uint32_t       src      = tnum * tile_width * tile_height;
+						if (hflip)
+							src += tile_width - 1;
+						for (int ti = 0; ti < tile_height; ti++) {
+							uint32_t src2 = vflip ? (src + (tile_height - ti - 1) * tile_width) : (src + ti * tile_width);
+							uint32_t dst2 = dst + ti * total_width;
+							for (int tj = 0; tj < tile_width; tj++) {
+								uint8_t tdat = tile_data[src2];
+								src2 += src2_add;
+								if (tdat > 0 && tdat < 16)
+									tdat += pal;
+								pixels[dst2++] = palette[tdat];
+							}
+						}
+						dst += tile_width;
+						tidx += 2;
+					}
+				}
+			}
+		}
+		tiles_preview.load_memory(pixels.data(), total_width, total_height, total_width, total_height);
+	}
+
+	void set_params(const vera_video_layer_properties &props, int palette_offset_)
+	{
+		// Max height for bitmap mode is currently 480.
+		// Although the theoretical maximum is 1016 (HSTOP = 255, HSCALE = 255),
+		// there's currently no real hardware information about going above 480 lines
+		bitmap_mode    = props.bitmap_mode;
+		t256c          = props.text_mode_256c;
+		bpp            = props.bits_per_pixel;
+		tile_base      = props.tile_base;
+		tile_width     = props.tilew;
+		tile_height    = props.tileh;
+		map_base       = props.map_base;
+		map_width      = 1 << props.mapw_log2;
+		map_height     = 1 << props.maph_log2;
+		total_width    = bitmap_mode ? tile_width : tile_width * map_width;
+		total_height   = bitmap_mode ? 480 : tile_height * map_height;
+		scroll_x       = props.hscroll % total_width;
+		scroll_y       = props.vscroll % total_height;
+		palette_offset = palette_offset_;
+
+		if (!bitmap_mode && cur_tile >= map_width * map_height)
+			cur_tile = 0;
+	}
+
+	uint16_t get_selected_tile()
+	{
+		return cur_tile;
+	}
+
+private:
+	icon_set tiles_preview;
+
+	bool     bitmap_mode;
+	bool     t256c;
+	int      bpp;
+	int      palette_offset;
+	uint32_t tile_base;
+	uint16_t tile_width;
+	uint16_t tile_height;
+	uint32_t map_base;
+	uint16_t map_width;
+	uint16_t map_height;
+	uint16_t total_width;
+	uint16_t total_height;
+	uint16_t scroll_x;
+	uint16_t scroll_y;
+
+	float screen_width;
+	float screen_height;
+
+	uint16_t cur_tile = 0;
+	bool     show_grid;
+	bool     show_scroll;
+};
+
 static void draw_debugger_vera_layer()
 {
-	static uint8_t         layer_id;
+	static int             layer_id;
 	static uint64_t        layer_sig;
-	static vram_visualizer viz;
+	static tmap_visualizer viz;
 
 	static const ImU8  incr_one8  = 1;
 	static const ImU8  incr_hex8  = 16;
@@ -712,9 +951,11 @@ static void draw_debugger_vera_layer()
 
 	static bool reload = true;
 
-	if (ImGui::InputScalar("layer", ImGuiDataType_U8, &layer_id, &incr_one8, nullptr, "%d")) {
-		layer_id &= 1;
-	}
+	ImGui::Text("Layer");
+	ImGui::SameLine();
+	ImGui::RadioButton("0", &layer_id, 0);
+	ImGui::SameLine();
+	ImGui::RadioButton("1", &layer_id, 1);
 
 	uint8_t layer_data[8];
 	memcpy(layer_data, vera_video_get_layer_data(layer_id), 7);
@@ -727,10 +968,10 @@ static void draw_debugger_vera_layer()
 		layer_sig = *reinterpret_cast<const uint64_t *>(layer_data);
 	}
 
-	viz.set_params(layer_props);
-	viz.capture_vram();
-
+	// vera_video_layer_properties doesn't provide bitmap color index right now
+	viz.set_params(layer_props, (layer_data[4] & 0x0F) * 16);
 	viz.draw_preview();
+
 	ImGui::SameLine();
 
 	ImGui::BeginGroup();
@@ -746,11 +987,10 @@ static void draw_debugger_vera_layer()
 			}
 		}
 
+		ImGui::PushItemWidth(128.0f);
 		ImGui::NewLine();
-
 		ImGui::TextDisabled("Layer Properties");
 
-		ImGui::PushItemWidth(128.0f);
 		auto get_byte = [&layer_props](int b) -> uint8_t {
 			switch (b) {
 				case 0:
@@ -772,49 +1012,131 @@ static void draw_debugger_vera_layer()
 			}
 		};
 
-		if (ImGui::InputScalar("Color Depth", ImGuiDataType_U8, &layer_props.color_depth, &incr_one8, "%d")) {
+		static const char *depths_txt[]{ "1", "2", "4", "8" };
+		int                depth = layer_props.color_depth;
+		if (ImGui::Combo("Color Depth", &depth, depths_txt, 4)) {
+			layer_props.color_depth = depth;
 			vera_video_write(0x0D + 7 * layer_id, get_byte(0));
 		}
 		if (ImGui::Checkbox("Bitmap Layer", &layer_props.bitmap_mode)) {
 			vera_video_write(0x0D + 7 * layer_id, get_byte(0));
 		}
-		if (ImGui::Checkbox("256-color text", &layer_props.text_mode_256c)) {
-			vera_video_write(0x0D + 7 * layer_id, get_byte(0));
-		}
-		uint8_t mapw_log2 = layer_props.mapw_log2 - 5;
-		if (ImGui::InputScalar("Map Width (log 2)", ImGuiDataType_U8, &mapw_log2, &incr_one8, "%d")) {
-			layer_props.mapw_log2 = mapw_log2 + 5;
-			vera_video_write(0x0D + 7 * layer_id, get_byte(0));
-		}
-		uint8_t maph_log2 = layer_props.maph_log2 - 5;
-		if (ImGui::InputScalar("Map Height (log 2)", ImGuiDataType_U8, &maph_log2, &incr_one8, "%d")) {
-			layer_props.maph_log2 = maph_log2 + 5;
-			vera_video_write(0x0D + 7 * layer_id, get_byte(0));
-		}
-		if (ImGui::InputScalar("Map Base", ImGuiDataType_U32, &layer_props.map_base, &incr_map, &fast_map, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
-			vera_video_write(0x0E + 7 * layer_id, get_byte(1));
-		}
-		bool tile16h = layer_props.tileh_log2 > 3;
-		if (ImGui::Checkbox("16-pixel tile height", &tile16h)) {
-			layer_props.tileh_log2 = tile16h ? 4 : 3;
-			vera_video_write(0x0F + 7 * layer_id, get_byte(2));
-		}
-		bool tile16w = layer_props.tilew_log2 > 3;
-		if (ImGui::Checkbox("16-pixel tile width", &tile16w)) {
-			layer_props.tilew_log2 = tile16w ? 4 : 3;
-			vera_video_write(0x0F + 7 * layer_id, get_byte(2));
-		}
-		if (ImGui::InputScalar("Tile Base", ImGuiDataType_U32, &layer_props.tile_base, &incr_tile, &fast_tile, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
-			vera_video_write(0x0F + 7 * layer_id, get_byte(2));
-		}
-		if (ImGui::InputScalar("H-Scroll", ImGuiDataType_U16, &layer_props.hscroll, &incr_one16, &incr_ten16, "%03X")) {
-			vera_video_write(0x10 + 7 * layer_id, get_byte(3));
-			vera_video_write(0x11 + 7 * layer_id, get_byte(4));
-		}
 
-		if (ImGui::InputScalar("V-Scroll", ImGuiDataType_U16, &layer_props.vscroll, &incr_one16, &incr_ten16, "%03X")) {
-			vera_video_write(0x12 + 7 * layer_id, get_byte(5));
-			vera_video_write(0x13 + 7 * layer_id, get_byte(6));
+		if (layer_props.bitmap_mode) {
+			if (ImGui::InputScalar("Tile Base", ImGuiDataType_U32, &layer_props.tile_base, &incr_tile, &fast_tile, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
+				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
+			}
+			static const char *bm_widths_txt[]{ "320", "640" };
+			int                bm_width = layer_props.tilew == 640;
+			if (ImGui::Combo("Bitmap Width", &bm_width, bm_widths_txt, 2)) {
+				vera_video_write(0x0F + 7 * layer_id, layer_data[2] & ~0x01 | bm_width);
+			}
+			uint8_t palofs = (layer_data[4] & 0x0F) << 4;
+			if (ImGui::InputScalar("Palette Offset", ImGuiDataType_U8, &palofs, &incr_hex8, &incr_hex8, "%d")) {
+				vera_video_write(0x11 + 7 * layer_id, layer_data[4] & ~0x0F | (palofs >> 4));
+			}
+		} else {
+			if (ImGui::Checkbox("256-color text", &layer_props.text_mode_256c)) {
+				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
+			}
+			static const char *map_sizes_txt[]{ "32", "64", "128", "256" };
+			int                mapw_log2 = layer_props.mapw_log2 - 5;
+			if (ImGui::Combo("Map Width", &mapw_log2, map_sizes_txt, 4)) {
+				layer_props.mapw_log2 = mapw_log2 + 5;
+				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
+			}
+			int maph_log2 = layer_props.maph_log2 - 5;
+			if (ImGui::Combo("Map Height", &maph_log2, map_sizes_txt, 4)) {
+				if (maph_log2 > 3)
+					maph_log2 = 3;
+				layer_props.maph_log2 = maph_log2 + 5;
+				vera_video_write(0x0D + 7 * layer_id, get_byte(0));
+			}
+			if (ImGui::InputScalar("Map Base", ImGuiDataType_U32, &layer_props.map_base, &incr_map, &fast_map, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
+				vera_video_write(0x0E + 7 * layer_id, get_byte(1));
+			}
+			bool tile16h = layer_props.tileh_log2 > 3;
+			if (ImGui::Checkbox("16-pixel tile height", &tile16h)) {
+				layer_props.tileh_log2 = tile16h ? 4 : 3;
+				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
+			}
+			bool tile16w = layer_props.tilew_log2 > 3;
+			if (ImGui::Checkbox("16-pixel tile width", &tile16w)) {
+				layer_props.tilew_log2 = tile16w ? 4 : 3;
+				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
+			}
+			if (ImGui::InputScalar("Tile Base", ImGuiDataType_U32, &layer_props.tile_base, &incr_tile, &fast_tile, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
+				vera_video_write(0x0F + 7 * layer_id, get_byte(2));
+			}
+			if (ImGui::InputScalar("H-Scroll", ImGuiDataType_U16, &layer_props.hscroll, &incr_one16, &incr_ten16, "%03X", ImGuiInputTextFlags_CharsHexadecimal)) {
+				vera_video_write(0x10 + 7 * layer_id, get_byte(3));
+				vera_video_write(0x11 + 7 * layer_id, get_byte(4));
+			}
+			if (ImGui::InputScalar("V-Scroll", ImGuiDataType_U16, &layer_props.vscroll, &incr_one16, &incr_ten16, "%03X", ImGuiInputTextFlags_CharsHexadecimal)) {
+				vera_video_write(0x12 + 7 * layer_id, get_byte(5));
+				vera_video_write(0x13 + 7 * layer_id, get_byte(6));
+			}
+
+			ImGui::NewLine();
+			ImGui::TextDisabled("Tile Properties");
+
+			const uint16_t tile_idx  = viz.get_selected_tile();
+			const uint32_t tile_addr = (layer_props.map_base + tile_idx * 2) & 0x1FFFF;
+			uint16_t       tile_data = vera_video_space_read(tile_addr) + (vera_video_space_read(tile_addr + 1) << 8);
+			ImGui::LabelText("Position", "%d, %d", tile_idx % (1 << layer_props.mapw_log2), tile_idx / (1 << layer_props.maph_log2));
+			ImGui::LabelText("Address", "%05X", tile_addr);
+			if (ImGui::InputScalar("Raw Value", ImGuiDataType_U16, &tile_data, nullptr, nullptr, "%04X", ImGuiInputTextFlags_CharsHexadecimal)) {
+				vera_video_space_write(tile_addr, tile_data & 255);
+				vera_video_space_write(tile_addr + 1, tile_data >> 8);
+			}
+			const uint16_t tile_num_mask = layer_props.color_depth == 0 ? 0xFF : 0x3FF;
+			uint16_t       tile_num      = tile_data & tile_num_mask;
+			if (ImGui::InputScalar("Tile Number", ImGuiDataType_U16, &tile_num, &incr_one16, &incr_hex16, "%d")) {
+				if (tile_num > tile_num_mask)
+					tile_num = tile_num_mask;
+				const uint16_t val = tile_data & ~tile_num_mask | tile_num;
+				vera_video_space_write(tile_addr, val & 255);
+				vera_video_space_write(tile_addr + 1, val >> 8);
+			}
+			ImGui::LabelText("Data Address", "%05X", (layer_props.tile_base + tile_num * layer_props.tilew * layer_props.tileh * layer_props.bits_per_pixel / 8) & 0x1FFFF);
+			// bpp-dependent properties, thanks VERA
+			const uint8_t tile_data_hi = tile_data >> 8;
+			if (layer_props.color_depth == 0) {
+				if (layer_props.text_mode_256c) {
+					uint8_t fg = tile_data_hi;
+					if (ImGui::InputScalar("Color", ImGuiDataType_U8, &fg, &incr_one8, &incr_hex8, "%d")) {
+						vera_video_space_write(tile_addr + 1, fg);
+					}
+				} else {
+					uint8_t fg = tile_data_hi & 0x0F;
+					uint8_t bg = tile_data_hi >> 4;
+					if (ImGui::InputScalar("FG Color", ImGuiDataType_U8, &fg, &incr_one8, &incr_hex8, "%d")) {
+						if (fg > 15)
+							fg = 15;
+						vera_video_space_write(tile_addr + 1, tile_data_hi & ~0x0F | fg);
+					}
+					if (ImGui::InputScalar("BG Color", ImGuiDataType_U8, &bg, &incr_one8, &incr_hex8, "%d")) {
+						if (bg > 15)
+							bg = 15;
+						vera_video_space_write(tile_addr + 1, tile_data_hi & ~0xF0 | (bg << 4));
+					}
+				}
+			} else {
+				uint8_t pal   = tile_data_hi >> 4;
+				bool    hflip = tile_data_hi & (1 << 2);
+				bool    vflip = tile_data_hi & (1 << 3);
+				if (ImGui::InputScalar("Palette", ImGuiDataType_U8, &pal, &incr_one8, &incr_hex8, "%d")) {
+					if (pal > 15)
+						pal = 15;
+					vera_video_space_write(tile_addr + 1, tile_data_hi & ~0xF0 | (pal << 4));
+				}
+				if (ImGui::Checkbox("Horizontal Flip", &hflip)) {
+					vera_video_space_write(tile_addr + 1, bit_set_or_res(tile_data_hi, (uint8_t)(1 << 2), hflip));
+				}
+				if (ImGui::Checkbox("Vertical Flip", &vflip)) {
+					vera_video_space_write(tile_addr + 1, bit_set_or_res(tile_data_hi, (uint8_t)(1 << 3), vflip));
+				}
+			}
 		}
 
 		ImGui::PopItemWidth();
@@ -1290,12 +1612,6 @@ static void ym2151_reg_input(uint8_t *regs, uint8_t idx)
 	if (ImGui::InputHex(idx, regs[idx])) {
 		YM_debug_write(idx, regs[idx]);
 	}
-}
-
-template<typename T>
-constexpr T bit_set_or_res(T val, T mask, bool cond)
-{
-	return cond ? (val | mask) : (val & ~mask);
 }
 
 static void draw_debugger_ym2151()
