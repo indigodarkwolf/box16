@@ -185,6 +185,12 @@
     <ClCompile Include="..\..\src\imgui\imgui_tables.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\bitutils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\ym2151_overlay.cpp">
+      <Filter>Source Files\overlay</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\compat\compat.h">
@@ -384,6 +390,12 @@
     </ClInclude>
     <ClInclude Include="..\..\vendor\lodepng\lodepng.h">
       <Filter>Vendor Source Files\lodepng</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\bitutils.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\ym2151_overlay.h">
+      <Filter>Source Files\overlay</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

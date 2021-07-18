@@ -214,6 +214,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\audio.cpp" />
+    <ClCompile Include="..\..\src\bitutils.cpp" />
     <ClCompile Include="..\..\src\compat\compat.cpp" />
     <ClCompile Include="..\..\src\compat\getopt.cpp" />
     <ClCompile Include="..\..\src\cpu\fake6502.cpp" />
@@ -245,6 +246,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClCompile Include="..\..\src\overlay\ram_dump.cpp" />
     <ClCompile Include="..\..\src\overlay\util.cpp" />
     <ClCompile Include="..\..\src\overlay\vram_dump.cpp" />
+    <ClCompile Include="..\..\src\overlay\ym2151_overlay.cpp" />
     <ClCompile Include="..\..\src\ps2.cpp" />
     <ClCompile Include="..\..\src\rtc.cpp" />
     <ClCompile Include="..\..\src\sdl_events.cpp" />
@@ -264,6 +266,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\audio.h" />
+    <ClInclude Include="..\..\src\bitutils.h" />
     <ClInclude Include="..\..\src\compat\compat.h" />
     <ClInclude Include="..\..\src\compat\dirent.h" />
     <ClInclude Include="..\..\src\compat\getopt.h" />
@@ -304,6 +307,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClInclude Include="..\..\src\overlay\ram_dump.h" />
     <ClInclude Include="..\..\src\overlay\util.h" />
     <ClInclude Include="..\..\src\overlay\vram_dump.h" />
+    <ClInclude Include="..\..\src\overlay\ym2151_overlay.h" />
     <ClInclude Include="..\..\src\ps2.h" />
     <ClInclude Include="..\..\src\ring_buffer.h" />
     <ClInclude Include="..\..\src\rom_symbols.h" />
