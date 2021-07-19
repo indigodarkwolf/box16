@@ -52,87 +52,111 @@ imgui_vram_dump vram_dump;
 
 static void draw_debugger_cpu_status()
 {
-	ImGui::BeginGroup();
+	ImGui::BeginTable("cpu status", 2);
 	{
-		ImGui::TextDisabled("Status");
-		ImGui::SameLine();
-		ImGui::Dummy(ImVec2(0.0f, 19.0f));
-		ImGui::Separator();
+		ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 160);
 
-		ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 3));
+		ImGui::TableNextColumn();
+		ImGui::BeginTable("cpu regs", 1);
+		{
+			ImGui::TableNextColumn();
+			ImGui::TextDisabled("Status");
+			ImGui::NewLine();
 
-		char const *names[] = { "N", "V", "-", "B", "D", "I", "Z", "C" };
-		uint8_t     mask    = 0x80;
-		int         n       = 0;
-		while (mask > 0) {
-			ImGui::BeginGroup();
-			ImGui::Text("%s", names[n]);
-			if (ImGui::SmallButton(status & mask ? "1" : "0")) {
-				status ^= mask;
+			ImGui::TableNextRow();
+			ImGui::TableNextColumn();
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 3));
+
+			char const *names[] = { "N", "V", "-", "B", "D", "I", "Z", "C" };
+			uint8_t     mask    = 0x80;
+			int         n       = 0;
+			while (mask > 0) {
+				ImGui::BeginGroup();
+				ImGui::Text("%s", names[n]);
+				if (ImGui::SmallButton(status & mask ? "1" : "0")) {
+					status ^= mask;
+				}
+				mask >>= 1;
+				++n;
+				ImGui::EndGroup();
+				ImGui::SameLine();
 			}
-			mask >>= 1;
-			++n;
+
+			ImGui::NewLine();
+			ImGui::NewLine();
+
+			ImGui::PopStyleVar();
+
+			ImGui::BeginGroup();
+			{
+				ImGui::InputHexLabel("A", a);
+				ImGui::InputHexLabel("X", x);
+				ImGui::InputHexLabel("Y", y);
+			}
+			ImGui::EndGroup();
+
+			ImGui::SameLine();
+
+			ImGui::BeginGroup();
+			{
+				ImGui::InputHexLabel("PC", pc);
+				ImGui::InputHexLabel("SP", sp);
+			}
+			ImGui::EndGroup();
+
+			ImGui::NewLine();
+
+			auto registers = [&](int start, int end) {
+				ImGui::PushItemWidth(width_uint16);
+
+				char label[4] = "r0";
+				for (int i = start; i <= end; ++i) {
+					sprintf(label, i < 10 ? " r%d" : "r%d", i);
+					ImGui::Text("%s", label);
+					ImGui::SameLine();
+					uint16_t value = (int)get_mem16(2 + (i << 1), 0);
+					if (ImGui::InputHex(i, value)) {
+						debug_write6502(2 + (i << 1), 0, value & 0xff);
+						debug_write6502(3 + (i << 1), 0, value >> 8);
+					}
+				}
+
+				ImGui::PopItemWidth();
+			};
+
+			ImGui::TextDisabled("API Registers");
+			ImGui::NewLine();
+
+			ImGui::BeginGroup();
+			registers(0, 5);
 			ImGui::EndGroup();
 			ImGui::SameLine();
+
+			ImGui::BeginGroup();
+			registers(6, 10);
+			ImGui::NewLine();
+			registers(11, 15);
+			ImGui::EndGroup();
 		}
+		ImGui::EndTable();
 
+		ImGui::TableNextColumn();
+		ImGui::TextDisabled("CPU Stack");
 		ImGui::NewLine();
-		ImGui::NewLine();
 
-		ImGui::PopStyleVar();
-
-		ImGui::BeginGroup();
+		ImGui::BeginChild("cpu stack", ImVec2(44, 410));
 		{
-			ImGui::InputHexLabel("A", a);
-			ImGui::InputHexLabel("X", x);
-			ImGui::InputHexLabel("Y", y);
-		}
-		ImGui::EndGroup();
-
-		ImGui::SameLine();
-
-		ImGui::BeginGroup();
-		{
-			ImGui::InputHexLabel("PC", pc);
-			ImGui::InputHexLabel("SP", sp);
-		}
-		ImGui::EndGroup();
-
-		ImGui::NewLine();
-
-		auto registers = [&](int start, int end) {
-			ImGui::PushItemWidth(width_uint16);
-
-			char label[4] = "r0";
-			for (int i = start; i <= end; ++i) {
-				sprintf(label, i < 10 ? " r%d" : "r%d", i);
-				ImGui::Text("%s", label);
-				ImGui::SameLine();
-				uint16_t value = (int)get_mem16(2 + (i << 1), 0);
+			for (uint16_t i = (uint16_t)sp + 0x100; i < 0x200; ++i) {
+				uint8_t value = debug_read6502(i);
 				if (ImGui::InputHex(i, value)) {
-					debug_write6502(2 + (i << 1), 0, value & 0xff);
-					debug_write6502(3 + (i << 1), 0, value >> 8);
+					debug_write6502(i, 0, value);
 				}
 			}
-
-			ImGui::PopItemWidth();
-		};
-
-		ImGui::TextDisabled("API Registers");
-		ImGui::Separator();
-
-		ImGui::BeginGroup();
-		registers(0, 5);
-		ImGui::EndGroup();
-		ImGui::SameLine();
-
-		ImGui::BeginGroup();
-		registers(6, 10);
-		ImGui::NewLine();
-		registers(11, 15);
-		ImGui::EndGroup();
+		}
+		ImGui::EndChild();
 	}
-	ImGui::EndGroup();
+	ImGui::EndTable();
 }
 
 static void draw_debugger_cpu_visualizer()
@@ -838,11 +862,11 @@ static void draw_breakpoints()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 		if (ImGui::TreeNodeEx("Breakpoints", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			if (ImGui::BeginTable("breakpoints", 5, ImGuiTableFlags_Resizable)) {
-				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
-				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
-				ImGui::TableSetupColumn("Address");
-				ImGui::TableSetupColumn("Bank");
+			if (ImGui::BeginTable("breakpoints", 5)) {
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
+				ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 64);
+				ImGui::TableSetupColumn("Bank", ImGuiTableColumnFlags_WidthFixed, 48);
 				ImGui::TableSetupColumn("Symbol");
 				ImGui::TableHeadersRow();
 
@@ -992,9 +1016,9 @@ static void draw_symbols_files()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 		if (ImGui::TreeNodeEx("Loaded Symbol Files", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			if (ImGui::BeginTable("symbols", 3, ImGuiTableFlags_Resizable)) {
-				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
-				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 27);
+			if (ImGui::BeginTable("symbols", 3)) {
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("Path");
 				ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
 				ImGui::TableSetColumnIndex(1);
