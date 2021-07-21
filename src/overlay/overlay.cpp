@@ -391,6 +391,12 @@ constexpr T bit_set_or_res(T val, T mask, bool cond)
 	return cond ? (val | mask) : (val & ~mask);
 }
 
+template <typename T>
+constexpr T ceil_div_int(T a, T b)
+{
+	return (a + b - 1) / b;
+}
+
 static void draw_debugger_vera_sprite()
 {
 	static icon_set sprite_preview;
@@ -515,202 +521,321 @@ class vram_visualizer
 public:
 	void draw_preview()
 	{
-		capture_vram();
-
 		ImGui::BeginGroup();
+		ImGui::TextDisabled("Preview");
+
+		ImVec2 avail = ImGui::GetContentRegionAvail();
+		avail.x -= 256;
+		ImGui::BeginChild("tiles", avail, false, ImGuiWindowFlags_HorizontalScrollbar);
 		{
-			ImGui::TextDisabled("Preview");
+			if (!active_exist) {
+				ImGui::EndChild();
+				ImGui::EndGroup();
+				return;
+			}
+			const int    scale              = 2;
+			const int    tile_height        = active.tile_height;
+			const int    tile_width_scaled  = tile_width * scale;
+			const int    tile_height_scaled = tile_height * scale;
+			const int    view_columns       = active.view_columns;
+			const int    view_rows          = ceil_div_int((int)num_tiles, view_columns);
+			const int    total_width        = tile_width * view_columns * scale;
+			const int    total_height       = view_rows * active.tile_height * scale;
+			ImDrawList * draw_list          = ImGui::GetWindowDrawList();
+			const ImVec2 topleft            = ImGui::GetCursorScreenPos();
+			// since the view range can be very large, the dummy square is drawn first to provide a scroll range
+			// then the preview is partially rendered later
+			ImGui::Dummy(ImVec2((float)total_width, (float)total_height));
+			const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
+			ImVec2       winsize    = ImGui::GetWindowSize();
+			winsize.x               = std::min((float)total_width, winsize.x);
+			winsize.y               = std::min((float)total_height, winsize.y);
+			ImVec2       wintopleft = topleft;
+			wintopleft.x += scroll.x;
+			wintopleft.y += scroll.y;
+			ImVec2 winbotright(wintopleft.x + winsize.x, wintopleft.y + winsize.y);
+			ImVec2 mouse_pos = ImGui::GetMousePos();
+			mouse_pos.x -= topleft.x;
+			mouse_pos.y -= topleft.y;
+			const int starting_tile_x = (int)floorf(scroll.x / tile_width_scaled);
+			const int starting_tile_y = (int)floorf(scroll.y / tile_height_scaled);
+			const int tiles_count_x   = (int)ceilf((scroll.x + winsize.x) / tile_width_scaled) - starting_tile_x;
+			const int tiles_count_y   = (int)ceilf((scroll.y + winsize.y) / tile_height_scaled) - starting_tile_y;
+			const int render_width    = tiles_count_x * tile_width;
+			const int render_height   = tiles_count_y * tile_height;
 
-			const int tiles_per_row    = 128 >> graphics_props.tilew_log2;
-			const int tiles_per_column = 128 >> graphics_props.tileh_log2;
-			ImGui::BeginChild("tiles", ImVec2(256.0f + (5 * 16) + 10, 256.0f + (5 * 16)));
-			{
-				if (graphics_props.bitmap_mode) {
-					ImVec2 tile_imsize(256.0f + (5 * 16), 256.0f + (5 * 16));
-					ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), tile_imsize, tiles_preview.get_top_left(0), tiles_preview.get_bottom_right(0));
-				} else {
-					ImVec2 custom_spacing((float)(5 << (graphics_props.tilew_log2 - 3)), (float)(5 << (graphics_props.tileh_log2 - 3)));
-					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, custom_spacing);
-					ImGui::PushStyleVar(ImGuiStyleVar_ItemInnerSpacing, ImVec2(0, 0));
-
-					ImVec2 tile_imsize((float)(graphics_props.tilew << 1), (float)(graphics_props.tileh << 1));
-
-					ImGuiListClipper clipper;
-					clipper.Begin(tiles_per_column, graphics_props.tileh + custom_spacing.y);
-
-					while (clipper.Step()) {
-						uint16_t start_tile = clipper.DisplayStart * tiles_per_row;
-						uint16_t end_tile   = clipper.DisplayEnd * tiles_per_row;
-						if (end_tile > 1024) {
-							end_tile = 1024;
-						}
-						for (int i = start_tile; i < end_tile; ++i) {
-							if (i % tiles_per_row) {
-								ImGui::SameLine();
+			// capture ram
+			uint32_t              palette[256];
+			const uint32_t *      palette_argb = vera_video_get_palette_argb32();
+			std::vector<uint8_t>  data((size_t)view_columns * view_rows * tile_size, 0);
+			std::vector<uint32_t> pixels((size_t)tiles_count_x * tiles_count_y * tile_width * tile_height, 0);
+			uint8_t *             data_ = data.data();
+			uint32_t *            pixels_ = pixels.data();
+			for (int i = 0; i < 256; i++) {
+				// convert argb to rgba
+				palette[i] = (palette_argb[i] << 8) | 0xFF;
+			}
+			switch (active.mem_source) {
+				case 1:
+					for (uint32_t i = 0; i < active.view_size; i++)
+						data_[i] = debug_read6502(active.view_address + i);
+					break;
+				case 2:
+					for (uint32_t i = 0; i < active.view_size; i++) {
+						const uint32_t addr = active.view_address + i;
+						data_[i] = debug_read6502((addr & 0x1FFF) + 0xA000, addr >> 13);
+					}
+					break;
+				default:
+					vera_video_space_read_range(data_, active.view_address, active.view_size);
+			}
+			static const int shifts[4][8] = {
+				{ 7, 6, 5, 4, 3, 2, 1, 0 },
+				{ 6, 4, 2, 0, 6, 4, 2, 0 },
+				{ 4, 0, 4, 0, 4, 0, 4, 0 },
+				{ 0, 0, 0, 0, 0, 0, 0, 0 },
+			};
+			const uint32_t fg_col     = palette[active.view_fg_col];
+			const uint32_t bg_col     = palette[active.view_bg_col];
+			const int *    shift      = shifts[active.color_depth];
+			const int      bpp_mod    = (8 >> active.color_depth) - 1;
+			const uint8_t  bpp_mask   = (1 << bpp) - 1;
+			const uint8_t  pal_offset = active.view_pal * 16;
+			int            src        = 0;
+			for (int mi = 0; mi < tiles_count_y; mi++) {
+				for (int mj = 0; mj < tiles_count_x; mj++) {
+					int       src = (mj + starting_tile_x + (mi + starting_tile_y) * active.view_columns) * tile_size;
+					const int dst = mj * tile_width + mi * tile_height * render_width;
+					for (int ti = 0; ti < tile_height; ti++) {
+						int     dst2 = dst + ti * render_width;
+						for (int tj = 0; tj < (int)tile_width; tj += 8) {
+							if (src >= (int)active.view_size)
+								break;
+							uint8_t buf;
+							if (active.color_depth == 0) {
+								// 1bpp
+								buf = data_[src++];
+								for (int k = 0; k < 8; k++) {
+									pixels_[dst2++] = buf & 0x80 ? fg_col : bg_col;
+									buf <<= 1;
+								}
+							} else {
+								for (int k = 0; k < 8; k++) {
+									if ((k & bpp_mod) == 0)
+										buf = data_[src++];
+									uint8_t col = (buf >> shift[k]) & bpp_mask;
+									if (col > 0 && col < 16)
+										col += pal_offset;
+									pixels_[dst2++] = palette[col];
+								}
 							}
-							ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), tile_imsize, tiles_preview.get_top_left(i), tiles_preview.get_bottom_right(i));
 						}
 					}
-					clipper.End();
-
-					ImGui::PopStyleVar();
-					ImGui::PopStyleVar();
 				}
-				ImGui::EndChild();
 			}
-			ImGui::PushItemWidth(128.0f);
+			tiles_preview.load_memory(pixels.data(), render_width, render_height, render_width, render_height);
 
-			const ImU16 incr_hex16 = 16;
-			ImGui::InputScalar("Preview Palette Offset", ImGuiDataType_U16, &tile_palette_offset, &incr_hex16, nullptr, "%d");
-			ImGui::PopItemWidth();
+			if (ImGui::IsItemHovered()) {
+				if (ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+					cur_tile = ((int)mouse_pos.x / tile_width_scaled) + ((int)mouse_pos.y / tile_height_scaled) * view_columns;
+				}
+			}
+			draw_list->PushClipRect(wintopleft, winbotright, true);
+			draw_list->AddImage((void *)(intptr_t)tiles_preview.get_texture_id(),
+				ImVec2(topleft.x + (float)(starting_tile_x * tile_width_scaled), (float)(topleft.y + starting_tile_y * tile_height_scaled)),
+				ImVec2(topleft.x + (float)((starting_tile_x + tiles_count_x) * tile_width_scaled), topleft.y + (float)((starting_tile_y + tiles_count_y) * tile_height_scaled)));
+			if (show_grid) {
+				const uint32_t col  = IM_COL32(0x08, 0x7F, 0xF6, 0xFF);
+				float          hcnt = starting_tile_x * tile_width_scaled + topleft.x;
+				while (hcnt < winbotright.x) {
+					draw_list->AddLine(ImVec2(hcnt, wintopleft.y), ImVec2(hcnt, winbotright.y), col);
+					hcnt += tile_width_scaled;
+				}
+				float vcnt = starting_tile_y * tile_height_scaled + topleft.y;
+				while (vcnt < winbotright.y) {
+					draw_list->AddLine(ImVec2(wintopleft.x, vcnt), ImVec2(winbotright.x, vcnt), col);
+					vcnt += tile_height_scaled;
+				}
+			}
+			draw_list->PopClipRect();
+			// selected tile indicator
+			const float sel_x  = (cur_tile % view_columns) * tile_width_scaled + topleft.x;
+			const float sel_y  = (cur_tile / view_columns) * tile_height_scaled + topleft.y;
+			const float sel_x2 = sel_x + tile_width_scaled;
+			const float sel_y2 = sel_y + tile_height_scaled;
+			draw_list->AddRect(ImVec2(sel_x - 2, sel_y - 2), ImVec2(sel_x2 + 2, sel_y2 + 2), IM_COL32_BLACK);
+			draw_list->AddRect(ImVec2(sel_x - 1, sel_y - 1), ImVec2(sel_x2 + 1, sel_y2 + 1), IM_COL32_WHITE);
+			ImGui::EndChild();
 		}
 		ImGui::EndGroup();
 	}
 
 	void draw_preview_widgets()
 	{
-		const ImU32 incr_tile = 1 << (graphics_props.tilew_log2 + graphics_props.tileh_log2 - (3 - graphics_props.color_depth));
-		const ImU32 fast_tile = incr_tile << 4;
-
 		ImGui::BeginGroup();
-		{
-			ImGui::TextDisabled("Graphics Properties");
+		ImGui::TextDisabled("Graphics Properties");
 
-			ImGui::PushItemWidth(128.0f);
+		ImGui::PushItemWidth(128.0f);
 
-			if (ImGui::InputLog2("Bits per pixel", &graphics_props.color_depth, "%d")) {
-				if (graphics_props.color_depth > 3) {
-					graphics_props.color_depth = 3;
-				}
+		static const char *source_txts[] = { "VERA Memory", "CPU Memory", "High RAM" };
+		if (ImGui::BeginCombo("Source", source_txts[active.mem_source])) {
+			for (int i = 0; i < 3; i++) {
+				const bool selected = active.mem_source == i;
+				if (ImGui::Selectable(source_txts[i], selected))
+					active.mem_source = i;
+				if (selected)
+					ImGui::SetItemDefaultFocus();
+				if (i == 0)
+					ImGui::Separator();
 			}
-			if (ImGui::Checkbox("Bitmap Data", &graphics_props.bitmap_mode)) {
-				if (graphics_props.bitmap_mode) {
-					graphics_props.tilew = 320;
-				} else {
-					graphics_props.tileh_log2 = 3;
-					graphics_props.tileh      = 1 << graphics_props.tileh_log2;
-					graphics_props.tileh_max  = graphics_props.tileh - 1;
-
-					graphics_props.tilew_log2 = 3;
-					graphics_props.tilew      = 1 << graphics_props.tilew_log2;
-					graphics_props.tilew_max  = graphics_props.tilew - 1;
-				}
-			}
-			if (graphics_props.bitmap_mode) {
-				static const char *labels[] = { "320", "640" };
-				static const int   widths[] = { 320, 640 };
-				if (ImGui::BeginCombo("Bitmap width", graphics_props.tilew == 320 ? labels[0] : labels[1])) {
-					for (int i = 0; i < 2; ++i) {
-						if (ImGui::Selectable(labels[i], graphics_props.tilew == widths[i])) {
-							graphics_props.tilew = widths[i];
-						}
-					}
-					ImGui::EndCombo();
-				}
-			} else {
-				if (ImGui::InputLog2("Gfx Height", &graphics_props.tileh_log2, "%d")) {
-					if (graphics_props.tileh_log2 < 3) {
-						graphics_props.tileh_log2 = 3;
-					} else if (graphics_props.tileh_log2 > 6) {
-						graphics_props.tileh_log2 = 6;
-					}
-					graphics_props.tileh     = 1 << graphics_props.tileh_log2;
-					graphics_props.tileh_max = graphics_props.tileh - 1;
-				}
-
-				if (ImGui::InputLog2("Gfx Width", &graphics_props.tilew_log2, "%d")) {
-					if (graphics_props.tilew_log2 < 3) {
-						graphics_props.tilew_log2 = 3;
-					} else if (graphics_props.tilew_log2 > 6) {
-						graphics_props.tilew_log2 = 6;
-					}
-					graphics_props.tilew     = 1 << graphics_props.tilew_log2;
-					graphics_props.tilew_max = graphics_props.tilew - 1;
-				}
-			}
-
-			if (ImGui::InputScalar("Gfx Base", ImGuiDataType_U32, &graphics_props.tile_base, &incr_tile, &fast_tile, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
-				graphics_props.tile_base %= 0x20000;
-			}
-
-			ImGui::PopItemWidth();
+			ImGui::EndCombo();
 		}
+		static const char *depths_txt[]{ "1", "2", "4", "8" };
+		ImGui::Combo("Color Depth", &active.color_depth, depths_txt, 4);
+		static const char *tile_width_txt[]{ "8", "16", "32", "64", "320", "640" };
+		ImGui::Combo("Tile Width", &active.tile_w_sel, tile_width_txt, 6);
+		ImGui::InputInt("Tile Height", &active.tile_height, 8, 16);
+		if (active.color_depth == 0) {
+			ImGui::InputInt("FG Color", &active.view_fg_col, 1, 16);
+			ImGui::InputInt("BG Color", &active.view_bg_col, 1, 16);
+		} else {
+			ImGui::InputInt("Palette", &active.view_pal, 1, 4);
+		}
+		ImGui::NewLine();
+		// could use InputInt here but there's no way to trim off leading zeros
+		const uint32_t _0x800   = 0x800;
+		const uint32_t _0x10000 = 0x10000;
+		const uint32_t old_size = active.view_size;
+		ImGui::InputScalar("Address", ImGuiDataType_U32, &active.view_address, &_0x800, &active.view_size, "%X", ImGuiInputTextFlags_CharsHexadecimal);
+		if (ImGui::InputScalar("Size", ImGuiDataType_U32, &active.view_size, &_0x800, &_0x10000, "%X", ImGuiInputTextFlags_CharsHexadecimal)) {
+			if (active.view_size > 1 && old_size == 1)
+				active.view_size--;
+		}
+		ImGui::InputInt("Columns", &active.view_columns, 1, 4);
+		ImGui::Checkbox("Show Tile Grid", &show_grid);
+
+		// load settings
+		ImGui::NewLine();
+		ImGui::TextDisabled("Settings");
+		bool save_clicked = ImGui::Button("Save");
+		ImGui::SameLine();
+		if (ImGui::Button("Load") && saved_exist) {
+			active = saved;
+		}
+		if (ImGui::Button("Layer 0")) {
+			import_settings_from_layer(0);
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Layer 1") || !active_exist) {
+			active_exist = true;
+			import_settings_from_layer(1);
+		}
+		if (ImGui::Button("Sprite")) {
+			auto      spr       = vera_video_get_sprite_properties(sprite_to_import);
+			const int spr_size  = (spr->sprite_width * spr->sprite_height) >> (1 - spr->color_mode);
+			active.mem_source   = 0;
+			active.color_depth  = spr->color_mode ? 3 : 2;
+			active.tile_w_sel   = spr->sprite_width_log2 - 3;
+			active.tile_height  = spr->sprite_height;
+			active.view_pal     = spr->palette_offset / 16;
+			active.view_address = spr->sprite_address % spr_size;
+			active.view_size    = 0x20000 - active.view_address;
+			active.view_columns = 128 >> spr->sprite_width_log2;
+			cur_tile            = (spr->sprite_address - active.view_address) / spr_size;
+		}
+		ImGui::SameLine();
+		const uint8_t _1  = 1;
+		const uint8_t _16 = 16;
+		if (ImGui::InputScalar("", ImGuiDataType_U8, &sprite_to_import, &_1, &_16, "%d")) {
+			if (sprite_to_import > 127)
+				sprite_to_import = 127;
+		}
+
+		// validate settings
+		const uint32_t   max_mem_sizes[]{ 0x20000, 0x10000, (uint32_t)Options.num_ram_banks * 8192 };
+		static const int row_sizes[]{ 1, 2, 4, 8, 40, 80 };
+		const uint32_t   max_mem_size = max_mem_sizes[active.mem_source];
+		active.tile_height  = std::min(std::max(active.tile_height, 0), 1024);
+		active.view_fg_col  = std::min(std::max(active.view_fg_col, 0), 255);
+		active.view_bg_col  = std::min(std::max(active.view_bg_col, 0), 255);
+		active.view_pal     = std::min(std::max(active.view_pal, 0), 15);
+		active.view_size    = std::min(std::max(active.view_size, 1u), max_mem_size);
+		active.view_address = std::min(std::max(active.view_address, 0u), max_mem_size - active.view_size);
+		active.view_columns = std::min(std::max(active.view_columns, 0), 256);
+
+		bpp        = 1 << active.color_depth;
+		tile_width = row_sizes[active.tile_w_sel] * 8;
+		tile_size  = row_sizes[active.tile_w_sel] * active.tile_height * bpp;
+		num_tiles  = ceil_div_int(active.view_size, tile_size);
+
+		// save settings
+		if (save_clicked) {
+			saved       = active;
+			saved_exist = true;
+		}
+
+		ImGui::NewLine();
+		const int        selected_addr = active.view_address + row_sizes[active.tile_w_sel] * active.tile_height * (1 << active.color_depth) * cur_tile;
+		ImGui::LabelText("Tile Address", "%05X", selected_addr);
+
+		ImGui::PopItemWidth();
 		ImGui::EndGroup();
 	}
 
-	void capture_vram()
+	void import_settings_from_layer(int layer)
 	{
-		uint8_t  uncompressed_vera_memory[0x20000];
-		uint32_t tile_pixels[0x20000];
-
-		if (graphics_props.bitmap_mode) {
-			const uint32_t num_dots = graphics_props.tilew * 256;
-			vera_video_get_expanded_vram_with_wraparound_handling(graphics_props.tile_base, 1 << graphics_props.color_depth, uncompressed_vera_memory, num_dots);
-
-			const uint32_t *palette = vera_video_get_palette_argb32();
-			for (uint32_t i = 0; i < num_dots; ++i) {
-				tile_pixels[i] = (palette[uncompressed_vera_memory[i] + tile_palette_offset] << 8) | 0xff;
+		auto props          = vera_video_get_layer_properties(layer);
+		active.mem_source   = 0;
+		active.color_depth  = props->color_depth;
+		active.view_address = props->tile_base;
+		if (props->bitmap_mode) {
+			active.tile_w_sel   = props->tilew == 320 ? 4 : 5;
+			active.tile_height  = 8;
+			active.view_size    = props->tilew * props->bits_per_pixel * 480 / 8;
+			active.view_columns = 1;
+			const uint8_t pal   = vera_video_get_layer_data(layer)[4] & 0x0F;
+			if (active.color_depth == 0) {
+				active.view_fg_col = pal * 16 + 1;
+				active.view_bg_col = 0;
+			} else {
+				active.view_pal = pal;
 			}
-
-			tiles_preview.load_memory(tile_pixels, graphics_props.tilew, 256, graphics_props.tilew, 256);
 		} else {
-			constexpr const uint32_t num_dots = 128 * 256;
-			vera_video_get_expanded_vram_with_wraparound_handling(graphics_props.tile_base, 1 << graphics_props.color_depth, uncompressed_vera_memory, num_dots);
-
-			const uint32_t *palette = vera_video_get_palette_argb32();
-			for (uint32_t i = 0; i < num_dots; ++i) {
-				tile_pixels[i] = (palette[uncompressed_vera_memory[i] + tile_palette_offset] << 8) | 0xff;
-			}
-
-			tiles_preview.load_memory(tile_pixels, graphics_props.tilew, num_dots >> graphics_props.tilew_log2, graphics_props.tilew, graphics_props.tileh);
+			active.tile_w_sel   = props->tilew_log2 - 3;
+			active.tile_height  = props->tileh;
+			active.view_columns = 16;
+			active.view_size    = props->tilew * props->tileh * props->bits_per_pixel * 1024 / 8;
 		}
-	}
-
-	void set_params(const vera_video_layer_properties &props)
-	{
-		graphics_props.color_depth = props.color_depth;
-		graphics_props.tile_base   = props.tile_base;
-		graphics_props.bitmap_mode = props.bitmap_mode;
-		graphics_props.tilew       = props.tilew;
-		graphics_props.tileh       = props.tileh;
-		graphics_props.tilew_log2  = props.tilew_log2;
-		graphics_props.tileh_log2  = props.tileh_log2;
-		graphics_props.tilew_max   = props.tilew_max;
-		graphics_props.tileh_max   = props.tileh_max;
 	}
 
 private:
 	icon_set tiles_preview;
 	uint16_t tile_palette_offset = 0;
+	uint8_t  sprite_to_import    = 0;
+	uint32_t cur_tile            = 0;
 
-	struct {
-		uint8_t  color_depth;
-		uint32_t tile_base;
+	struct setting {
+		int      mem_source;
+		int      color_depth;
+		int      tile_w_sel;
+		int      tile_height;
+		int      view_fg_col;
+		int      view_bg_col;
+		int      view_pal;
+		uint32_t view_address;
+		uint32_t view_size;
+		int      view_columns;
+	} active{ 0, 0, 0, 8, 1, 0, 0, 0, 0, 0 };
+	setting saved;
+	bool    active_exist;
+	bool    saved_exist;
+	bool    show_grid;
 
-		bool bitmap_mode;
-
-		uint16_t tilew;
-		uint16_t tileh;
-		uint8_t  tilew_log2;
-		uint8_t  tileh_log2;
-
-		uint16_t tilew_max;
-		uint16_t tileh_max;
-
-	} graphics_props{
-		0, //uint8_t  color_depth;
-		0, //uint32_t tile_base;
-
-		false, //bool bitmap_mode;
-
-		8, //uint16_t tilew;
-		8, //uint16_t tileh;
-		3, //uint8_t  tilew_log2;
-		3, //uint8_t  tileh_log2;
-
-		7, //uint16_t tilew_max;
-		7, //uint16_t tileh_max;
-	};
+	// cached values
+	uint8_t  bpp;
+	uint32_t tile_width;
+	uint32_t tile_size;
+	uint32_t num_tiles;
 };
 
 class tmap_visualizer
@@ -731,13 +856,15 @@ public:
 			const ImVec2 topleft = ImGui::GetCursorScreenPos();
 			ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), ImVec2(total_width, total_height));
 			if (!bitmap_mode) {
-				ImDrawList * draw_list = ImGui::GetWindowDrawList();
 				const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
+				ImDrawList * draw_list  = ImGui::GetWindowDrawList();
 				ImVec2       winsize    = ImGui::GetWindowSize();
+				winsize.x = std::min((float)total_width, winsize.x);
+				winsize.y = std::min((float)total_height, winsize.y);
 				ImVec2       wintopleft = topleft;
 				wintopleft.x += scroll.x;
 				wintopleft.y += scroll.y;
-				ImVec2 winbotright(wintopleft.x + std::min((float)total_width, winsize.x), wintopleft.y + std::min((float)total_height, winsize.y));
+				ImVec2 winbotright(wintopleft.x + winsize.x, wintopleft.y + winsize.y);
 				ImVec2 mouse_pos = ImGui::GetMousePos();
 				mouse_pos.x -= topleft.x;
 				mouse_pos.y -= topleft.y;
@@ -749,12 +876,12 @@ public:
 				draw_list->PushClipRect(wintopleft, winbotright, true);
 				if (!bitmap_mode && show_grid) {
 					const uint32_t col  = IM_COL32(0x08, 0x7F, 0xF6, 0xFF);
-					float          hcnt = std::floorf(scroll.x / tile_width) * tile_width + topleft.x;
+					float          hcnt = floorf(scroll.x / tile_width) * tile_width + topleft.x;
 					while (hcnt < winbotright.x) {
 						draw_list->AddLine(ImVec2(hcnt, wintopleft.y), ImVec2(hcnt, winbotright.y), col);
 						hcnt += tile_width;
 					}
-					float vcnt = std::floorf(scroll.y / tile_height) * tile_height + topleft.y;
+					float vcnt = floorf(scroll.y / tile_height) * tile_height + topleft.y;
 					while (vcnt < winbotright.y) {
 						draw_list->AddLine(ImVec2(wintopleft.x, vcnt), ImVec2(winbotright.x, vcnt), col);
 						vcnt += tile_height;
@@ -799,7 +926,7 @@ public:
 
 		for (int i = 0; i < 256; i++) {
 			// convert argb to rgba
-			palette[i] = (palette_argb[i] << 8) | 0xff;
+			palette[i] = (palette_argb[i] << 8) | 0xFF;
 		}
 
 		// get DC registers and determine a screen size
@@ -1147,7 +1274,6 @@ static void draw_debugger_vera_layer()
 static void draw_debugger_vram_visualizer()
 {
 	static vram_visualizer viz;
-	viz.capture_vram();
 	viz.draw_preview();
 	ImGui::SameLine();
 	viz.draw_preview_widgets();
@@ -2232,7 +2358,7 @@ static void draw_menu_bar()
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("VERA Debugging")) {
-				ImGui::Checkbox("VRAM Visualizer", &Show_VRAM_visualizer);
+				ImGui::Checkbox("Tile Visualizer", &Show_VRAM_visualizer);
 				ImGui::Checkbox("VERA Monitor", &Show_VERA_monitor);
 				ImGui::Checkbox("Palette", &Show_VERA_palette);
 				ImGui::Checkbox("Layer Settings", &Show_VERA_layers);
@@ -2324,7 +2450,7 @@ void overlay_draw()
 	}
 
 	if (Show_VRAM_visualizer) {
-		if (ImGui::Begin("VRAM Visualizer", &Show_VRAM_visualizer)) {
+		if (ImGui::Begin("Tile Visualizer", &Show_VRAM_visualizer)) {
 			draw_debugger_vram_visualizer();
 		}
 		ImGui::End();
