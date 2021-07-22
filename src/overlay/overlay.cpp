@@ -350,6 +350,7 @@ static void draw_debugger_vera_palette()
 
 		const uint32_t *palette = vera_video_get_palette_argb32();
 		static ImVec4   backup_color;
+		static ImVec4   picker_color;
 		static int      picker_index = 0;
 
 		for (int i = 0; i < 256; ++i) {
@@ -359,11 +360,14 @@ static void draw_debugger_vera_palette()
 			if (ImGui::ColorButton("Color##3f", c, ImGuiColorEditFlags_NoBorder, ImVec2(16, 16))) {
 				ImGui::OpenPopup("palette_picker");
 				backup_color = c;
+				picker_color = c;
 				picker_index = i;
 			}
 
 			if (ImGui::BeginPopup("palette_picker")) {
-				ImGui::ColorPicker3("##picker", (float *)&c, ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel);
+				if (ImGui::ColorPicker3("##picker", (float *)&picker_color, ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel)) {
+					c = picker_color;
+				}
 				ImGui::SameLine();
 
 				ImGui::BeginGroup(); // Lock X position
