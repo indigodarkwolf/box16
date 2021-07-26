@@ -1111,7 +1111,8 @@ public:
 			active.tile_w_sel   = props->tilew_log2 - 3;
 			active.tile_height  = props->tileh;
 			active.view_columns = 16;
-			active.view_size    = props->tilew * props->tileh * props->bits_per_pixel * 1024 / 8;
+			active.view_size    = props->tilew * props->tileh * props->bits_per_pixel / 8;
+			active.view_size   *= props->color_depth == 0 ? 256 : 1024;
 		}
 	}
 
