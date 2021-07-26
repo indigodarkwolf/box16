@@ -416,12 +416,6 @@ static void vera_video_get_expanded_vram_with_wraparound_handling(uint32_t addre
 }
 
 template <typename T>
-constexpr T bit_set_or_res(T val, T mask, bool cond)
-{
-	return cond ? (val | mask) : (val & ~mask);
-}
-
-template <typename T>
 constexpr T ceil_div_int(T a, T b)
 {
 	return (a + b - 1) / b;
@@ -500,10 +494,10 @@ static void draw_debugger_vera_sprite()
 		const bool    hflip  = spr->prop.hflip;
 		const bool    vflip  = spr->prop.vflip;
 		uint16_t      box[4]{
-            (spr->prop.sprite_x) & 0x3FFu,
-            (spr->prop.sprite_x + width) & 0x3FFu,
-            (spr->prop.sprite_y) & 0x3FFu,
-            (spr->prop.sprite_y + height) & 0x3FFu,
+            (uint16_t)((spr->prop.sprite_x) & 0x3FF),
+            (uint16_t)((spr->prop.sprite_x + width) & 0x3FF),
+            (uint16_t)((spr->prop.sprite_y) & 0x3FF),
+            (uint16_t)((spr->prop.sprite_y + height) & 0x3FF),
 		}; // l, r, t, b
 		// this might sounds hacky but it works
 		if (box[1] < box[0])
