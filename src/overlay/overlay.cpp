@@ -2,6 +2,7 @@
 
 #include <SDL.h>
 
+#include <array>
 #include <functional>
 #include <string>
 #include <vector>
@@ -397,123 +398,432 @@ constexpr T ceil_div_int(T a, T b)
 	return (a + b - 1) / b;
 }
 
+static const ImVec2 fit_size(float src_w, float src_h, float dst_w, float dst_h)
+{
+	const float aspect = src_w / src_h;
+	if (aspect > 1)
+		return ImVec2(dst_w, dst_h / aspect);
+	else
+		return ImVec2(dst_w * aspect, dst_h);
+}
+
+static const std::array<ImVec2, 2> sprite_to_uvs(int id, float width, float height)
+{
+	float y = id / 128.f;
+	return std::array<ImVec2, 2>{ ImVec2(0, y), ImVec2(width / 64.f, y + height / 64.f / 128.f) };
+}
+
+static const void add_selection_rect(ImDrawList *draw_list, float x, float y, float width, float height)
+{
+	const float x2 = x + width;
+	const float y2 = y + height;
+	draw_list->AddRect(ImVec2(x - 2, y - 2), ImVec2(x2 + 2, y2 + 2), IM_COL32_BLACK);
+	draw_list->AddRect(ImVec2(x - 1, y - 1), ImVec2(x2 + 1, y2 + 1), IM_COL32_WHITE);
+}
+
 static void draw_debugger_vera_sprite()
 {
-	static icon_set sprite_preview;
-	static uint8_t  uncompressed_vera_memory[64 * 64];
-	static uint32_t sprite_pixels[64 * 64];
+	auto to_size_bits = [](int a) -> int {
+		if (a >= 64)
+			return 3;
+		if (a >= 32)
+			return 2;
+		if (a >= 16)
+			return 1;
+		return 0;
+	};
 
-	static ImU8     sprite_id  = 0;
+	static struct SpriteListItem {
+		vera_video_sprite_properties prop;
+		bool                         off_screen;
+	} sprites[128];
+	std::vector<int> sprite_table_entries;
+
+	static icon_set sprite_preview;
+	static uint32_t sprite_pixels[64 * 64 * 128];
+	static uint8_t  buf_pixels[64 * 64];
+	static uint32_t palette[256]{ 0 };
+	static const uint32_t *palette_argb = vera_video_get_palette_argb32();
+	
+	static uint8_t  sprite_id  = 0;
 	static uint64_t sprite_sig = 0;
 
-	static const ImU8  incr_one8  = 1;
-	static const ImU8  incr_hex8  = 16;
-	static const ImU16 incr_one16 = 1;
-	static const ImU16 incr_ten16 = 10;
-	static const ImU16 incr_hex16 = 16;
-	static const ImU16 incr_addr  = 32;
-	static const ImU16 fast_addr  = 32 * 16;
+	static bool reload         = true;
+	static bool hide_disabled  = false;
+	static bool hide_offscreen = false;
+	static bool show_entire    = false;
+	static bool show_depths[4]{ false, true, true, true };
 
-	static bool reload = true;
+	static float screen_width = (float)(vera_video_get_dc_hstop() - vera_video_get_dc_hstart()) * vera_video_get_dc_hscale() / 32.f;
+	static float screen_height = (float)(vera_video_get_dc_vstop() - vera_video_get_dc_vstart()) * vera_video_get_dc_vscale() / 64.f;
 
-	ImGui::BeginGroup();
-	{
-		if (ImGui::InputScalar("Sprite", ImGuiDataType_U8, &sprite_id, &incr_one8, nullptr, "%d")) {
-			reload = true;
-		}
-
-		uint8_t sprite_data[8];
-		memcpy(sprite_data, vera_video_get_sprite_data(sprite_id), 8);
-
-		vera_video_sprite_properties sprite_props;
-		memcpy(&sprite_props, vera_video_get_sprite_properties(sprite_id), sizeof(vera_video_sprite_properties));
-
-		if (sprite_sig != *reinterpret_cast<const uint64_t *>(sprite_data)) {
-			sprite_sig = *reinterpret_cast<const uint64_t *>(sprite_data);
-			reload     = true;
-		}
-
-		const uint32_t num_dots = 1 << (sprite_props.sprite_width_log2 + sprite_props.sprite_height_log2);
-		vera_video_get_expanded_vram_with_wraparound_handling(sprite_props.sprite_address, 4 << sprite_props.color_mode, uncompressed_vera_memory, num_dots);
-		const uint32_t *palette = vera_video_get_palette_argb32();
-		for (uint32_t i = 0; i < num_dots; ++i) {
-			sprite_pixels[i] = (palette[uncompressed_vera_memory[i] + sprite_props.palette_offset] << 8) | 0xff;
-		}
-		if (reload) {
-			sprite_preview.load_memory(sprite_pixels, sprite_props.sprite_width, sprite_props.sprite_height, sprite_props.sprite_width, sprite_props.sprite_height);
-			reload = false;
-		} else {
-			sprite_preview.update_memory(sprite_pixels);
-		}
-
-		ImGui::BeginGroup();
-		{
-			ImGui::TextDisabled("Sprite Preview");
-			ImGui::Image((void *)(intptr_t)sprite_preview.get_texture_id(), ImVec2(128.0f, 128.0f), sprite_preview.get_top_left(0), sprite_preview.get_bottom_right(0));
-		}
-		ImGui::EndGroup();
-		ImGui::SameLine();
-		ImGui::BeginGroup();
-		{
-			ImGui::TextDisabled("Raw Bytes");
-
-			for (int i = 0; i < 8; ++i) {
-				if (i) {
-					ImGui::SameLine();
-				}
-				if (ImGui::InputHex(i, sprite_data[i])) {
-					vera_video_space_write(0x1FC00 + 8 * sprite_id + i, sprite_data[i]);
-				}
-			}
-		}
-		ImGui::NewLine();
-		{
-			ImGui::PushItemWidth(128.0f);
-
-			ImGui::TextDisabled("Sprite Properties");
-
-			if (ImGui::InputScalar("VRAM Addr", ImGuiDataType_U16, &sprite_props.sprite_address, &incr_addr, &fast_addr, "%05X", ImGuiInputTextFlags_CharsHexadecimal)) {
-				vera_video_space_write(0x1FC00 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_address >> 5));
-				vera_video_space_write(0x1FC01 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_address >> 13) | (sprite_props.color_mode << 7));
-			}
-			bool eight_bit = sprite_props.color_mode;
-			if (ImGui::Checkbox("8bit Color", &eight_bit)) {
-				vera_video_space_write(0x1FC01 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_address >> 13) | (sprite_props.color_mode << 7));
-			}
-			if (ImGui::InputScalar("Pos X", ImGuiDataType_U16, &sprite_props.sprite_x, &incr_one16, &incr_ten16, "%d")) {
-				vera_video_space_write(0x1FC02 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_x));
-				vera_video_space_write(0x1FC03 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_x >> 8));
-			}
-			if (ImGui::InputScalar("Pos Y", ImGuiDataType_U16, &sprite_props.sprite_y, &incr_one16, &incr_ten16, "%d")) {
-				vera_video_space_write(0x1FC04 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_y));
-				vera_video_space_write(0x1FC05 + 8 * sprite_id, (uint8_t)(sprite_props.sprite_y >> 8));
-			}
-			if (ImGui::Checkbox("h-flip", &sprite_props.hflip)) {
-				vera_video_space_write(0x1FC06 + 8 * sprite_id, (uint8_t)(sprite_props.hflip ? 0x1 : 0) | (uint8_t)(sprite_props.vflip ? 0x2 : 0) | (uint8_t)((sprite_props.sprite_zdepth & 3) << 2) | (uint8_t)((sprite_props.sprite_collision_mask & 0xf) << 4));
-			}
-			if (ImGui::Checkbox("v-flip", &sprite_props.vflip)) {
-				vera_video_space_write(0x1FC06 + 8 * sprite_id, (uint8_t)(sprite_props.hflip ? 0x1 : 0) | (uint8_t)(sprite_props.vflip ? 0x2 : 0) | (uint8_t)((sprite_props.sprite_zdepth & 3) << 2) | (uint8_t)((sprite_props.sprite_collision_mask & 0xf) << 4));
-			}
-			if (ImGui::InputScalar("Z-depth", ImGuiDataType_U8, &sprite_props.sprite_zdepth, &incr_one8, nullptr, "%d")) {
-				vera_video_space_write(0x1FC06 + 8 * sprite_id, (uint8_t)(sprite_props.hflip ? 0x1 : 0) | (uint8_t)(sprite_props.vflip ? 0x2 : 0) | (uint8_t)((sprite_props.sprite_zdepth & 3) << 2) | (uint8_t)((sprite_props.sprite_collision_mask & 0xf) << 4));
-			}
-			if (ImGui::InputScalar("Collision", ImGuiDataType_U8, &sprite_props.sprite_collision_mask, &incr_hex8, nullptr, "%1x")) {
-				vera_video_space_write(0x1FC06 + 8 * sprite_id, (uint8_t)(sprite_props.hflip ? 0x1 : 0) | (uint8_t)(sprite_props.vflip ? 0x2 : 0) | (uint8_t)((sprite_props.sprite_zdepth & 3) << 2) | (uint8_t)((sprite_props.sprite_collision_mask & 0xf0)));
-			}
-			if (ImGui::InputScalar("Palette Offset", ImGuiDataType_U16, &sprite_props.palette_offset, &incr_hex16, nullptr, "%d")) {
-				vera_video_space_write(0x1FC07 + 8 * sprite_id, (uint8_t)((sprite_props.palette_offset >> 4) & 0xf) | (uint8_t)(((sprite_props.sprite_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((sprite_props.sprite_height_log2 - 3) & 0x3) << 6));
-			}
-			if (ImGui::InputScalar("Width", ImGuiDataType_U8, &sprite_props.sprite_width_log2, &incr_one8, nullptr, "%d")) {
-				vera_video_space_write(0x1FC07 + 8 * sprite_id, (uint8_t)((sprite_props.palette_offset >> 4) & 0xf) | (uint8_t)(((sprite_props.sprite_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((sprite_props.sprite_height_log2 - 3) & 0x3) << 6));
-			}
-			if (ImGui::InputScalar("Height", ImGuiDataType_U8, &sprite_props.sprite_height_log2, &incr_one8, nullptr, "%d")) {
-				vera_video_space_write(0x1FC07 + 8 * sprite_id, (uint8_t)((sprite_props.palette_offset >> 4) & 0xf) | (uint8_t)(((sprite_props.sprite_width_log2 - 3) & 0x3) << 4) | (uint8_t)(((sprite_props.sprite_height_log2 - 3) & 0x3) << 6));
-			}
-			ImGui::PopItemWidth();
-		}
-		ImGui::EndGroup();
+	// initial work, scan all sprites data and render
+	sprite_table_entries.clear();
+	// skip color 0, it will always be transparent
+	for (int i = 1; i < 256; i++) {
+		palette[i] = (palette_argb[i] << 8) | 0xFF;
 	}
-	ImGui::EndGroup();
+	for (int i = 0; i < 128; i++) {
+		auto spr = &sprites[i];
+		memcpy(&spr->prop, vera_video_get_sprite_properties(i), sizeof(vera_video_sprite_properties));
+		const uint8_t width  = spr->prop.sprite_width;
+		const uint8_t height = spr->prop.sprite_height;
+		const bool    hflip  = spr->prop.hflip;
+		const bool    vflip  = spr->prop.vflip;
+		uint16_t      box[4]{
+            (spr->prop.sprite_x) & 0x3FFu,
+            (spr->prop.sprite_x + width) & 0x3FFu,
+            (spr->prop.sprite_y) & 0x3FFu,
+            (spr->prop.sprite_y + height) & 0x3FFu,
+		}; // l, r, t, b
+		// this might sounds hacky but it works
+		if (box[1] < box[0])
+			box[0] = 0;
+		if (box[3] < box[2])
+			box[2] = 0;
+		spr->off_screen = (box[0] >= screen_width && box[1] >= screen_width) || (box[2] >= screen_height && box[3] >= screen_height);
+		if (!((hide_disabled && (spr->prop.sprite_zdepth == 0)) || (hide_offscreen && spr->off_screen)))
+			sprite_table_entries.push_back(i);
+
+		uint32_t *dstpix = &sprite_pixels[i * 64 * 64];
+		int       src    = 0;
+		vera_video_get_expanded_vram_with_wraparound_handling(spr->prop.sprite_address, spr->prop.color_mode ? 8 : 4, buf_pixels, width * height);
+		for (int i = 0; i < height; i++) {
+			int dst = vflip ? (height - i - 1) * 64 : i * 64;
+			int dst_add = 1;
+			if (hflip) {
+				dst += width - 1;
+				dst_add = -1;
+			}
+			for (int j = 0; j < width; j++) {
+				uint8_t val = buf_pixels[src++];
+				if (val > 0 || val < 16)
+					val += spr->prop.palette_offset;
+				dstpix[dst] = palette[val];
+				dst += dst_add;
+			}
+		}
+	}
+	sprite_preview.load_memory(sprite_pixels, 64, 64 * 128, 64, 64 * 128);
+
+	ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(4, 0));
+	if (ImGui::BeginTable("sprite debugger", 2, ImGuiTableFlags_Resizable)) {
+
+		ImGui::TableNextRow();
+		ImGui::TableNextColumn();
+
+		// overview
+		ImGui::BeginGroup();
+		ImGui::TextDisabled("Preview");
+
+		ImVec2 avail = ImGui::GetContentRegionAvail();
+		avail.y -= 24;
+		ImGui::BeginChild("sprite overview", avail, false, ImGuiWindowFlags_HorizontalScrollbar);
+		{
+			const ImVec2 scrsize   = show_entire ? ImVec2(1024, 1024) : ImVec2(screen_width, screen_height);
+			ImDrawList * draw_list = ImGui::GetWindowDrawList();
+			const ImVec2 topleft   = ImGui::GetCursorScreenPos();
+			ImGui::Dummy(scrsize);
+			const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
+			ImVec2       winsize = ImGui::GetWindowSize();
+			winsize.x            = std::min(scrsize.x, winsize.x);
+			winsize.y            = std::min(scrsize.y, winsize.y);
+			ImVec2 wintopleft    = topleft;
+			wintopleft.x += scroll.x;
+			wintopleft.y += scroll.y;
+			ImVec2 winbotright(wintopleft.x + winsize.x, wintopleft.y + winsize.y);
+
+			void *tex = (void *)(intptr_t)sprite_preview.get_texture_id();
+
+			draw_list->AddRectFilled(topleft, ImVec2(topleft.x + screen_width, topleft.y + screen_height), IM_COL32(0x7F, 0x7F, 0x7F, 0x7F));
+			draw_list->PushClipRect(wintopleft, winbotright, true);
+			ImGui::SetCursorScreenPos(topleft);
+			ImGui::BeginChild("i need to really clip this", scrsize, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoInputs);
+			for (int z = 0; z < 4; z++) {
+				if (!show_depths[z])
+					continue;
+				for (int i = 127; i >= 0; i--) {
+					if (i == sprite_id)
+						continue; // drawn later
+					auto spr = &sprites[i];
+					if (spr->prop.sprite_zdepth != z)
+						continue;
+					if (!show_entire && spr->off_screen)
+						continue;
+					const ImVec2 pos((spr->prop.sprite_x & 0x3FFu) + topleft.x, (spr->prop.sprite_y & 0x3FFu) + topleft.y);
+					const ImVec2 size(spr->prop.sprite_width, spr->prop.sprite_height);
+					const auto uv = sprite_to_uvs(i, size.x, size.y);
+					ImGui::PushID(i);
+					for (int j = 0; j < 4; j++) {
+						ImVec2 pos_tmp = pos;
+						if (j & 1)
+							pos_tmp.x -= 1024;
+						if (j & 2)
+							pos_tmp.y -= 1024;
+						ImGui::PushID(j);
+						draw_list->AddImage(tex, pos_tmp, ImVec2(pos_tmp.x + size.x, pos_tmp.y + size.y), uv[0], uv[1]);
+						ImGui::SetCursorScreenPos(pos_tmp);
+						if (ImGui::InvisibleButton("", size)) {
+							sprite_id = i;
+						}
+						ImGui::PopID();
+					}
+					ImGui::PopID();
+				}
+			}
+			// draw currently selected sprite last, guaranteed to always be on top
+			auto         spr = &sprites[sprite_id];
+			const ImVec2 pos((spr->prop.sprite_x & 0x3FFu) + topleft.x, (spr->prop.sprite_y & 0x3FFu) + topleft.y);
+			const ImVec2 size(spr->prop.sprite_width, spr->prop.sprite_height);
+			if (show_depths[spr->prop.sprite_zdepth] && (show_entire || !spr->off_screen)) {
+				const auto uv        = sprite_to_uvs(sprite_id, size.x, size.y);
+				auto       add_image = [draw_list, tex, pos, size, uv](float add_x, float add_y) {
+                    draw_list->AddImage(tex, ImVec2(pos.x + add_x, pos.y + add_y), ImVec2(pos.x + add_x + size.x, pos.y + add_y + size.y), uv[0], uv[1]);
+				};
+				add_image(0, 0);
+				add_image(0, -1024);
+				add_image(-1024, 0);
+				add_image(-1024, -1024);
+			}
+			ImGui::EndChild();
+			draw_list->PopClipRect();
+
+			if (show_entire) {
+				// - 0
+				// 1 1
+				ImU32 col = IM_COL32(0, 0, 0, 0x7F);
+				draw_list->AddRectFilled(ImVec2(topleft.x + screen_width, topleft.y), ImVec2(topleft.x + 1024, topleft.y + screen_height), col);
+				draw_list->AddRectFilled(ImVec2(topleft.x, topleft.y + screen_height), ImVec2(topleft.x + 1024, topleft.y + 1024), col);
+			}
+
+			if (show_entire || !spr->off_screen) {
+				add_selection_rect(draw_list, pos.x, pos.y, size.x, size.y);
+				add_selection_rect(draw_list, pos.x, pos.y - 1024, size.x, size.y);
+				add_selection_rect(draw_list, pos.x - 1024, pos.y, size.x, size.y);
+				add_selection_rect(draw_list, pos.x - 1024, pos.y - 1024, size.x, size.y);
+			}
+
+			ImGui::EndChild();
+		}
+		ImGui::Text("Show Depths:");
+		ImGui::SameLine();
+		ImGui::Checkbox("0", &show_depths[0]);
+		ImGui::SameLine();
+		ImGui::Checkbox("1", &show_depths[1]);
+		ImGui::SameLine();
+		ImGui::Checkbox("2", &show_depths[2]);
+		ImGui::SameLine();
+		ImGui::Checkbox("3", &show_depths[3]);
+		ImGui::SameLine();
+		ImGui::TextDisabled("|");
+		ImGui::SameLine();
+		ImGui::Checkbox("Show Entire Sprite Plane", &show_entire);
+		ImGui::EndGroup();
+
+		ImGui::TableNextColumn();
+
+		// sprites table
+		// TODO sorting
+		const ImVec4 normal_col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+		const ImVec4 disabled_col = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
+		const float  height_avail = ImGui::GetContentRegionAvail().y;
+		ImGui::TextDisabled("Sprite List");
+		ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(2, 2));
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(4, 2));
+		if (ImGui::BeginTable("sprites", 11, ImGuiTableFlags_BordersInner | ImGuiTableFlags_ScrollY /* | ImGuiTableFlags_Sortable */, ImVec2(0.f, height_avail - 84))) {
+			ImGui::TableSetupScrollFreeze(0, 1);
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed | ImGuiTableColumnFlags_NoSort, 16); // thumbnail
+			ImGui::TableSetupColumn("#", ImGuiTableColumnFlags_WidthFixed, 20);
+			ImGui::TableSetupColumn("X");
+			ImGui::TableSetupColumn("Y");
+			ImGui::TableSetupColumn("W");
+			ImGui::TableSetupColumn("H");
+			ImGui::TableSetupColumn("Base");
+			ImGui::TableSetupColumn("Pri.");
+			ImGui::TableSetupColumn("Pal.");
+			ImGui::TableSetupColumn("Flags");
+			ImGui::TableSetupColumn("Coll.");
+			ImGui::TableHeadersRow();
+
+			ImGuiListClipper clipper;
+			clipper.Begin((int)sprite_table_entries.size());
+			while (clipper.Step()) {
+				for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
+					const int     id     = sprite_table_entries[row];
+					const int     dst    = 0x1FC00 + 8 * id;
+					const uint8_t b1     = vera_video_space_read(dst + 1);
+					const uint8_t b6     = vera_video_space_read(dst + 6);
+					const uint8_t b7     = vera_video_space_read(dst + 7);
+					auto          spr    = &sprites[id];
+					int           width  = spr->prop.sprite_width;
+					int           height = spr->prop.sprite_height;
+
+					const bool hidden = spr->prop.sprite_zdepth == 0 || spr->off_screen;
+					ImGui::PushID(id);
+					ImGui::PushStyleColor(ImGuiCol_Text, hidden ? disabled_col : normal_col);
+					ImGui::TableNextRow();
+					// Thumbnail
+					ImGui::TableNextColumn();
+					void *       tex    = (void *)(intptr_t)sprite_preview.get_texture_id();
+					const float  flt_w  = (float)width;
+					const float  flt_h  = (float)height;
+					const ImVec2 th_pos = ImGui::GetCursorScreenPos();
+					const ImVec2 size   = fit_size(flt_w, flt_h, 16, 16);
+					const auto   uv     = sprite_to_uvs(id, flt_w, flt_h);
+					ImGui::Dummy(ImVec2(16, 16));
+					if (ImGui::IsItemHovered()) {
+						const ImVec2 zoomed_size = fit_size(flt_w, flt_h, 128, 128);
+						ImGui::BeginTooltip();
+						ImGui::Image(tex, zoomed_size, uv[0], uv[1]);
+						ImGui::EndTooltip();
+					}
+					ImGui::SetCursorScreenPos(th_pos);
+					ImGui::Image(tex, size, uv[0], uv[1]);
+					// #
+					ImGui::TableNextColumn();
+					char       idx_txt[4];
+					sprintf(idx_txt, "%d", id);
+					// SpanAllColumns flag currently makes selectable has more precedence than all edit widgets
+					if (ImGui::Selectable(idx_txt, sprite_id == id /*, ImGuiSelectableFlags_SpanAllColumns */)) {
+						sprite_id = id;
+					}
+					// X
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					// data type is signed to allow wrapping to "negative" offset
+					if (ImGui::InputScalar("xx", ImGuiDataType_S16, &spr->prop.sprite_x, nullptr, nullptr, "%d")) {
+						vera_video_space_write(dst + 2, spr->prop.sprite_x & 0xFF);
+						vera_video_space_write(dst + 3, spr->prop.sprite_x >> 8);
+					}
+					// Y
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::InputScalar("yy", ImGuiDataType_S16, &spr->prop.sprite_y, nullptr, nullptr, "%d")) {
+						vera_video_space_write(dst + 4, spr->prop.sprite_y & 0xFF);
+						vera_video_space_write(dst + 5, spr->prop.sprite_y >> 8);
+					}
+					// Width
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::InputInt("wid", &width, 0, 0)) {
+						vera_video_space_write(dst + 7, b7 & ~0x30 | (to_size_bits(width) << 4));
+					};
+					// Height
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::InputInt("hei", &height, 0, 0)) {
+						vera_video_space_write(dst + 7, b7 & ~0xC0 | (to_size_bits(height) << 6));
+					};
+					// Base
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::InputScalar("bas", ImGuiDataType_U32, &spr->prop.sprite_address, nullptr, nullptr, "%X", ImGuiInputTextFlags_CharsHexadecimal)) {
+						spr->prop.sprite_address &= 0x1FFE0;
+						vera_video_space_write(dst + 0, (spr->prop.sprite_address >> 5) & 0xFF);
+						vera_video_space_write(dst + 1, (spr->prop.sprite_address >> 13) | (b1 & 0x80));
+					}
+					// Priority
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::InputScalar("pri", ImGuiDataType_U8, &spr->prop.sprite_zdepth, nullptr, nullptr, "%d")) {
+						if (spr->prop.sprite_zdepth >= 3)
+							spr->prop.sprite_zdepth = 3;
+						vera_video_space_write(dst + 6, b6 & ~0x0C | (spr->prop.sprite_zdepth << 2));
+					}
+					// Palette
+					ImGui::TableNextColumn();
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					uint8_t pal = spr->prop.palette_offset / 16;
+					if (ImGui::InputScalar("pal", ImGuiDataType_U8, &pal, nullptr, nullptr, "%d")) {
+						if (pal >= 15)
+							pal = 15;
+						vera_video_space_write(dst + 7, b7 & ~0x0F | pal);
+					}
+					// Flags
+					ImGui::TableNextColumn();
+					const uint8_t mask_8       = (1 << 7);
+					const uint8_t mask_h       = (1 << 0);
+					const uint8_t mask_v       = (1 << 1);
+					char          flags_txt[4] = "";
+					if (b1 & mask_8)
+						strcat(flags_txt, "8");
+					if (b6 & mask_h)
+						strcat(flags_txt, "H");
+					if (b6 & mask_v)
+						strcat(flags_txt, "V");
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::InputText("flg", flags_txt, 4)) {
+						uint8_t b1_new = b1 & ~mask_8;
+						uint8_t b6_new = b6 & ~mask_h & ~mask_v;
+						if (strchr(flags_txt, '8'))
+							b1_new |= mask_8;
+						if (strchr(flags_txt, 'H') || strchr(flags_txt, 'h'))
+							b6_new |= mask_h;
+						if (strchr(flags_txt, 'V') || strchr(flags_txt, 'v'))
+							b6_new |= mask_v;
+						vera_video_space_write(dst + 1, b1_new);
+						vera_video_space_write(dst + 6, b6_new);
+					}
+					// Collision
+					ImGui::TableNextColumn();
+					// a bit of hack is done here with decimal digits
+					uint16_t coll = 0;
+					if (spr->prop.sprite_collision_mask & 0x10)
+						coll += 1;
+					if (spr->prop.sprite_collision_mask & 0x20)
+						coll += 10;
+					if (spr->prop.sprite_collision_mask & 0x40)
+						coll += 100;
+					if (spr->prop.sprite_collision_mask & 0x80)
+						coll += 1000;
+					ImGui::SetNextItemWidth(-FLT_MIN);
+					if (ImGui::InputScalar("coll", ImGuiDataType_U16, &coll, nullptr, nullptr, "%04d")) {
+						uint8_t val = b6 & ~0xF0;
+						if (coll % 10 != 0)
+							val |= 0x10;
+						if ((coll / 10) % 10 != 0)
+							val |= 0x20;
+						if ((coll / 100) % 10 != 0)
+							val |= 0x40;
+						if ((coll / 1000) % 10 != 0)
+							val |= 0x80;
+						vera_video_space_write(dst + 6, val);
+					}
+
+					ImGui::PopStyleColor();
+					ImGui::PopID();
+				}
+			}
+			ImGui::EndTable();
+		}
+		ImGui::PopStyleVar(2);
+
+		ImGui::Checkbox("Hide Disabled", &hide_disabled);
+		ImGui::SameLine();
+		ImGui::Checkbox("Hide Off-screen", &hide_offscreen);
+
+		// Raw Bytes section, just to keep some people happy
+		ImGui::BeginGroup();
+		{
+			const uint32_t addr = 0x1FC00 + 8 * sprite_id;
+			uint8_t sprite_data[8];
+			ImGui::TextDisabled("Raw Bytes (Selected Sprite)");
+			ImGui::Text("#%d:", sprite_id);
+			ImGui::SameLine(40);
+			vera_video_space_read_range(sprite_data, addr, 8);
+			for (int i = 0; i < 8; ++i) {
+				if (i != 0)
+					ImGui::SameLine();
+				if (ImGui::InputHex(i, sprite_data[i])) {
+					vera_video_space_write(addr + i, sprite_data[i]);
+				}
+			}
+		}
+		ImGui::EndGroup();
+
+		ImGui::EndTable();
+	}
+	ImGui::PopStyleVar();
 }
 
 class vram_visualizer
@@ -661,10 +971,7 @@ public:
 			// selected tile indicator
 			const float sel_x  = (cur_tile % view_columns) * tile_width_scaled + topleft.x;
 			const float sel_y  = (cur_tile / view_columns) * tile_height_scaled + topleft.y;
-			const float sel_x2 = sel_x + tile_width_scaled;
-			const float sel_y2 = sel_y + tile_height_scaled;
-			draw_list->AddRect(ImVec2(sel_x - 2, sel_y - 2), ImVec2(sel_x2 + 2, sel_y2 + 2), IM_COL32_BLACK);
-			draw_list->AddRect(ImVec2(sel_x - 1, sel_y - 1), ImVec2(sel_x2 + 1, sel_y2 + 1), IM_COL32_WHITE);
+			add_selection_rect(draw_list, sel_x, sel_y, (float)tile_width_scaled, (float)tile_height_scaled);
 			ImGui::EndChild();
 		}
 		ImGui::EndGroup();
@@ -905,8 +1212,7 @@ public:
 				// selected tile indicator
 				const float sel_x = (cur_tile % map_width) * tile_width + topleft.x;
 				const float sel_y = (cur_tile / map_width) * tile_height + topleft.y;
-				draw_list->AddRect(ImVec2(sel_x - 2, sel_y - 2), ImVec2(sel_x + tile_width + 2, sel_y + tile_height + 2), IM_COL32_BLACK);
-				draw_list->AddRect(ImVec2(sel_x - 1, sel_y - 1), ImVec2(sel_x + tile_width + 1, sel_y + tile_height + 1), IM_COL32_WHITE);
+				add_selection_rect(draw_list, sel_x, sel_y, tile_width, tile_height);
 			}
 			ImGui::EndChild();
 		}
