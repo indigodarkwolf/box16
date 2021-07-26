@@ -33,7 +33,14 @@ struct midi_psg_settings {
 	uint8_t waveform = 0;
 };
 
+struct midi_ym_patch_entry {
+	uint8_t addr;
+	uint8_t value;
+};
+
 struct midi_ym2151_settings {
+	midi_ym_patch_entry patch_bytes[256];
+	int     patch_size = 0;
 };
 
 struct midi_channel_settings {
@@ -73,5 +80,7 @@ void midi_port_set_channel_playback_device(midi_port_descriptor port, uint8_t ch
 void midi_port_set_channel_use_velocity(midi_port_descriptor port, uint8_t channel, bool use_velocity);
 
 void midi_port_set_channel_psg_waveform(midi_port_descriptor port, uint8_t channel, uint8_t waveform);
+void midi_port_set_channel_ym2151_patch_byte(midi_port_descriptor port, uint8_t channel, uint8_t addr, uint8_t value);
+void midi_port_get_channel_ym2151_patch(midi_port_descriptor port, uint8_t channel, uint8_t *bytes);
 
 #endif

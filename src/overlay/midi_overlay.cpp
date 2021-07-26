@@ -4,6 +4,8 @@
 #include "midi.h"
 
 #include "vera/vera_psg.h"
+#include "ym2151/ym2151.h"
+#include "ym2151_overlay.h"
 
 void draw_midi_overlay()
 {
@@ -60,6 +62,22 @@ void draw_midi_overlay()
 					int wf = settings->device.psg.waveform;
 					if (ImGui::Combo("Waveform", &wf, waveforms, IM_ARRAYSIZE(waveforms))) {
 						midi_port_set_channel_psg_waveform(port, i, (uint8_t)wf);
+					}
+				} else if (settings->playback_device == midi_playback_device::ym2151) {
+					uint8_t ym_regs[256];
+					memset(ym_regs, 0, sizeof(ym_regs));
+
+					YM_get_modulation_regs(ym_regs);
+					midi_port_get_channel_ym2151_patch(port, i, ym_regs);
+					if (ImGui::TreeNodeEx("LFO & Noise", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+						debugger_draw_ym_lfo_and_noise(ym_regs);
+						ImGui::TreePop();
+					}
+					if (ImGui::TreeNodeEx("Channel Data", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+						static ym_channel_data channel;
+						static ym_keyon_state  keyon;
+						debugger_draw_ym_voices(ym_regs, &channel, &keyon, 1, [port, i](uint8_t addr, uint8_t value) { midi_port_set_channel_ym2151_patch_byte(port, i, addr, value); });
+						ImGui::TreePop();
 					}
 				}
 

@@ -1,12 +1,12 @@
 #include "midi.h"
 
-#include <cstring>
-#include "math.h"
 #include "RtMidi.h"
-
-#include "vera/vera_psg.h"
+#include "math.h"
+#include <cstring>
 #include <unordered_map>
 
+#include "vera/vera_psg.h"
+#include "ym2151/ym2151.h"
 
 #define MAX_MIDI_KEYS (128)
 
@@ -37,10 +37,15 @@ struct psg_midi_mapping {
 	midi_channel channel;
 };
 
+struct ym_midi_mapping {
+	midi_channel channel;
+};
+
 const midi_port_descriptor INVALID_MIDI_PORT{ RtMidi::Api::NUM_APIS, 0xffff };
 const midi_channel         INVALID_MIDI_CHANNEL{ INVALID_MIDI_PORT, 0xff };
 
 static psg_midi_mapping Psg_midi_mappings[PSG_NUM_CHANNELS];
+static ym_midi_mapping  Ym_midi_mappings[MAX_YM2151_VOICES];
 
 static RtMidiIn Midi_in_api;
 
@@ -181,6 +186,18 @@ static uint16_t Psg_frequency_table[MAX_MIDI_KEYS] = {
 	33672,
 };
 
+midi_ym_patch_entry Ym_default_patch[] = {
+	{ 0x20, 0xc0 },	// YM_R_L_FB_CONN_OFFSET
+	{ 0x58, 0x01 }, // YM_DT1_MUL_OFFSET voice 4 slot 3
+	{ 0x68, 0x00 }, // YM_TL_OFFSET voice 4 slot 1
+	{ 0x70, 0x00 }, // YM_TL_OFFSET voice 4 slot 2
+	{ 0x78, 0x00 }, // YM_TL_OFFSET voice 4 slot 3
+	{ 0x60, 0x00 }, // YM_TL_OFFSET voice 4 slot 4
+	{ 0x98, 0x1f }, // YM_KS_AR_OFFSET voice 4 slot 3
+	{ 0xb8, 0x0d }, // YM_A_D1R_OFFSET voice 4 slot 3
+	{ 0xf8, 0xf6 } // YM_D1L_RR_OFFSET voice 4 slot 3
+};
+
 // -------------------
 //
 // midi_port_descriptor
@@ -260,6 +277,48 @@ static uint8_t alloc_psg_voice()
 
 // -------------------
 //
+// ym helpers
+//
+// -------------------
+
+static uint8_t alloc_ym_voice()
+{
+	for (uint8_t i = 0; i < MAX_YM2151_VOICES; ++i) {
+		if (Ym_midi_mappings[i].channel == INVALID_MIDI_CHANNEL) {
+			return i;
+		}
+	}
+	return INVALID_VOICE;
+}
+
+static void apply_ym_patch(uint8_t ym_channel, midi_ym_patch_entry *patch_data, int num_entries)
+{
+	for (int i = 0; i < num_entries; ++i) {
+		YM_write(0, patch_data[i].addr + ym_channel);
+		YM_write(1, patch_data[i].value);
+	}
+}
+
+uint8_t midi_ym_note(uint8_t midikey)
+{
+	const uint8_t chroma = (midikey + 11) % 12;
+	return chroma + (chroma / 3);
+}
+
+uint8_t midi_ym_octave(uint8_t midikey)
+{
+	if (midikey < 13) {
+		return 0;
+	}
+	const uint8_t result = (midikey - 13) / 12;
+	if (result > 7) {
+		return 7;
+	}
+	return result;
+}
+
+// -------------------
+//
 // midi message helpers
 //
 // -------------------
@@ -290,10 +349,16 @@ static uint16_t get_bent_frequency(int keynum, int bend)
 	return (uint16_t)(f0 + ((diff * bend) >> 13));
 }
 
-static uint8_t get_velocitated_volume(int volume, int velocity)
+static uint8_t get_psg_velocitated_volume(int volume, int velocity)
 {
-	const int vv = (const int)sqrtf((float)(volume * velocity)); // max 7 bits
-	return (uint8_t)(vv >> 1);
+	const float vv = sqrtf((float)(volume * velocity) / (127.0f * 127.0f));
+	return (uint8_t)(vv * 63.0f);
+}
+
+static uint8_t get_ym_velocitated_volume(int volume, int velocity)
+{
+	const int vv = (const int)sqrtf((float)(volume * velocity) / (127.0f * 127.0f));
+	return (uint8_t)(vv * 127.0f);
 }
 
 static void note_off(open_midi_port &port, uint8_t channel, int keynum, int velocity)
@@ -309,7 +374,8 @@ static void note_off(open_midi_port &port, uint8_t channel, int keynum, int velo
 				psg_set_channel_volume(key.voice, 0);
 				break;
 			case midi_playback_device::ym2151:
-				// TODO: Implement me.
+				YM_key_on(key.voice, false, false, false, false);
+				Ym_midi_mappings[key.voice].channel = INVALID_MIDI_CHANNEL;
 				break;
 			default:
 				break;
@@ -349,10 +415,27 @@ static void note_on(open_midi_port &port, uint8_t channel, int keynum, int veloc
 			psg_set_channel_pulse_width(key.voice, (uint8_t)(settings.modulation >> 1));
 			psg_set_channel_left(key.voice, settings.pan < 96);
 			psg_set_channel_right(key.voice, settings.pan > 32);
-			psg_set_channel_volume(key.voice, settings.use_velocity ? get_velocitated_volume(settings.volume, velocity) : (uint8_t)(settings.volume >> 1));
+			psg_set_channel_volume(key.voice, settings.use_velocity ? get_psg_velocitated_volume(settings.volume, velocity) : (uint8_t)(settings.volume >> 1));
 			break;
 		case midi_playback_device::ym2151:
-			// TODO: Implement me.
+			if (key.voice == INVALID_VOICE) {
+				key.voice = alloc_ym_voice();
+			}
+			if (key.voice == INVALID_VOICE) {
+				return;
+			}
+			Ym_midi_mappings[key.voice].channel = { port.descriptor, channel };
+			apply_ym_patch(key.voice, settings.device.ym2151.patch_bytes, settings.device.ym2151.patch_size);
+			for (int i = 0; i < 4; ++i) {
+				const uint8_t tl = YM_get_operator_total_level(key.voice, i);
+				const uint8_t vv = settings.use_velocity ? (get_psg_velocitated_volume(settings.volume, velocity) << 1) : (uint8_t)(settings.volume);
+				const uint8_t fv = 127 - (uint8_t)(((uint16_t)vv * (uint16_t)(127 - tl)) >> 7);
+				YM_set_operator_total_level(key.voice, i, fv);
+			}
+			YM_set_voice_key_fraction(key.voice, settings.pitch_bend >> 8);
+			YM_set_voice_octave(key.voice, midi_ym_octave(keynum));
+			YM_set_voice_note(key.voice, midi_ym_note(keynum));
+			YM_key_on(key.voice);
 			break;
 		default:
 			break;
@@ -643,7 +726,12 @@ static void pitch_bend(open_midi_port &port, uint8_t channel, int bend)
 			}
 			break;
 		case midi_playback_device::ym2151:
-			// TODO: Implement me.
+			for (int i = 0; i < MAX_MIDI_KEYS; ++i) {
+				const midi_key &key = port.channels[channel].keys_on[i];
+				if (key.voice != INVALID_VOICE) {
+					YM_set_voice_key_fraction(key.voice, bend >> 8);
+				}
+			}
 			break;
 		default:
 			break;
@@ -715,6 +803,9 @@ void midi_init()
 {
 	for (uint8_t i = 0; i < PSG_NUM_CHANNELS; ++i) {
 		Psg_midi_mappings[i].channel = INVALID_MIDI_CHANNEL;
+	}
+	for (uint8_t i = 0; i < MAX_YM2151_VOICES; ++i) {
+		Ym_midi_mappings[i].channel = INVALID_MIDI_CHANNEL;
 	}
 }
 
@@ -826,7 +917,7 @@ void midi_port_set_channel_playback_device(midi_port_descriptor port, uint8_t ch
 			auto &[port_number, open_port] = *value;
 
 			midi_channel_state &state = open_port.channels[channel];
-			midi_key keys_on[MAX_MIDI_KEYS];
+			midi_key            keys_on[MAX_MIDI_KEYS];
 			memcpy(keys_on, state.keys_on, sizeof(midi_key) * MAX_MIDI_KEYS);
 
 			for (uint8_t i = 0; i < MAX_MIDI_KEYS; ++i) {
@@ -844,6 +935,11 @@ void midi_port_set_channel_playback_device(midi_port_descriptor port, uint8_t ch
 					}
 				}
 			}
+
+			if (d == midi_playback_device::ym2151) {
+				memcpy(state.settings.device.ym2151.patch_bytes, Ym_default_patch, sizeof(Ym_default_patch));
+				state.settings.device.ym2151.patch_size = sizeof(Ym_default_patch) / sizeof(Ym_default_patch[0]);
+			}
 		}
 	}
 }
@@ -855,7 +951,7 @@ void midi_port_set_channel_use_velocity(midi_port_descriptor port, uint8_t chann
 		if (value != Open_midi_ports.end()) {
 			auto &[port_number, open_port] = *value;
 
-			midi_channel_state &state = open_port.channels[channel];
+			midi_channel_state &state   = open_port.channels[channel];
 			state.settings.use_velocity = use_velocity;
 		}
 	}
@@ -876,7 +972,47 @@ void midi_port_set_channel_psg_waveform(midi_port_descriptor port, uint8_t chann
 				}
 			}
 
-			state.settings.device.psg.waveform = waveform;			
+			state.settings.device.psg.waveform = waveform;
+		}
+	}
+}
+
+void midi_port_set_channel_ym2151_patch_byte(midi_port_descriptor port, uint8_t channel, uint8_t addr, uint8_t data)
+{
+	if (channel < MAX_MIDI_CHANNELS) {
+		auto value = Open_midi_ports.find(port);
+		if (value != Open_midi_ports.end()) {
+			auto &[port_number, open_port] = *value;
+
+			midi_channel_state &state = open_port.channels[channel];
+
+			midi_ym2151_settings &settings = state.settings.device.ym2151;
+			for (int i = 0; i < settings.patch_size; ++i) {
+				if (settings.patch_bytes[i].addr == addr) {
+					settings.patch_bytes[i].value = data;
+					return;
+				}
+			}
+			settings.patch_bytes[settings.patch_size].addr = addr;
+			settings.patch_bytes[settings.patch_size].value = data;
+			++settings.patch_size;
+		}
+	}
+}
+
+void midi_port_get_channel_ym2151_patch(midi_port_descriptor port, uint8_t channel, uint8_t *bytes)
+{
+	if (channel < MAX_MIDI_CHANNELS) {
+		auto value = Open_midi_ports.find(port);
+		if (value != Open_midi_ports.end()) {
+			auto &[port_number, open_port] = *value;
+
+			midi_channel_state &state = open_port.channels[channel];
+
+			midi_ym2151_settings &settings = state.settings.device.ym2151;
+			for (int i = 0; i < settings.patch_size; ++i) {
+				bytes[settings.patch_bytes[i].addr] = settings.patch_bytes[i].value;
+			}
 		}
 	}
 }
