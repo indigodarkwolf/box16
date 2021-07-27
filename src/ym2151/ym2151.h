@@ -30,6 +30,7 @@ void YM_render(int16_t *stream, uint32_t samples, uint32_t buffer_sample_rate);
 
 void    YM_write(uint8_t offset, uint8_t value);
 uint8_t YM_read_status();
+void	YM_reset();
 
 // debug stuff
 void    YM_debug_write(uint8_t addr, uint8_t value);

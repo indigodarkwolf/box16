@@ -79,6 +79,11 @@ public:
 		m_chip.write_address(addr);
 		m_chip.write_data(value, false);
 	}
+	
+	void reset()
+	{
+		m_chip.reset();
+	}
 
 	void debug_write(uint8_t addr, uint8_t value)
 	{
@@ -182,6 +187,14 @@ uint8_t YM_read_status()
 {
 	audio_lock_scope lock;
 	return Ym_interface.read_status();
+}
+
+void YM_reset()
+{
+	audio_lock_scope lock;
+	Ym_interface.reset();
+	memset(Ym_registers, 0, 256);
+	memset(&Ym_registers[0x20],0xc0,8);
 }
 
 void YM_debug_write(uint8_t addr, uint8_t value)

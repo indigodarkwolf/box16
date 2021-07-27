@@ -105,6 +105,7 @@ void machine_reset()
 	via1_init();
 	via2_init();
 	vera_video_reset();
+	YM_reset();
 	reset6502();
 }
 
