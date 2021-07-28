@@ -49,9 +49,7 @@ zpy()
 static void
 rel()
 { //relative for branch ops (8-bit immediate value, sign-extended)
-	reladdr = (uint16_t)read6502(pc++);
-	if (reladdr & 0x80)
-		reladdr |= 0xFF00;
+	reladdr = (int16_t)((int8_t)read6502(pc++));
 }
 
 static void
