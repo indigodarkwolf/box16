@@ -462,12 +462,12 @@ static void draw_debugger_vera_sprite()
 	} sprites[128];
 	std::vector<int> sprite_table_entries;
 
-	static icon_set sprite_preview;
-	static uint32_t sprite_pixels[64 * 64 * 128];
-	static uint8_t  buf_pixels[64 * 64];
-	static uint32_t palette[256]{ 0 };
+	static icon_set        sprite_preview;
+	static uint32_t        sprite_pixels[64 * 64 * 128];
+	static uint8_t         buf_pixels[64 * 64];
+	static uint32_t        palette[256]{ 0 };
 	static const uint32_t *palette_argb = vera_video_get_palette_argb32();
-	
+
 	static uint8_t  sprite_id  = 0;
 	static uint64_t sprite_sig = 0;
 
@@ -477,7 +477,7 @@ static void draw_debugger_vera_sprite()
 	static bool show_entire    = false;
 	static bool show_depths[4]{ false, true, true, true };
 
-	static float screen_width = (float)(vera_video_get_dc_hstop() - vera_video_get_dc_hstart()) * vera_video_get_dc_hscale() / 32.f;
+	static float screen_width  = (float)(vera_video_get_dc_hstop() - vera_video_get_dc_hstart()) * vera_video_get_dc_hscale() / 32.f;
 	static float screen_height = (float)(vera_video_get_dc_vstop() - vera_video_get_dc_vstart()) * vera_video_get_dc_vscale() / 64.f;
 
 	// initial work, scan all sprites data and render
@@ -512,18 +512,25 @@ static void draw_debugger_vera_sprite()
 		int       src    = 0;
 		vera_video_get_expanded_vram_with_wraparound_handling(spr->prop.sprite_address, spr->prop.color_mode ? 8 : 4, buf_pixels, width * height);
 		for (int i = 0; i < height; i++) {
-			int dst = vflip ? (height - i - 1) * 64 : i * 64;
+			int dst     = vflip ? (height - i - 1) * 64 : i * 64;
 			int dst_add = 1;
 			if (hflip) {
 				dst += width - 1;
 				dst_add = -1;
 			}
-			for (int j = 0; j < width; j++) {
-				uint8_t val = buf_pixels[src++];
-				if (val > 0 || val < 16)
-					val += spr->prop.palette_offset;
-				dstpix[dst] = palette[val];
-				dst += dst_add;
+			if (spr->prop.color_mode) {
+				for (int j = 0; j < width; j++) {
+					uint8_t val = buf_pixels[src++];
+					dstpix[dst] = palette[val];
+					dst += dst_add;
+				}
+			} else {
+				for (int j = 0; j < width; j++) {
+					uint8_t val = buf_pixels[src++];
+					val += spr->prop.palette_offset << 4;
+					dstpix[dst] = palette[val];
+					dst += dst_add;
+				}
 			}
 		}
 	}
@@ -575,7 +582,7 @@ static void draw_debugger_vera_sprite()
 						continue;
 					const ImVec2 pos((spr->prop.sprite_x & 0x3FFu) + topleft.x, (spr->prop.sprite_y & 0x3FFu) + topleft.y);
 					const ImVec2 size(spr->prop.sprite_width, spr->prop.sprite_height);
-					const auto uv = sprite_to_uvs(i, size.x, size.y);
+					const auto   uv = sprite_to_uvs(i, size.x, size.y);
 					ImGui::PushID(i);
 					for (int j = 0; j < 4; j++) {
 						ImVec2 pos_tmp = pos;
@@ -647,7 +654,7 @@ static void draw_debugger_vera_sprite()
 
 		// sprites table
 		// TODO sorting
-		const ImVec4 normal_col = ImGui::GetStyleColorVec4(ImGuiCol_Text);
+		const ImVec4 normal_col   = ImGui::GetStyleColorVec4(ImGuiCol_Text);
 		const ImVec4 disabled_col = ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled);
 		const float  height_avail = ImGui::GetContentRegionAvail().y;
 		ImGui::TextDisabled("Sprite List");
@@ -704,7 +711,7 @@ static void draw_debugger_vera_sprite()
 					ImGui::Image(tex, size, uv[0], uv[1]);
 					// #
 					ImGui::TableNextColumn();
-					char       idx_txt[4];
+					char idx_txt[4];
 					sprintf(idx_txt, "%d", id);
 					// SpanAllColumns flag currently makes selectable has more precedence than all edit widgets
 					if (ImGui::Selectable(idx_txt, sprite_id == id /*, ImGuiSelectableFlags_SpanAllColumns */)) {
@@ -829,7 +836,7 @@ static void draw_debugger_vera_sprite()
 		ImGui::BeginGroup();
 		{
 			const uint32_t addr = 0x1FC00 + 8 * sprite_id;
-			uint8_t sprite_data[8];
+			uint8_t        sprite_data[8];
 			ImGui::TextDisabled("Raw Bytes (Selected Sprite)");
 			ImGui::Text("#%d:", sprite_id);
 			ImGui::SameLine(40);
@@ -880,10 +887,10 @@ public:
 			// then the preview is partially rendered later
 			ImGui::Dummy(ImVec2((float)total_width, (float)total_height));
 			const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
-			ImVec2       winsize    = ImGui::GetWindowSize();
-			winsize.x               = std::min((float)total_width, winsize.x);
-			winsize.y               = std::min((float)total_height, winsize.y);
-			ImVec2       wintopleft = topleft;
+			ImVec2       winsize = ImGui::GetWindowSize();
+			winsize.x            = std::min((float)total_width, winsize.x);
+			winsize.y            = std::min((float)total_height, winsize.y);
+			ImVec2 wintopleft    = topleft;
 			wintopleft.x += scroll.x;
 			wintopleft.y += scroll.y;
 			ImVec2 winbotright(wintopleft.x + winsize.x, wintopleft.y + winsize.y);
@@ -902,7 +909,7 @@ public:
 			const uint32_t *      palette_argb = vera_video_get_palette_argb32();
 			std::vector<uint8_t>  data((size_t)view_columns * view_rows * tile_size, 0);
 			std::vector<uint32_t> pixels((size_t)tiles_count_x * tiles_count_y * tile_width * tile_height, 0);
-			uint8_t *             data_ = data.data();
+			uint8_t *             data_   = data.data();
 			uint32_t *            pixels_ = pixels.data();
 			for (int i = 0; i < 256; i++) {
 				// convert argb to rgba
@@ -916,7 +923,7 @@ public:
 				case 2:
 					for (uint32_t i = 0; i < active.view_size; i++) {
 						const uint32_t addr = active.view_address + i;
-						data_[i] = debug_read6502((addr & 0x1FFF) + 0xA000, addr >> 13);
+						data_[i]            = debug_read6502((addr & 0x1FFF) + 0xA000, addr >> 13);
 					}
 					break;
 				default:
@@ -940,7 +947,7 @@ public:
 					int       src = (mj + starting_tile_x + (mi + starting_tile_y) * active.view_columns) * tile_size;
 					const int dst = mj * tile_width + mi * tile_height * render_width;
 					for (int ti = 0; ti < tile_height; ti++) {
-						int     dst2 = dst + ti * render_width;
+						int dst2 = dst + ti * render_width;
 						for (int tj = 0; tj < (int)tile_width; tj += 8) {
 							if (src >= (int)active.view_size)
 								break;
@@ -974,9 +981,7 @@ public:
 				}
 			}
 			draw_list->PushClipRect(wintopleft, winbotright, true);
-			draw_list->AddImage((void *)(intptr_t)tiles_preview.get_texture_id(),
-				ImVec2(topleft.x + (float)(starting_tile_x * tile_width_scaled), (float)(topleft.y + starting_tile_y * tile_height_scaled)),
-				ImVec2(topleft.x + (float)((starting_tile_x + tiles_count_x) * tile_width_scaled), topleft.y + (float)((starting_tile_y + tiles_count_y) * tile_height_scaled)));
+			draw_list->AddImage((void *)(intptr_t)tiles_preview.get_texture_id(), ImVec2(topleft.x + (float)(starting_tile_x * tile_width_scaled), (float)(topleft.y + starting_tile_y * tile_height_scaled)), ImVec2(topleft.x + (float)((starting_tile_x + tiles_count_x) * tile_width_scaled), topleft.y + (float)((starting_tile_y + tiles_count_y) * tile_height_scaled)));
 			if (show_grid) {
 				const uint32_t col  = IM_COL32(0x08, 0x7F, 0xF6, 0xFF);
 				float          hcnt = starting_tile_x * tile_width_scaled + topleft.x;
@@ -992,8 +997,8 @@ public:
 			}
 			draw_list->PopClipRect();
 			// selected tile indicator
-			const float sel_x  = (cur_tile % view_columns) * tile_width_scaled + topleft.x;
-			const float sel_y  = (cur_tile / view_columns) * tile_height_scaled + topleft.y;
+			const float sel_x = (cur_tile % view_columns) * tile_width_scaled + topleft.x;
+			const float sel_y = (cur_tile / view_columns) * tile_height_scaled + topleft.y;
 			add_selection_rect(draw_list, sel_x, sel_y, (float)tile_width_scaled, (float)tile_height_scaled);
 			ImGui::EndChild();
 		}
@@ -1085,13 +1090,13 @@ public:
 		const uint32_t   max_mem_sizes[]{ 0x20000, 0x10000, (uint32_t)Options.num_ram_banks * 8192 };
 		static const int row_sizes[]{ 1, 2, 4, 8, 40, 80 };
 		const uint32_t   max_mem_size = max_mem_sizes[active.mem_source];
-		active.tile_height  = std::min(std::max(active.tile_height, 0), 1024);
-		active.view_fg_col  = std::min(std::max(active.view_fg_col, 0), 255);
-		active.view_bg_col  = std::min(std::max(active.view_bg_col, 0), 255);
-		active.view_pal     = std::min(std::max(active.view_pal, 0), 15);
-		active.view_size    = std::min(std::max(active.view_size, 1u), max_mem_size);
-		active.view_address = std::min(std::max(active.view_address, 0u), max_mem_size - active.view_size);
-		active.view_columns = std::min(std::max(active.view_columns, 0), 256);
+		active.tile_height            = std::min(std::max(active.tile_height, 0), 1024);
+		active.view_fg_col            = std::min(std::max(active.view_fg_col, 0), 255);
+		active.view_bg_col            = std::min(std::max(active.view_bg_col, 0), 255);
+		active.view_pal               = std::min(std::max(active.view_pal, 0), 15);
+		active.view_size              = std::min(std::max(active.view_size, 1u), max_mem_size);
+		active.view_address           = std::min(std::max(active.view_address, 0u), max_mem_size - active.view_size);
+		active.view_columns           = std::min(std::max(active.view_columns, 0), 256);
 
 		bpp        = 1 << active.color_depth;
 		tile_width = row_sizes[active.tile_w_sel] * 8;
@@ -1105,7 +1110,7 @@ public:
 		}
 
 		ImGui::NewLine();
-		const int        selected_addr = active.view_address + row_sizes[active.tile_w_sel] * active.tile_height * (1 << active.color_depth) * cur_tile;
+		const int selected_addr = active.view_address + row_sizes[active.tile_w_sel] * active.tile_height * (1 << active.color_depth) * cur_tile;
 		ImGui::LabelText("Tile Address", "%05X", selected_addr);
 
 		ImGui::PopItemWidth();
@@ -1135,7 +1140,7 @@ public:
 			active.tile_height  = props->tileh;
 			active.view_columns = 16;
 			active.view_size    = props->tilew * props->tileh * props->bits_per_pixel / 8;
-			active.view_size   *= props->color_depth == 0 ? 256 : 1024;
+			active.view_size *= props->color_depth == 0 ? 256 : 1024;
 		}
 	}
 
@@ -1188,11 +1193,11 @@ public:
 			ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), ImVec2(total_width, total_height));
 			if (!bitmap_mode) {
 				const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
-				ImDrawList * draw_list  = ImGui::GetWindowDrawList();
-				ImVec2       winsize    = ImGui::GetWindowSize();
-				winsize.x = std::min((float)total_width, winsize.x);
-				winsize.y = std::min((float)total_height, winsize.y);
-				ImVec2       wintopleft = topleft;
+				ImDrawList * draw_list = ImGui::GetWindowDrawList();
+				ImVec2       winsize   = ImGui::GetWindowSize();
+				winsize.x              = std::min((float)total_width, winsize.x);
+				winsize.y              = std::min((float)total_height, winsize.y);
+				ImVec2 wintopleft      = topleft;
 				wintopleft.x += scroll.x;
 				wintopleft.y += scroll.y;
 				ImVec2 winbotright(wintopleft.x + winsize.x, wintopleft.y + winsize.y);
@@ -1260,7 +1265,7 @@ public:
 		}
 
 		// get DC registers and determine a screen size
-		screen_width = (float)(vera_video_get_dc_hstop() - vera_video_get_dc_hstart()) * vera_video_get_dc_hscale() / 32.f;
+		screen_width  = (float)(vera_video_get_dc_hstop() - vera_video_get_dc_hstart()) * vera_video_get_dc_hscale() / 32.f;
 		screen_height = (float)(vera_video_get_dc_vstop() - vera_video_get_dc_vstart()) * vera_video_get_dc_vscale() / 64.f;
 
 		if (bitmap_mode) {
@@ -1306,11 +1311,11 @@ public:
 				for (int mi = 0; mi < map_height; mi++) {
 					uint32_t dst = mi * tile_height * total_width;
 					for (int mj = 0; mj < map_width; mj++) {
-						const uint16_t tinfo = map_data[tidx] + (map_data[tidx + 1] << 8);
-						const bool     hflip = tinfo & (1 << 10);
-						const bool     vflip = tinfo & (1 << 11);
-						const uint16_t tnum  = tinfo & 0x3FF;
-						const uint8_t  pal   = (tinfo >> 12) * 16;
+						const uint16_t tinfo    = map_data[tidx] + (map_data[tidx + 1] << 8);
+						const bool     hflip    = tinfo & (1 << 10);
+						const bool     vflip    = tinfo & (1 << 11);
+						const uint16_t tnum     = tinfo & 0x3FF;
+						const uint8_t  pal      = (tinfo >> 12) * 16;
 						const int      src2_add = hflip ? -1 : 1;
 						uint32_t       src      = tnum * tile_width * tile_height;
 						if (hflip)
@@ -2061,7 +2066,6 @@ static void draw_debugger_vera_psg()
 		ImGui::PlotLines("Right", right_samples, SAMPLES_PER_BUFFER, 0, nullptr, INT16_MIN, INT16_MAX, ImVec2(0, 80.0f));
 	}
 }
-
 
 static void draw_menu_bar()
 {
