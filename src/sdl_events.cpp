@@ -133,6 +133,9 @@ bool sdl_events_update()
 					case SDL_BUTTON_RIGHT:
 						mouse_button_down(1);
 						break;
+					case SDL_BUTTON_MIDDLE:
+						mouse_button_down(2);
+						break;
 				}
 				break;
 
@@ -145,6 +148,23 @@ bool sdl_events_update()
 					case SDL_BUTTON_RIGHT:
 						mouse_button_up(1);
 						break;
+					case SDL_BUTTON_MIDDLE:
+						mouse_button_up(2);
+						break;
+				}
+				break;
+			
+			// Stub for mouse wheel support on emu side.
+			// does nothing just yet
+			case SDL_MOUSEWHEEL:
+				//mouse_state_change = true; // uncomment when code activated
+				if(event.wheel.y != 0)
+				{
+					 // mouse Z axis change
+				}
+				if(event.wheel.x != 0)
+				{
+					 // mouse W axis change
 				}
 				break;
 
