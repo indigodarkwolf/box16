@@ -239,10 +239,11 @@ static void sound_write(uint16_t address, uint8_t value)
 
 static uint8_t sound_read(uint16_t address)
 {
+	address = address & 0x01;
 	if (address == 0) {
 		return 0;
-	} else if (address == 1) {
-		YM_read_status();
+	} else {
+		return YM_read_status();
 	}
 }
 
@@ -285,7 +286,7 @@ static uint8_t real_read(uint16_t address)
 		case MEMMAP_RAMBANK: return real_ram_read(address); break;
 		case MEMMAP_ROMBANK: return real_rom_read(address); break;
 		case MEMMAP_IO: return real_read<memory_map_io, 0>(address);
-		case MEMMAP_IO_SOUND: return 0;
+		case MEMMAP_IO_SOUND: return sound_read(address);
 		case MEMMAP_IO_VIDEO: return vera_video_read(address & 0x1f);
 		case MEMMAP_IO_LCD: return 0;
 		case MEMMAP_IO_VIA1: return via1_read(address & 0xf);
