@@ -7,70 +7,90 @@
 #include "audio.h"
 #include "bitutils.h"
 
+#include "CDSPResampler.h"
+
 class ym2151_interface : public ymfm::ymfm_interface
 {
 public:
 	ym2151_interface()
 	    : m_chip(*this),
-	      m_timing_error(0)
+	      m_chip_sample_rate(m_chip.sample_rate(3579545)),
+	      m_zero_buffer(new double[m_chip.sample_rate(3579545)]),
+	      m_backbuffer{ new double[m_chip.sample_rate(3579545)], new double[m_chip.sample_rate(3579545)] },
+	      m_backbuffer_size(m_chip.sample_rate(3579545)),
+	      m_backbuffer_used(0)
 	{
-		m_chip_sample_rate = m_chip.sample_rate(3579545);
 	}
 
-	void generate(int16_t *stream, uint32_t samples, uint32_t buffer_sample_rate)
+	~ym2151_interface()
 	{
-		ymfm::ym2151::output_data ym0 = m_last_output[0];
-		ymfm::ym2151::output_data ym1 = m_last_output[1];
+		delete[] m_zero_buffer;
+		delete[] m_backbuffer[0];
+		delete[] m_backbuffer[1];
+	}
 
-		if (m_timing_error == 0) {
-			ym0 = ym1;
-			m_chip.generate(&ym1, 1);
+	void pregenerate(uint32_t samples)
+	{
+		if (m_backbuffer_used + samples > m_backbuffer_size) {
+			samples = m_backbuffer_size - m_backbuffer_used;
 		}
 
-		auto lerp = [](double v0, double v1, double x, double x1) -> double {
-			return v0 + (v1 - v0) * (x / x1);
+		if (samples > 0) {
+			ymfm::ym2151::output_data *yms = static_cast<ymfm::ym2151::output_data *>(alloca(sizeof(ymfm::ym2151::output_data) * samples));
+			m_chip.generate(yms, samples);
+
+			double *bb[2] = { &m_backbuffer[0][m_backbuffer_used], &m_backbuffer[1][m_backbuffer_used] };
+			for (uint32_t s = 0; s < samples; ++s) {
+				bb[0][s] = (double)yms[s].data[0];
+				bb[1][s] = (double)yms[s].data[1];
+			}
+			m_backbuffer_used += samples;
+		}
+	}
+
+	void generate(int16_t *stream, const uint32_t samples, const uint32_t buffer_sample_rate)
+	{
+		r8b::CDSPResampler16 resampler[2]{
+			r8b::CDSPResampler16(m_chip_sample_rate, buffer_sample_rate, m_chip_sample_rate),
+			r8b::CDSPResampler16(m_chip_sample_rate, buffer_sample_rate, m_chip_sample_rate)
 		};
 
-		const int16_t *stream_end = stream + (samples << 1);
-		if (buffer_sample_rate > m_chip_sample_rate) {
-			const uint32_t incremental_error = m_chip_sample_rate;
-			while (stream < stream_end) {
-				*stream = (int16_t)lerp(ym0.data[0], ym1.data[1], m_timing_error, buffer_sample_rate);
-				++stream;
-				*stream = (int16_t)lerp(ym0.data[1], ym1.data[1], m_timing_error, buffer_sample_rate);
-				++stream;
+		const uint32_t ym_samples = samples * m_chip_sample_rate / buffer_sample_rate;
 
-				m_timing_error += incremental_error;
+		if (m_backbuffer_used < ym_samples) {
+			pregenerate(ym_samples - m_backbuffer_used);
+		}
 
-				while (m_timing_error >= buffer_sample_rate) {
-					ym0 = ym1;
-					m_chip.generate(&ym1, 1);
+		for (int i = 0; i < 2; ++i) {
+			double * output;
+			int16_t *out_stream = &stream[i];
+			int      out_needed = samples;
 
-					m_timing_error -= buffer_sample_rate;
-				}
+			int out_written = resampler[i].process(m_backbuffer[0], ym_samples, output);
+			out_written     = std::min(out_written, out_needed);
+			for (int o = 0; o < out_written; ++o) {
+				*out_stream = (int16_t)output[o];
+				out_stream += 2;
 			}
-			m_last_output[0] = ym0;
-			m_last_output[1] = ym1;
+			out_needed -= out_written;
+
+			while (out_needed > 0) {
+				out_written = resampler[i].process(m_zero_buffer, ym_samples, output);
+				out_written = std::min(out_written, out_needed);
+				for (int o = 0; o < out_written; ++o) {
+					*out_stream = (int16_t)output[o];
+					out_stream += 2;
+				}
+				out_needed -= out_written;
+			}
+		}
+
+		if (ym_samples < m_backbuffer_used) {
+			memmove(&m_backbuffer[0][0], &m_backbuffer[0][ym_samples], sizeof(double) * (m_backbuffer_used - ym_samples));
+			memmove(&m_backbuffer[1][0], &m_backbuffer[1][ym_samples], sizeof(double) * (m_backbuffer_used - ym_samples));
+			m_backbuffer_used -= ym_samples;
 		} else {
-			const uint32_t incremental_error = m_chip_sample_rate - buffer_sample_rate;
-			while (stream < stream_end) {
-				while (m_timing_error >= m_chip_sample_rate) {
-					ym0 = ym1;
-					m_chip.generate(&ym1, 1);
-					m_timing_error -= m_chip_sample_rate;
-				}
-				*stream = (int16_t)lerp(ym0.data[0], ym1.data[1], m_timing_error, m_chip_sample_rate);
-				++stream;
-				*stream = (int16_t)lerp(ym0.data[1], ym1.data[1], m_timing_error, m_chip_sample_rate);
-				++stream;
-
-				ym0 = ym1;
-				m_chip.generate(&ym1, 1);
-
-				m_timing_error += incremental_error;
-			}
-			m_last_output[0] = ym0;
-			m_last_output[1] = ym1;
+			m_backbuffer_used = 0;
 		}
 	}
 
@@ -79,7 +99,7 @@ public:
 		m_chip.write_address(addr);
 		m_chip.write_data(value, false);
 	}
-	
+
 	void reset()
 	{
 		m_chip.reset();
@@ -151,18 +171,43 @@ public:
 		return 0;
 	}
 
+	uint32_t get_sample_rate() const
+	{
+		return m_chip_sample_rate;
+	}
+
 private:
 	ymfm::ym2151              m_chip;
 	ymfm::ym2151::output_data m_last_output[2];
 
 	uint32_t m_timing_error;
 	uint32_t m_chip_sample_rate;
+
+	double * m_zero_buffer;
+	double * m_backbuffer[2];
+	uint32_t m_backbuffer_size;
+	uint32_t m_backbuffer_used;
 };
 
 static ym2151_interface Ym_interface;
 static uint8_t          Last_address = 0;
 static uint8_t          Last_data    = 0;
 static uint8_t          Ym_registers[256];
+
+void YM_prerender()
+{
+	extern uint64_t clockticks6502;
+	static uint64_t clocks_rendered   = 0;
+	static double   clocks_error      = 0;
+	uint32_t        clocks_elapsed    = (uint32_t)(clockticks6502 - clocks_rendered);
+	const uint32_t  clocks_per_sample = 8000000 / Ym_interface.get_sample_rate();
+	const uint32_t  samples_to_render = clocks_elapsed / clocks_per_sample;
+
+	if (samples_to_render > 0) {
+		Ym_interface.pregenerate(samples_to_render);
+		clocks_elapsed += samples_to_render * clocks_per_sample;
+	}
+}
 
 void YM_render(int16_t *stream, uint32_t samples, uint32_t buffer_sample_rate)
 {
@@ -194,7 +239,7 @@ void YM_reset()
 	audio_lock_scope lock;
 	Ym_interface.reset();
 	memset(Ym_registers, 0, 256);
-	memset(&Ym_registers[0x20],0xc0,8);
+	memset(&Ym_registers[0x20], 0xc0, 8);
 }
 
 void YM_debug_write(uint8_t addr, uint8_t value)

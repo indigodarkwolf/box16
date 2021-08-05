@@ -8,6 +8,8 @@ resources/r39/*.exe
 resources/r39/*.sym
 resources/r39/*.zip
 
+bugs
+
 build/box16
 build/make.out
 build/out

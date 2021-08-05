@@ -39,6 +39,9 @@
     <Filter Include="Vendor Source Files\ymfm">
       <UniqueIdentifier>{fca5edb5-d4aa-4604-9c4c-5d7be7f83bda}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Vendor Source Files\r8brain-free-src">
+      <UniqueIdentifier>{df869226-23eb-4cac-9f1b-7a1d64a5c782}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\audio.cpp">
@@ -190,6 +193,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\overlay\ym2151_overlay.cpp">
       <Filter>Source Files\overlay</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\vendor\r8brain-free-src\r8bbase.cpp">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -397,6 +403,48 @@
     <ClInclude Include="..\..\src\overlay\ym2151_overlay.h">
       <Filter>Source Files\overlay</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPBlockConvolver.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPFIRFilter.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPFracInterpolator.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPHBDownsampler.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPHBUpsampler.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPProcessor.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPRealFFT.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPResampler.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPSincFilterGen.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\fft4g.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\pffft.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\r8bbase.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\r8bconf.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\vendor\r8brain-free-src\r8butil.h">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\cpu\65c02.opcodes">
@@ -413,6 +461,12 @@
     </None>
     <None Include="..\..\src\cpu\README">
       <Filter>Source Files\cpu</Filter>
+    </None>
+    <None Include="..\..\vendor\r8brain-free-src\LICENSE">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </None>
+    <None Include="..\..\vendor\r8brain-free-src\README.md">
+      <Filter>Vendor Source Files\r8brain-free-src</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
