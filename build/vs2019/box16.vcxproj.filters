@@ -197,6 +197,9 @@
     <ClCompile Include="..\..\vendor\r8brain-free-src\r8bbase.cpp">
       <Filter>Vendor Source Files\r8brain-free-src</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\wav_recorder.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\compat\compat.h">
@@ -444,6 +447,9 @@
     </ClInclude>
     <ClInclude Include="..\..\vendor\r8brain-free-src\r8butil.h">
       <Filter>Vendor Source Files\r8brain-free-src</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\wav_recorder.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

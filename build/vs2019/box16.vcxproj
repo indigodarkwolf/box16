@@ -260,6 +260,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClCompile Include="..\..\src\vera\vera_spi.cpp" />
     <ClCompile Include="..\..\src\vera\vera_video.cpp" />
     <ClCompile Include="..\..\src\via.cpp" />
+    <ClCompile Include="..\..\src\wav_recorder.cpp" />
     <ClCompile Include="..\..\src\ym2151\ym2151.cpp" />
     <ClCompile Include="..\..\vendor\lodepng\lodepng.cpp" />
     <ClCompile Include="..\..\vendor\r8brain-free-src\r8bbase.cpp" />
@@ -327,6 +328,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClInclude Include="..\..\src\vera\vera_video.h" />
     <ClInclude Include="..\..\src\version.h" />
     <ClInclude Include="..\..\src\via.h" />
+    <ClInclude Include="..\..\src\wav_recorder.h" />
     <ClInclude Include="..\..\src\ym2151\ym2151.h" />
     <ClInclude Include="..\..\vendor\lodepng\lodepng.h" />
     <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPBlockConvolver.h" />

@@ -23,6 +23,8 @@ static int16_t Psg_buffer[2 * SAMPLES_PER_BUFFER];
 static int16_t Pcm_buffer[2 * SAMPLES_PER_BUFFER];
 static int16_t Ym_buffer[2 * SAMPLES_PER_BUFFER];
 
+static volatile audio_render_callback Render_callback = nullptr;
+
 audio_lock_scope::audio_lock_scope()
 {
 	SDL_LockAudio();
@@ -33,6 +35,10 @@ audio_lock_scope::~audio_lock_scope()
 	SDL_UnlockAudio();
 }
 
+static void audio_callback_nop(const int16_t *, const int)
+{
+}
+
 static void audio_callback(void *, Uint8 *stream, int len)
 {
 	const int expected = 2 * SAMPLES_PER_BUFFER * sizeof(int16_t);
@@ -41,16 +47,17 @@ static void audio_callback(void *, Uint8 *stream, int len)
 		return;
 	}
 
-	memcpy(stream, Buffer, len);
-
+	YM_render(Ym_buffer, SAMPLES_PER_BUFFER, (uint32_t)Obtained_sample_rate);
 	psg_render(Psg_buffer, SAMPLES_PER_BUFFER);
 	pcm_render(Pcm_buffer, SAMPLES_PER_BUFFER);
-	YM_render(Ym_buffer, SAMPLES_PER_BUFFER, (uint32_t)Obtained_sample_rate);
+	
+	memcpy(Buffer, Ym_buffer, len);
+	SDL_MixAudioFormat(reinterpret_cast<uint8_t *>(Buffer), reinterpret_cast<uint8_t *>(Psg_buffer), AUDIO_S16, len, SDL_MIX_MAXVOLUME);
+	SDL_MixAudioFormat(reinterpret_cast<uint8_t *>(Buffer), reinterpret_cast<uint8_t *>(Pcm_buffer), AUDIO_S16, len, SDL_MIX_MAXVOLUME);
 
-	// Mix PSG, PCM and YM output
-	for (int i = 0; i < 2 * SAMPLES_PER_BUFFER; i++) {
-		Buffer[i] = ((int)Psg_buffer[i] + (int)Pcm_buffer[i] + (int)Ym_buffer[i]) / 3;
-	}
+	memcpy(stream, Buffer, len);
+
+	Render_callback(Buffer, SAMPLES_PER_BUFFER);
 }
 
 void audio_init(const char *dev_name, int /*num_audio_buffers*/)
@@ -58,6 +65,8 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 	if (Audio_dev > 0) {
 		audio_close();
 	}
+
+	Render_callback = audio_callback_nop;
 
 	// Allocate audio buffers
 	Buffer = new int16_t[2 * SAMPLES_PER_BUFFER];
@@ -84,9 +93,6 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 	}
 
 	Obtained_sample_rate = obtained.freq;
-	// Init YM2151 emulation. 4 MHz clock
-	//YM_Create(3579545);
-	//YM_init(obtained.freq, 60);
 
 	// Start playback
 	SDL_PauseAudioDevice(Audio_dev, 0);
@@ -145,4 +151,15 @@ void audio_get_ym_buffer(int16_t *dst)
 {
 	audio_lock_scope lock;
 	memcpy(dst, Ym_buffer, 2 * SAMPLES_PER_BUFFER * sizeof(int16_t));
+}
+
+int audio_get_sample_rate()
+{
+	return Obtained_sample_rate;
+}
+
+void audio_set_render_callback(audio_render_callback cb)
+{
+	audio_lock_scope lock;
+	Render_callback = cb;
 }

@@ -5,6 +5,7 @@
 #include "memory.h"
 #include "cpu/fake6502.h"
 #include "gif_recorder.h"
+#include "wav_recorder.h"
 #include "glue.h"
 #include "ps2.h"
 #include "vera/vera_video.h"
@@ -175,7 +176,7 @@ uint8_t debug_emu_read(uint8_t reg)
 		case 3: return Options.echo_mode;
 		case 4: return save_on_exit ? 1 : 0;
 		case 5: return gif_recorder_get_state();
-		//case 6: return -1;
+		case 6: return wav_recorder_get_state();
 		//case 7: return -1;
 		case 8: return (clockticks6502 >> 0) & 0xff;
 		case 9: return (clockticks6502 >> 8) & 0xff;
@@ -198,7 +199,7 @@ uint8_t real_emu_read(uint8_t reg)
 		case 3: return Options.echo_mode;
 		case 4: return save_on_exit ? 1 : 0;
 		case 5: return gif_recorder_get_state();
-		//case 6: return -1;
+		case 6: return wav_recorder_get_state();
 		//case 7: return -1;
 		case 8: return (clockticks6502 >> 0) & 0xff;
 		case 9: return (clockticks6502 >> 8) & 0xff;
@@ -224,7 +225,8 @@ void emu_write(uint8_t reg, uint8_t value)
 		case 3: Options.echo_mode = static_cast<echo_mode_t>(value); break;
 		case 4: save_on_exit = v; break;
 		case 5: gif_recorder_set((gif_recorder_command_t)value); break;
-		default: break;  // printf("WARN: Invalid register %x\n", DEVICE_EMULATOR + reg);
+		case 6: wav_recorder_set((wav_recorder_command_t)value); break;
+		default: break; // printf("WARN: Invalid register %x\n", DEVICE_EMULATOR + reg);
 	}
 }
 

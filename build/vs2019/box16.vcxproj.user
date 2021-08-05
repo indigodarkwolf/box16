@@ -13,13 +13,13 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LocalDebuggerWorkingDirectory>$(OutputPath)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>-sym X16-RACE.sym -prg X16-RACE.prg -hypercall_path ../../../../../../../ASM/x16-racer/build -scale 2</LocalDebuggerCommandArguments>
-    <RemoteDebuggerCommandArguments>-sym X16-RACE.sym -prg X16-RACE.prg -hypercall_path ../../../../../../../ASM/x16-racer/build -scale 2</RemoteDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-wav audio.wav -hypercall_path C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest -prg C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest\SIDTEST2.PRG -scale 3</LocalDebuggerCommandArguments>
+    <RemoteDebuggerCommandArguments>-wav audio.wav -hypercall_path C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest -prg C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest\SIDTEST2.PRG -scale 3</RemoteDebuggerCommandArguments>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LocalDebuggerWorkingDirectory>$(OutputPath)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
-    <LocalDebuggerCommandArguments>-hypercall_path C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest -prg C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest\SIDTEST2.PRG -scale 3</LocalDebuggerCommandArguments>
-    <RemoteDebuggerCommandArguments>-hypercall_path C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest -prg C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest\SIDTEST2.PRG -scale 3</RemoteDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-wav audio.wav,auto -hypercall_path C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest -prg C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest\SIDTEST2.PRG -scale 3</LocalDebuggerCommandArguments>
+    <RemoteDebuggerCommandArguments>-wav audio.wav,auto -hypercall_path C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest -prg C:\Users\User\Desktop\x16\git\box16\bugs\fmtest\fmtest\SIDTEST2.PRG -scale 3</RemoteDebuggerCommandArguments>
   </PropertyGroup>
 </Project>

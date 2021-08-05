@@ -19,6 +19,8 @@ public:
 	~audio_lock_scope();
 };
 
+using audio_render_callback = void (*)(const int16_t *samples, const int num_samples);
+
 void audio_init(const char *dev_name, int num_audio_buffers);
 void audio_close(void);
 void audio_render(int cpu_clocks);
@@ -28,3 +30,6 @@ void audio_usage(void);
 void audio_get_psg_buffer(int16_t *dst);
 void audio_get_pcm_buffer(int16_t *dst);
 void audio_get_ym_buffer(int16_t *dst);
+
+int audio_get_sample_rate();
+void audio_set_render_callback(audio_render_callback cb);

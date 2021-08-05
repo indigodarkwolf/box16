@@ -43,6 +43,7 @@
 #include "vera/vera_video.h"
 #include "version.h"
 #include "via.h"
+#include "wav_recorder.h"
 #include "ym2151/ym2151.h"
 
 #ifdef __EMSCRIPTEN__
@@ -252,6 +253,7 @@ int main(int argc, char **argv)
 
 	if (!Options.no_sound) {
 		audio_init(strlen(Options.audio_dev_name) > 0 ? Options.audio_dev_name : nullptr, Options.audio_buffers);
+		audio_set_render_callback(wav_recorder_process);
 	}
 
 	memory_init();
@@ -271,7 +273,12 @@ int main(int argc, char **argv)
 		gif_recorder_set_path(Options.gif_path);
 	}
 
+	if (strlen(Options.wav_path) > 0) {
+		wav_recorder_set_path(Options.wav_path);
+	}
+
 	gif_recorder_init(SCREEN_WIDTH, SCREEN_HEIGHT);
+	wav_recorder_init();
 
 	joystick_init();
 
@@ -292,6 +299,7 @@ int main(int argc, char **argv)
 	SDL_free(const_cast<char *>(base_path));
 
 	audio_close();
+	wav_recorder_shutdown();
 	gif_recorder_shutdown();
 	SDL_Quit();
 

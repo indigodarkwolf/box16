@@ -29,6 +29,7 @@ struct options {
 	char sdcard_path[PATH_MAX] = "";
 	char nvram_path[PATH_MAX]  = "";
 	char gif_path[PATH_MAX]    = "";
+	char wav_path[PATH_MAX]    = "";
 
 	bool run_after_load = false;
 	bool run_geos       = false;

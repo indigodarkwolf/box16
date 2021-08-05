@@ -66,6 +66,10 @@ static void usage()
 	printf("-gif <file.gif>[,wait]\n");
 	printf("\tRecord a gif for the video output.\n");
 	printf("\tUse ,wait to start paused.\n");
+	printf("-wav <file.wav>[{,wait|,auto}]\n");
+	printf("\tRecord a wav for the audio output.\n");
+	printf("\tUse ,wait to start paused.\n");
+	printf("\tUse ,auto to start paused, but begin recording once a non-zero audio signal is detected.\n");
 	printf("\tPOKE $9FB5,2 to start recording.\n");
 	printf("\tPOKE $9FB5,1 to capture a single frame.\n");
 	printf("\tPOKE $9FB5,0 to pause.\n");
@@ -301,6 +305,17 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			}
 
 			ini["main"]["gif"] = argv[0];
+
+			argv++;
+			argc--;
+		} else if (!strcmp(argv[0], "-wav")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["wav"] = argv[0];
 
 			argv++;
 			argc--;
@@ -573,6 +588,10 @@ static void set_options(mINI::INIStructure &ini)
 		strcpy(Options.gif_path, ini["main"]["gif"].c_str());
 	}
 
+	if (ini["main"].has("wav")) {
+		strcpy(Options.wav_path, ini["main"]["wav"].c_str());
+	}
+
 	if (ini["main"].has("stds")) {
 		if (!strcmp(ini["main"]["stds"].c_str(), "true")) {
 			symbols_load_file("kernal.sym", 0);
@@ -738,6 +757,7 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 	}
 
 	set_option("gif", Options.gif_path, Default_options.gif_path);
+	set_option("wav", Options.wav_path, Default_options.wav_path);
 	set_option("stds", Options.load_standard_symbols, Default_options.load_standard_symbols);
 	set_option("scale", Options.window_scale, Default_options.window_scale);
 	set_option("quality", quality_str(Options.scale_quality), quality_str(Default_options.scale_quality));
