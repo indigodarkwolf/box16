@@ -1,4 +1,7 @@
+#if defined(__GNUC__)
+#pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wpedantic"
+#endif
 
 //$ nobt
 //$ nocpp
@@ -687,3 +690,7 @@ private:
 } // namespace r8b
 
 #endif // R8B_CDSPSINCFILTERGEN_INCLUDED
+
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
