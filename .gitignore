@@ -20,5 +20,7 @@ build/vs2019/nativefiledialog/output
 build/vs2019/intermediates
 build/vs2019/out
 
+vendor/*.zip
+vendor/r8brain-free-src/bench
 vendor/rtmidi/msw/intermediates
 vendor/rtmidi/msw/output
