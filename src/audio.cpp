@@ -1,27 +1,40 @@
 // Commander X16 Emulator
-// Copyright (c) 2020 Frank van den Hoef
+// Copyright (c) 2021 Stephen Horn
 // All rights reserved. License: 2-clause BSD
 
 #include "audio.h"
-#include "vera/vera_pcm.h"
-#include "vera/vera_psg.h"
-#include "ym2151/ym2151.h"
+
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "ring_buffer.h"
+#include "vera/vera_pcm.h"
+#include "vera/vera_psg.h"
+#include "ym2151/ym2151.h"
+
 #define SAMPLERATE (25000000 / 512)
 
-static SDL_AudioDeviceID Audio_dev = 0;
-static int               Vera_clks = 0;
-static int               Cpu_clks  = 0;
-static int16_t *         Buffer    = nullptr;
+static SDL_AudioDeviceID Audio_dev            = 0;
+static int               Vera_clks            = 0;
+static int               Cpu_clks             = 0;
+static int16_t *         Buffer               = nullptr;
 static int               Obtained_sample_rate = 0;
+static int               Clocks_per_sample    = 0;
 
 static int16_t Psg_buffer[2 * SAMPLES_PER_BUFFER];
 static int16_t Pcm_buffer[2 * SAMPLES_PER_BUFFER];
 static int16_t Ym_buffer[2 * SAMPLES_PER_BUFFER];
+
+struct audio_buffer {
+	int16_t data[SAMPLES_PER_BUFFER * 2];
+};
+#define BACKBUFFER_COUNT (SAMPLERATE / (SAMPLES_PER_BUFFER * 5))
+static ring_allocator<audio_buffer, BACKBUFFER_COUNT> Audio_backbuffer;
+
+static constexpr size_t Low_buffer_threshold = 2;
+static int              Clocks_rendered      = 0;
 
 static volatile audio_render_callback Render_callback = nullptr;
 
@@ -39,25 +52,41 @@ static void audio_callback_nop(const int16_t *, const int)
 {
 }
 
+static void audio_render_buffer()
+{
+	YM_render(Ym_buffer, SAMPLES_PER_BUFFER, (uint32_t)Obtained_sample_rate);
+	psg_render(Psg_buffer, SAMPLES_PER_BUFFER);
+	pcm_render(Pcm_buffer, SAMPLES_PER_BUFFER);
+
+	int16_t buffer[2 * SAMPLES_PER_BUFFER];
+	memcpy(buffer, Ym_buffer, sizeof(Ym_buffer));
+	SDL_MixAudioFormat(reinterpret_cast<uint8_t *>(buffer), reinterpret_cast<uint8_t *>(Psg_buffer), AUDIO_S16, sizeof(Psg_buffer), SDL_MIX_MAXVOLUME);
+	SDL_MixAudioFormat(reinterpret_cast<uint8_t *>(buffer), reinterpret_cast<uint8_t *>(Pcm_buffer), AUDIO_S16, sizeof(Pcm_buffer), SDL_MIX_MAXVOLUME);
+
+	// Commit to the backbuffer
+	{
+		audio_lock_scope lock;
+		audio_buffer *   backbuffer = Audio_backbuffer.allocate();
+		memcpy(backbuffer->data, buffer, sizeof(buffer));
+	}
+
+	Render_callback(buffer, SAMPLES_PER_BUFFER);
+}
+
 static void audio_callback(void *, Uint8 *stream, int len)
 {
 	const int expected = 2 * SAMPLES_PER_BUFFER * sizeof(int16_t);
 	if (len != expected) {
-		printf("Audio buffer size mismatch! (expected: %d, got: %d)\n", expected, len);
+		printf("ERROR: Audio buffer size mismatch! (expected: %d, got: %d)\n", expected, len);
 		return;
 	}
 
-	YM_render(Ym_buffer, SAMPLES_PER_BUFFER, (uint32_t)Obtained_sample_rate);
-	psg_render(Psg_buffer, SAMPLES_PER_BUFFER);
-	pcm_render(Pcm_buffer, SAMPLES_PER_BUFFER);
-	
-	memcpy(Buffer, Ym_buffer, len);
-	SDL_MixAudioFormat(reinterpret_cast<uint8_t *>(Buffer), reinterpret_cast<uint8_t *>(Psg_buffer), AUDIO_S16, len, SDL_MIX_MAXVOLUME);
-	SDL_MixAudioFormat(reinterpret_cast<uint8_t *>(Buffer), reinterpret_cast<uint8_t *>(Pcm_buffer), AUDIO_S16, len, SDL_MIX_MAXVOLUME);
+	const audio_buffer *buffer = Audio_backbuffer.get_oldest();
+	memcpy(stream, buffer->data, len);
 
-	memcpy(stream, Buffer, len);
-
-	Render_callback(Buffer, SAMPLES_PER_BUFFER);
+	if (Audio_backbuffer.count() > 1) {
+		Audio_backbuffer.free_oldest();
+	}
 }
 
 void audio_init(const char *dev_name, int /*num_audio_buffers*/)
@@ -67,10 +96,6 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 	}
 
 	Render_callback = audio_callback_nop;
-
-	// Allocate audio buffers
-	Buffer = new int16_t[2 * SAMPLES_PER_BUFFER];
-	memset(Buffer, 0, 2 * SAMPLES_PER_BUFFER * sizeof(int16_t));
 
 	SDL_AudioSpec desired;
 	SDL_AudioSpec obtained;
@@ -93,6 +118,10 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 	}
 
 	Obtained_sample_rate = obtained.freq;
+	Clocks_per_sample    = 8000000 / Obtained_sample_rate;
+
+	const int buffers_per_frame = Obtained_sample_rate / (SAMPLES_PER_BUFFER * 60);
+	audio_render(0); // Prime the buffers
 
 	// Start playback
 	SDL_PauseAudioDevice(Audio_dev, 0);
@@ -114,7 +143,17 @@ void audio_close(void)
 
 void audio_render(int cpu_clocks)
 {
-	// TODO: Maybe do some pre-rendering into a true backbuffer?
+	Clocks_rendered += cpu_clocks;
+	int samples_to_render = Clocks_rendered / Clocks_per_sample;
+	while (samples_to_render >= SAMPLES_PER_BUFFER) {
+		audio_render_buffer();
+		samples_to_render -= SAMPLES_PER_BUFFER;
+		Clocks_rendered -= Clocks_per_sample * SAMPLES_PER_BUFFER;
+	}
+
+	while (Audio_backbuffer.count() < Low_buffer_threshold) {
+		audio_render_buffer();
+	}
 }
 
 void audio_usage(void)

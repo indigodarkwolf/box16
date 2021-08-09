@@ -5,6 +5,7 @@
 
 static breakpoint_list Breakpoints;
 static breakpoint_list Active_breakpoints;
+static bool            Breakpoint_check[0x10000];
 
 enum debugger_mode {
 	DEBUG_RUN,
@@ -37,6 +38,11 @@ static breakpoint_type get_bp_from_addr(uint16_t addr)
 	return breakpoint_type{ addr, memory_get_current_bank(addr) };
 }
 
+static constexpr const uint16_t &breakpoint_addr(const breakpoint_type bp)
+{
+	return std::get<0>(bp);
+}
+
 static bool execution_exited_interrupt()
 {
 	return (Step_interrupt != 0) && (Step_interrupt != (status & 0x04));
@@ -48,7 +54,7 @@ static bool breakpoint_hit(breakpoint_type current_pc)
 	if (debugger_step_clocks() == 0) {
 		return false;
 	}
-	return (Active_breakpoints.find(current_pc) != Active_breakpoints.end());
+	return Breakpoint_check[breakpoint_addr(current_pc)];
 }
 
 bool debugger_is_paused()

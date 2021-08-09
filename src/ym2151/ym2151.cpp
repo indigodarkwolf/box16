@@ -221,7 +221,7 @@ void YM_write(uint8_t offset, uint8_t value)
 		Last_data                  = value;
 		Ym_registers[Last_address] = Last_data;
 
-		audio_lock_scope lock;
+		YM_prerender();
 		Ym_interface.write(Last_address, Last_data);
 	} else { // address port
 		Last_address = value;
@@ -230,13 +230,12 @@ void YM_write(uint8_t offset, uint8_t value)
 
 uint8_t YM_read_status()
 {
-	audio_lock_scope lock;
+	YM_prerender();
 	return Ym_interface.read_status();
 }
 
 void YM_reset()
 {
-	audio_lock_scope lock;
 	Ym_interface.reset();
 	memset(Ym_registers, 0, 256);
 	memset(&Ym_registers[0x20], 0xc0, 8);
@@ -245,8 +244,6 @@ void YM_reset()
 void YM_debug_write(uint8_t addr, uint8_t value)
 {
 	Ym_registers[addr] = value;
-
-	audio_lock_scope lock;
 	Ym_interface.debug_write(addr, value);
 }
 
@@ -294,7 +291,6 @@ void YM_get_slot_regs(uint8_t voice, uint8_t slot, uint8_t *regs)
 
 void YM_get_modulation_state(ym_modulation_state &data)
 {
-	audio_lock_scope lock;
 	data.amplitude_modulation = Ym_interface.get_AMD();
 	data.phase_modulation     = Ym_interface.get_PMD();
 	data.LFO_phase            = (Ym_interface.get_LFO_phase() & ((1 << 30) - 1)) / (float)(1 << 30);
@@ -302,7 +298,6 @@ void YM_get_modulation_state(ym_modulation_state &data)
 
 void YM_get_slot_state(uint8_t slnum, ym_slot_state &data)
 {
-	audio_lock_scope lock;
 	data.frequency = Ym_interface.get_freq(slnum);
 	data.eg_output = (1024 - Ym_interface.get_EG_output(slnum)) / 1024.f;
 	data.final_env = (1024 - Ym_interface.get_final_env(slnum)) / 1024.f;
@@ -311,7 +306,6 @@ void YM_get_slot_state(uint8_t slnum, ym_slot_state &data)
 
 uint16_t YM_get_timer_counter(uint8_t tnum)
 {
-	audio_lock_scope lock;
 	return Ym_interface.get_timer_counter(tnum);
 }
 
