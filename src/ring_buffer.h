@@ -207,7 +207,7 @@ public:
 	}
 
 private:
-	size_t m_oldest;
-	size_t m_count;
+	volatile size_t m_oldest;
+	volatile size_t m_count;
 	T      m_elems[SIZE];
 };

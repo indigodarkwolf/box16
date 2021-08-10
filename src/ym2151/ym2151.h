@@ -26,7 +26,12 @@
 #	define YM_DT2_D2R_OFFSET 0xC0
 #	define YM_D1L_RR_OFFSET 0xE0
 
-void YM_render(int16_t *stream, uint32_t samples, uint32_t buffer_sample_rate);
+#	define YM_CLOCK_RATE (3579545)
+#	define YM_SAMPLE_RATE (YM_CLOCK_RATE >> 6)
+
+void     YM_prerender(uint32_t clocks);
+void     YM_render(int16_t *buffers, uint32_t samples, uint32_t sample_rate);
+uint32_t YM_get_sample_rate();
 
 void    YM_write(uint8_t offset, uint8_t value);
 uint8_t YM_read_status();

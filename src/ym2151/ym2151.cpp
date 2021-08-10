@@ -1,5 +1,7 @@
 #include "ym2151.h"
 
+#include <queue>
+
 #include "ymfm_opm.h"
 
 #include "ymfm_fm.ipp"
@@ -7,26 +9,21 @@
 #include "audio.h"
 #include "bitutils.h"
 
-#include "CDSPResampler.h"
-
 class ym2151_interface : public ymfm::ymfm_interface
 {
 public:
 	ym2151_interface()
 	    : m_chip(*this),
-	      m_chip_sample_rate(m_chip.sample_rate(3579545)),
-	      m_zero_buffer(new double[m_chip.sample_rate(3579545)]),
-	      m_backbuffer{ new double[m_chip.sample_rate(3579545)], new double[m_chip.sample_rate(3579545)] },
-	      m_backbuffer_size(m_chip.sample_rate(3579545)),
-	      m_backbuffer_used(0)
+	      m_chip_sample_rate(m_chip.sample_rate(YM_CLOCK_RATE)),
+	      m_generation_time(0),
+	      m_backbuffer_size(m_chip.sample_rate(YM_CLOCK_RATE)),
+	      m_backbuffer_used(0),
+	      m_previous_samples{ { 0, 0 }, { 0, 0 } }
 	{
 	}
 
 	~ym2151_interface()
 	{
-		delete[] m_zero_buffer;
-		delete[] m_backbuffer[0];
-		delete[] m_backbuffer[1];
 	}
 
 	void pregenerate(uint32_t samples)
@@ -35,69 +32,86 @@ public:
 			samples = m_backbuffer_size - m_backbuffer_used;
 		}
 
-		if (samples > 0) {
-			ymfm::ym2151::output_data *yms = static_cast<ymfm::ym2151::output_data *>(alloca(sizeof(ymfm::ym2151::output_data) * samples));
-			m_chip.generate(yms, samples);
+		while (samples > 0 && m_write_queue.size() > 0) {
+			auto [addr, value] = m_write_queue.front();
+			m_chip.write_address(addr);
+			m_chip.write_data(value, false);
 
-			double *bb[2] = { &m_backbuffer[0][m_backbuffer_used], &m_backbuffer[1][m_backbuffer_used] };
-			for (uint32_t s = 0; s < samples; ++s) {
-				bb[0][s] = (double)yms[s].data[0];
-				bb[1][s] = (double)yms[s].data[1];
-			}
+			m_chip.generate(&m_backbuffer[m_backbuffer_used], 1);
+
+			++m_backbuffer_used;
+			--samples;
+
+			m_write_queue.pop();
+		}
+
+		if (samples > 0) {
+			m_chip.generate(&m_backbuffer[m_backbuffer_used], samples);
 			m_backbuffer_used += samples;
 		}
 	}
 
-	void generate(int16_t *stream, const uint32_t samples, const uint32_t buffer_sample_rate)
+	void generate(int16_t *buffers, uint32_t samples, uint32_t sample_rate)
 	{
-		r8b::CDSPResampler16 resampler[2]{
-			r8b::CDSPResampler16(m_chip_sample_rate, buffer_sample_rate, m_chip_sample_rate),
-			r8b::CDSPResampler16(m_chip_sample_rate, buffer_sample_rate, m_chip_sample_rate)
+		uint32_t samples_needed = samples * m_chip_sample_rate / sample_rate;
+		if (m_backbuffer_used < samples_needed) {
+			pregenerate(samples_needed - m_backbuffer_used);
+		}
+
+		uint32_t samples_used = 0;
+		auto     pick         = [&samples_used, this](ymfm::ym2151::output_data &ym) {
+            if (samples_used >= m_backbuffer_used) {
+                pregenerate(1);
+            }
+
+            ym = m_backbuffer[samples_used];
+            ++samples_used;
 		};
 
-		const uint32_t ym_samples = samples * m_chip_sample_rate / buffer_sample_rate;
+		auto lerp = [](double v0, double v1, double x, double x_min, double x_max) -> double {
+			const double ratio = (x - x_min) / (x_max - x_min);
+			return v0 + (v1 - v0) * ratio;
+		};
 
-		if (m_backbuffer_used < ym_samples) {
-			pregenerate(ym_samples - m_backbuffer_used);
+		const uint64_t generation_step = 0x100000000ULL / m_chip_sample_rate;
+		const uint64_t sample_step     = 0x100000000ULL / sample_rate;
+
+		ymfm::ym2151::output_data ym0 = m_previous_samples[0];
+		ymfm::ym2151::output_data ym1 = m_previous_samples[1];
+
+		for (uint32_t s = 0; s < samples; ++s) {
+			while (m_generation_time < sample_step) {
+				ym0 = ym1;
+				pick(ym1);
+				m_generation_time += generation_step;
+			}
+			m_generation_time -= sample_step;
+
+			*buffers = (int16_t)lerp(ym0.data[0], ym1.data[0], (double)m_generation_time, 0, (double)m_chip_sample_rate);
+			++buffers;
+			*buffers = (int16_t)lerp(ym0.data[1], ym1.data[1], (double)m_generation_time, 0, (double)m_chip_sample_rate);
+			++buffers;
 		}
 
-		for (int i = 0; i < 2; ++i) {
-			double * output;
-			int16_t *out_stream = &stream[i];
-			int      out_needed = samples;
-
-			int out_written = resampler[i].process(m_backbuffer[0], ym_samples, output);
-			out_written     = std::min(out_written, out_needed);
-			for (int o = 0; o < out_written; ++o) {
-				*out_stream = (int16_t)output[o];
-				out_stream += 2;
-			}
-			out_needed -= out_written;
-
-			while (out_needed > 0) {
-				out_written = resampler[i].process(m_zero_buffer, ym_samples, output);
-				out_written = std::min(out_written, out_needed);
-				for (int o = 0; o < out_written; ++o) {
-					*out_stream = (int16_t)output[o];
-					out_stream += 2;
-				}
-				out_needed -= out_written;
-			}
-		}
-
-		if (ym_samples < m_backbuffer_used) {
-			memmove(&m_backbuffer[0][0], &m_backbuffer[0][ym_samples], sizeof(double) * (m_backbuffer_used - ym_samples));
-			memmove(&m_backbuffer[1][0], &m_backbuffer[1][ym_samples], sizeof(double) * (m_backbuffer_used - ym_samples));
-			m_backbuffer_used -= ym_samples;
+		if (samples_used < m_backbuffer_used) {
+			memmove(&m_backbuffer[0], &m_backbuffer[samples_used], sizeof(ymfm::ym2151::output_data) * (m_backbuffer_used - samples_used));
+			m_backbuffer_used -= samples;
 		} else {
 			m_backbuffer_used = 0;
 		}
+
+		m_previous_samples[0] = ym0;
+		m_previous_samples[1] = ym1;
 	}
 
 	void write(uint8_t addr, uint8_t value)
 	{
-		m_chip.write_address(addr);
-		m_chip.write_data(value, false);
+		// TODO: Re-enable this at some point.
+		//if (m_write_queue.size() > 1) {
+		//	printf("WARN: Write to YM2151 while busy.\n");
+		//}
+
+		m_write_queue.push({ addr, value });
 	}
 
 	void reset()
@@ -177,16 +191,17 @@ public:
 	}
 
 private:
-	ymfm::ym2151              m_chip;
-	ymfm::ym2151::output_data m_last_output[2];
+	ymfm::ym2151 m_chip;
+	uint32_t     m_chip_sample_rate;
+	uint64_t     m_generation_time;
 
-	uint32_t m_timing_error;
-	uint32_t m_chip_sample_rate;
+	ymfm::ym2151::output_data m_backbuffer[YM_SAMPLE_RATE];
+	uint32_t                  m_backbuffer_size;
+	uint32_t                  m_backbuffer_used;
 
-	double * m_zero_buffer;
-	double * m_backbuffer[2];
-	uint32_t m_backbuffer_size;
-	uint32_t m_backbuffer_used;
+	std::queue<std::tuple<uint8_t, uint8_t>> m_write_queue;
+
+	ymfm::ym2151::output_data m_previous_samples[2];
 };
 
 static ym2151_interface Ym_interface;
@@ -194,24 +209,28 @@ static uint8_t          Last_address = 0;
 static uint8_t          Last_data    = 0;
 static uint8_t          Ym_registers[256];
 
-void YM_prerender()
+void YM_prerender(uint32_t clocks)
 {
-	extern uint64_t clockticks6502;
-	static uint64_t clocks_rendered   = 0;
-	static double   clocks_error      = 0;
-	uint32_t        clocks_elapsed    = (uint32_t)(clockticks6502 - clocks_rendered);
+	static uint32_t clocks_elapsed    = 0;
+	clocks_elapsed += clocks;
+
 	const uint32_t  clocks_per_sample = 8000000 / Ym_interface.get_sample_rate();
 	const uint32_t  samples_to_render = clocks_elapsed / clocks_per_sample;
 
 	if (samples_to_render > 0) {
 		Ym_interface.pregenerate(samples_to_render);
-		clocks_elapsed += samples_to_render * clocks_per_sample;
+		clocks_elapsed -= samples_to_render * clocks_per_sample;
 	}
 }
 
-void YM_render(int16_t *stream, uint32_t samples, uint32_t buffer_sample_rate)
+void YM_render(int16_t *buffer, uint32_t samples, uint32_t sample_rate)
 {
-	Ym_interface.generate(stream, samples, buffer_sample_rate);
+	Ym_interface.generate(buffer, samples, sample_rate);
+}
+
+uint32_t YM_get_sample_rate()
+{
+	return Ym_interface.get_sample_rate();
 }
 
 void YM_write(uint8_t offset, uint8_t value)
@@ -221,7 +240,6 @@ void YM_write(uint8_t offset, uint8_t value)
 		Last_data                  = value;
 		Ym_registers[Last_address] = Last_data;
 
-		YM_prerender();
 		Ym_interface.write(Last_address, Last_data);
 	} else { // address port
 		Last_address = value;
@@ -230,7 +248,6 @@ void YM_write(uint8_t offset, uint8_t value)
 
 uint8_t YM_read_status()
 {
-	YM_prerender();
 	return Ym_interface.read_status();
 }
 
