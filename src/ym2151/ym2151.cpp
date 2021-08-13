@@ -9,6 +9,18 @@
 #include "audio.h"
 #include "bitutils.h"
 
+//#define YM2151_USE_PICK 1
+//#define YM2151_USE_LINEAR_INTERPOLATION 1
+//#define YM2151_USE_R8BRAIN_RESAMPLING 1
+
+#if !defined(YM2151_USE_PICK) && !defined(YM2151_USE_LINEAR_INTERPOLATION) && !defined(YM2151_USE_R8BRAIN_RESAMPLING)
+#	define YM2151_USE_LINEAR_INTERPOLATION 1
+#endif
+
+#if defined(YM2151_USE_R8BRAIN_RESAMPLING)
+#	include "CDSPResampler.h"
+#endif
+
 class ym2151_interface : public ymfm::ymfm_interface
 {
 public:
@@ -18,13 +30,135 @@ public:
 	      m_generation_time(0),
 	      m_backbuffer_size(m_chip.sample_rate(YM_CLOCK_RATE)),
 	      m_backbuffer_used(0),
-	      m_previous_samples{ { 0, 0 }, { 0, 0 } }
+	      m_previous_samples{ { 0, 0 }, { 0, 0 } },
+	      m_timers{0, 0},
+	      m_busy_timer{ 0 }
 	{
 	}
 
 	~ym2151_interface()
 	{
 	}
+
+	//
+	// timing and synchronizaton
+	//
+
+	// the chip implementation calls this when a write happens to the mode
+	// register, which could affect timers and interrupts; our responsibility
+	// is to ensure the system is up to date before calling the engine's
+	// engine_mode_write() method
+	virtual void ymfm_sync_mode_write(uint8_t data) override
+	{
+		m_engine->engine_mode_write(data);
+	}
+
+	// the chip implementation calls this when the chip's status has changed,
+	// which may affect the interrupt state; our responsibility is to ensure
+	// the system is up to date before calling the engine's
+	// engine_check_interrupts() method
+	virtual void ymfm_sync_check_interrupts() override
+	{
+		m_engine->engine_check_interrupts();
+	}
+
+	// the chip implementation calls this when one of the two internal timers
+	// has changed state; our responsibility is to arrange to call the engine's
+	// engine_timer_expired() method after the provided number of clocks; if
+	// duration_in_clocks is negative, we should cancel any outstanding timers
+	virtual void ymfm_set_timer(uint32_t tnum, int32_t duration_in_clocks) override
+	{
+		if (tnum >= 2) {
+			printf("ERROR: Not enough timers implemented for ymfm_set_timer\n");
+			return;
+		}
+		m_timers[tnum] = duration_in_clocks;
+	}
+
+	// the chip implementation calls this to indicate that the chip should be
+	// considered in a busy state until the given number of clocks has passed;
+	// our responsibility is to compute and remember the ending time based on
+	// the chip's clock for later checking
+	virtual void ymfm_set_busy_end(uint32_t clocks) override
+	{
+		m_busy_timer = clocks;
+	}
+
+	// the chip implementation calls this to see if the chip is still currently
+	// is a busy state, as specified by a previous call to ymfm_set_busy_end();
+	// our responsibility is to compare the current time against the previously
+	// noted busy end time and return true if we haven't yet passed it
+	virtual bool ymfm_is_busy() override
+	{
+		return m_busy_timer > 0;
+	}
+
+	//
+	// I/O functions
+	//
+
+	// the chip implementation calls this when the state of the IRQ signal has
+	// changed due to a status change; our responsibility is to respond as
+	// needed to the change in IRQ state, signaling any consumers
+	virtual void ymfm_update_irq(bool asserted) override
+	{
+		printf("INFO: YM IRQ changed state to %s\n", asserted ? "on" : "off");
+	}
+
+	// the chip implementation calls this whenever data is read from outside
+	// of the chip; our responsibility is to provide the data requested
+	virtual uint8_t ymfm_external_read(ymfm::access_class type, uint32_t address) override
+	{
+		return 0;
+	}
+
+	// the chip implementation calls this whenever data is written outside
+	// of the chip; our responsibility is to pass the written data on to any consumers
+	virtual void ymfm_external_write(ymfm::access_class type, uint32_t address, uint8_t data) override
+	{
+		// Nop.
+	}
+
+	void update_clocks()
+	{
+		m_busy_timer = std::max(0, m_busy_timer - 64);
+		for (int i = 0; i < 2; ++i) {
+			if (m_timers[i] > 0) {
+				m_timers[i] = std::max(0, m_timers[i] - 64);
+				if (m_timers[i] <= 0) {
+					m_engine->engine_timer_expired(i);
+				}
+			}
+		}
+	}
+
+	void update_clocks(int cycles)
+	{
+		m_busy_timer = std::max(0, m_busy_timer - (64 * cycles));
+		for (int i = 0; i < 2; ++i) {
+			if (m_timers[i] > 0) {
+				m_timers[i] = std::max(0, m_timers[i] - (64 * cycles));
+				if (m_timers[i] <= 0) {
+					m_engine->engine_timer_expired(i);
+				}
+			}
+		}	
+	}
+
+	void pregenerate()
+	{
+		if (m_backbuffer_used < m_backbuffer_size) {
+			if (m_write_queue.size() > 0) {
+				auto [addr, value] = m_write_queue.front();
+				m_chip.write_address(addr);
+				m_chip.write_data(value, false);
+			}
+
+			m_chip.generate(&m_backbuffer[m_backbuffer_used], 1);
+			++m_backbuffer_used;
+		}
+	}
+
 
 	void pregenerate(uint32_t samples)
 	{
@@ -38,7 +172,6 @@ public:
 			m_chip.write_data(value, false);
 
 			m_chip.generate(&m_backbuffer[m_backbuffer_used], 1);
-
 			++m_backbuffer_used;
 			--samples;
 
@@ -47,6 +180,8 @@ public:
 
 		if (samples > 0) {
 			m_chip.generate(&m_backbuffer[m_backbuffer_used], samples);
+			m_busy_timer = std::max(0, m_busy_timer - (64 * (int32_t)samples));
+
 			m_backbuffer_used += samples;
 		}
 	}
@@ -59,6 +194,40 @@ public:
 		}
 
 		uint32_t samples_used = 0;
+
+#if defined(YM2151_USE_PICK)
+		auto     pick         = [&samples_used, this](ymfm::ym2151::output_data &ym) {
+            if (samples_used >= m_backbuffer_used) {
+                pregenerate(1);
+            }
+
+            ym = m_backbuffer[samples_used];
+            ++samples_used;
+		};
+
+		const uint64_t generation_step = 0x100000000ULL / m_chip_sample_rate;
+		const uint64_t sample_step     = 0x100000000ULL / sample_rate;
+
+		ymfm::ym2151::output_data ym0 = m_previous_samples[0];
+		ymfm::ym2151::output_data ym1 = m_previous_samples[1];
+
+		for (uint32_t s = 0; s < samples; ++s) {
+			while (m_generation_time < sample_step) {
+				ym0 = ym1;
+				pick(ym1);
+				m_generation_time += generation_step;
+			}
+			m_generation_time -= sample_step;
+
+			*buffers = ym1.data[0];
+			++buffers;
+			*buffers = ym1.data[1];
+			++buffers;
+		}
+
+		m_previous_samples[0] = ym0;
+		m_previous_samples[1] = ym1;
+#elif defined(YM2151_USE_LINEAR_INTERPOLATION)
 		auto     pick         = [&samples_used, this](ymfm::ym2151::output_data &ym) {
             if (samples_used >= m_backbuffer_used) {
                 pregenerate(1);
@@ -93,23 +262,61 @@ public:
 			++buffers;
 		}
 
+		m_previous_samples[0] = ym0;
+		m_previous_samples[1] = ym1;
+
+#elif defined(YM2151_USE_R8BRAIN_RESAMPLING)
+		r8b::CDSPResampler16 resampler[2]{
+			r8b::CDSPResampler16(m_chip_sample_rate, sample_rate, m_chip_sample_rate),
+			r8b::CDSPResampler16(m_chip_sample_rate, sample_rate, m_chip_sample_rate)
+		};
+
+		for (int i = 0; i < 2; ++i) {
+			double *input = static_cast<double *>(alloca(sizeof(double) * samples_needed));
+			for (uint32_t s = 0; s < samples_needed; ++s) {
+				input[s] = m_backbuffer[s].data[i];
+			}
+
+			double * output;
+			int16_t *out_stream = &buffers[i];
+			int      out_needed = samples;
+
+			int out_written = resampler[i].process(input, samples_needed, output);
+			out_written     = std::min(out_written, out_needed);
+			for (int o = 0; o < out_written; ++o) {
+				*out_stream = (int16_t)output[o];
+				out_stream += 2;
+			}
+			out_needed -= out_written;
+
+			memset(input, 0, sizeof(double) * samples_needed);
+			while (out_needed > 0) {
+				out_written = resampler[i].process(input, samples_needed, output);
+				out_written = std::min(out_written, out_needed);
+				for (int o = 0; o < out_written; ++o) {
+					*out_stream = (int16_t)output[o];
+					out_stream += 2;
+				}
+				out_needed -= out_written;
+			}
+		}
+
+		samples_used = samples_needed;
+#endif
+
 		if (samples_used < m_backbuffer_used) {
 			memmove(&m_backbuffer[0], &m_backbuffer[samples_used], sizeof(ymfm::ym2151::output_data) * (m_backbuffer_used - samples_used));
 			m_backbuffer_used -= samples;
 		} else {
 			m_backbuffer_used = 0;
 		}
-
-		m_previous_samples[0] = ym0;
-		m_previous_samples[1] = ym1;
 	}
 
 	void write(uint8_t addr, uint8_t value)
 	{
-		// TODO: Re-enable this at some point.
-		//if (m_write_queue.size() > 1) {
-		//	printf("WARN: Write to YM2151 while busy.\n");
-		//}
+		if (m_write_queue.size() > 1) {
+			printf("WARN: Write to YM2151 while busy.\n");
+		}
 
 		m_write_queue.push({ addr, value });
 	}
@@ -202,6 +409,9 @@ private:
 	std::queue<std::tuple<uint8_t, uint8_t>> m_write_queue;
 
 	ymfm::ym2151::output_data m_previous_samples[2];
+
+	int32_t m_timers[2];
+	int32_t m_busy_timer;
 };
 
 static ym2151_interface Ym_interface;
@@ -211,11 +421,11 @@ static uint8_t          Ym_registers[256];
 
 void YM_prerender(uint32_t clocks)
 {
-	static uint32_t clocks_elapsed    = 0;
+	static uint32_t clocks_elapsed = 0;
 	clocks_elapsed += clocks;
 
-	const uint32_t  clocks_per_sample = 8000000 / Ym_interface.get_sample_rate();
-	const uint32_t  samples_to_render = clocks_elapsed / clocks_per_sample;
+	const uint32_t clocks_per_sample = 8000000 / Ym_interface.get_sample_rate();
+	const uint32_t samples_to_render = clocks_elapsed / clocks_per_sample;
 
 	if (samples_to_render > 0) {
 		Ym_interface.pregenerate(samples_to_render);
