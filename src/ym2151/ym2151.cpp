@@ -317,12 +317,12 @@ public:
 
 	void write(uint8_t addr, uint8_t value)
 	{
-		if (m_write_queue.size() > 1) {
-			printf("WARN: Write to YM2151 while busy.\n");
-		}
-
 		if (ymfm_is_busy()) {
-			m_write_queue.push({ addr, value });
+			if (YM_is_strict()) {
+				printf("WARN: Write to YM2151 ($%02X <- $%02X) while busy.\n", (int)addr, (int)value);
+			} else {
+				m_write_queue.push({ addr, value });
+			}
 		} else {
 			m_chip.write_address(addr);
 			m_chip.write_data(value, false);
@@ -434,6 +434,7 @@ static uint8_t          Last_address = 0;
 static uint8_t          Last_data    = 0;
 static uint8_t          Ym_registers[256];
 static bool             Ym_irq_enabled = false;
+static bool             Ym_strict_busy = false;
 
 void YM_prerender(uint32_t clocks)
 {
@@ -467,6 +468,16 @@ bool YM_irq_is_enabled()
 void YM_set_irq_enabled(bool enabled)
 {
 	Ym_irq_enabled = enabled;
+}
+
+bool YM_is_strict()
+{
+	return Ym_strict_busy;
+}
+
+void YM_set_strict_busy(bool enable)
+{
+	Ym_strict_busy = enable;
 }
 
 void YM_write(uint8_t offset, uint8_t value)

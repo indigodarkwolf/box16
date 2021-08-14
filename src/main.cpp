@@ -255,6 +255,7 @@ int main(int argc, char **argv)
 		audio_init(strlen(Options.audio_dev_name) > 0 ? Options.audio_dev_name : nullptr, Options.audio_buffers);
 		audio_set_render_callback(wav_recorder_process);
 		YM_set_irq_enabled(Options.ym_irq);
+		YM_set_strict_busy(Options.ym_strict);
 	}
 
 	memory_init();

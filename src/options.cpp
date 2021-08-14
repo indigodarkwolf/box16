@@ -102,6 +102,8 @@ static void usage()
 	printf("\tPrint additional version information the emulator and ROM.\n");
 	printf("-ymirq\n");
 	printf("\tEnable the YM2151's IRQ generation.\n");
+	printf("-ymstrict\n");
+	printf("\tEnable strict enforcement of YM behaviors.\n");
 	printf("\n");
 	exit(1);
 }
@@ -424,6 +426,11 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			argv++;
 			ini["main"]["ymirq"] = "true";
 
+		} else if (!strcmp(argv[0], "-ymstrict")) {
+			argc--;
+			argv++;
+			ini["main"]["ymstrict"] = "true";
+
 		} else {
 			usage();
 		}
@@ -677,6 +684,12 @@ static void set_options(mINI::INIStructure &ini)
 			Options.ym_irq = true;
 		}
 	}
+
+	if (ini["main"].has("ymstrict")) {
+		if (!strcmp(ini["main"]["ymstrict"].c_str(), "true")) {
+			Options.ym_strict = true;
+		}
+	}
 }
 
 static void set_ini(mINI::INIStructure &ini, bool all)
@@ -780,6 +793,7 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 	set_option("rtc", Options.set_system_time, Default_options.set_system_time);
 	set_option("nobinds", Options.no_keybinds, Default_options.no_keybinds);
 	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
+	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
 }
 
 void apply_ini(mINI::INIStructure &dst, const mINI::INIStructure &src)

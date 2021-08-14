@@ -274,4 +274,8 @@ void draw_options_menu()
 	if (bool_option(Options.ym_irq, "Enable YM2151 interrupts", "Enable interrupt generation from the YM2151 chip.\nCommand line: -ymirq")) {
 		YM_set_irq_enabled(Options.ym_irq);
 	}
+
+	if (bool_option(Options.ym_strict, "Enable strict YM behaviors", "Enforce strict limitations in the YM2151. This is hardware accurate, but the official emulator is less strict.\nCommand line: -ymstrict")) {
+		YM_set_strict_busy(Options.ym_strict);
+	}
 }

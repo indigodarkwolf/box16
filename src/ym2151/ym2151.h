@@ -33,8 +33,11 @@ void     YM_prerender(uint32_t clocks);
 void     YM_render(int16_t *buffers, uint32_t samples, uint32_t sample_rate);
 uint32_t YM_get_sample_rate();
 
-bool     YM_irq_is_enabled();
-void     YM_set_irq_enabled(bool enabled);
+bool YM_irq_is_enabled();
+void YM_set_irq_enabled(bool enabled);
+
+bool YM_is_strict();
+void YM_set_strict_busy(bool enable);
 
 void    YM_write(uint8_t offset, uint8_t value);
 uint8_t YM_read_status();
