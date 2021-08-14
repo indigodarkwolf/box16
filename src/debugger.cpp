@@ -38,7 +38,7 @@ static breakpoint_type get_bp_from_addr(uint16_t addr)
 	return breakpoint_type{ addr, memory_get_current_bank(addr) };
 }
 
-static constexpr const uint16_t &breakpoint_addr(const breakpoint_type bp)
+static constexpr const uint16_t breakpoint_addr(const breakpoint_type bp)
 {
 	return std::get<0>(bp);
 }

@@ -18,40 +18,28 @@ mINI::INIStructure Inifile_ini;
 
 static void usage()
 {
-	printf("\nCommander X16 Emulator r%s (%s)\n", VER_NUM, VER_NAME);
-	printf("(C)2019,2020 Michael Steil et al.\n");
+	printf("%s %s (%s)\n", VER_TITLE, VER_NUM, VER_NAME);
+	printf("Portions (C)2019,2020 Michael Steil et al.\n");
+	printf("Portions (C)2021 Stephen Horn et al.\n");
 	printf("All rights reserved. License: 2-clause BSD\n\n");
 
 	printf("Usage: x16emu [option] ...\n\n");
 
-	printf("-rom <rom.bin>\n");
-	printf("\tOverride KERNAL/BASIC/* ROM file.\n");
-	printf("-ram <ramsize>\n");
-	printf("\tSpecify banked RAM size in KB (8, 16, 32, ..., 2048).\n");
-	printf("\tThe default is 512.\n");
-	printf("-nvram <nvram.bin>\n");
-	printf("\tSpecify NVRAM image. By default, the machine starts with\n");
-	printf("\tempty NVRAM and does not save it to disk.\n");
-	printf("-keymap <keymap>\n");
-	printf("\tEnable a specific keyboard layout decode table.\n");
-	printf("-hypercall_path <path>\n");
-	printf("\tSet the base path for hypercalls (effectively, the current working directory when no SD card is attached).\n");
-	printf("-sdcard <sdcard.img>\n");
-	printf("\tSpecify SD card image (partition map + FAT32)\n");
-	printf("-prg <app.prg>[,<load_addr>]\n");
-	printf("\tLoad application from the local disk into RAM\n");
-	printf("\t(.PRG file with 2 byte start address header)\n");
-	printf("\tThe override load address is hex without a prefix.\n");
+	printf("-abufs <number of audio buffers>\n");
+	printf("\tIs provided for backward-compatibility with x16emu toolchains,\n");
+	printf("\tbut is non-functional in Box16.\n ");
+
 	printf("-bas <app.txt>\n");
 	printf("\tInject a BASIC program in ASCII encoding through the\n");
 	printf("\tkeyboard.\n");
-	printf("-run\n");
-	printf("\tStart the -prg/-bas program using RUN or SYS, depending\n");
-	printf("\ton the load address.\n");
-	printf("-geos\n");
-	printf("\tLaunch GEOS at startup.\n");
-	printf("-warp\n");
-	printf("\tEnable warp mode, run emulator as fast as possible.\n");
+
+	printf("-debug <address>\n");
+	printf("\tSet a breakpoint in the debugger\n");
+
+	printf("-dump {C|R|B|V}...\n");
+	printf("\tConfigure system dump: (C)PU, (R)AM, (B)anked-RAM, (V)RAM\n");
+	printf("\tMultiple characters are possible, e.g. -dump CV ; Default: RB\n");
+
 	printf("-echo [{iso|raw}]\n");
 	printf("\tPrint all KERNAL output to the host's stdout.\n");
 	printf("\tBy default, everything but printable ASCII characters get\n");
@@ -60,12 +48,83 @@ static void usage()
 	printf("\t\"raw\" will not do any substitutions.\n");
 	printf("\tWith the BASIC statement \"LIST\", this can be used\n");
 	printf("\tto detokenize a BASIC program.\n");
-	printf("-log {K|S|V}...\n");
-	printf("\tEnable logging of (K)eyboard, (S)peed, (V)ideo.\n");
-	printf("\tMultiple characters are possible, e.g. -log KS\n");
+
+	printf("-hypercall_path <path>\n");
+	printf("\tSet the base path for hypercalls (effectively, the current working directory when no SD card is attached).\n");
+
+	printf("-geos\n");
+	printf("\tLaunch GEOS at startup.\n");
+
 	printf("-gif <file.gif>[,wait]\n");
 	printf("\tRecord a gif for the video output.\n");
 	printf("\tUse ,wait to start paused.\n");
+
+	printf("-help\n");
+	printf("\tPrint this message and exit.\n");
+
+	printf("-keymap <keymap>\n");
+	printf("\tEnable a specific keyboard layout decode table.\n");
+
+	printf("-log {K|S|V}...\n");
+	printf("\tEnable logging of (K)eyboard, (S)peed, (V)ideo.\n");
+	printf("\tMultiple characters are possible, e.g. -log KS\n");
+
+	printf("-nobinds\n");
+	printf("\tDisable most emulator keyboard shortcuts.\n");
+
+	printf("-nosound\n");
+	printf("\tDisables audio. Incompatible with -sound.\n");
+
+	printf("-nvram <nvram.bin>\n");
+	printf("\tSpecify NVRAM image. By default, the machine starts with\n");
+	printf("\tempty NVRAM and does not save it to disk.\n");
+
+	printf("-prg <app.prg>[,<load_addr>]\n");
+	printf("\tLoad application from the local disk into RAM\n");
+	printf("\t(.PRG file with 2 byte start address header)\n");
+	printf("\tThe override load address is hex without a prefix.\n");
+
+	printf("-quality {nearest|linear|best}\n");
+	printf("\tScaling algorithm quality\n");
+
+	printf("-ram <ramsize>\n");
+	printf("\tSpecify banked RAM size in KB (8, 16, 32, ..., 2048).\n");
+	printf("\tThe default is 512.\n");
+
+	printf("-rom <rom.bin>\n");
+	printf("\tOverride KERNAL/BASIC/* ROM file.\n");
+
+	printf("-rtc\n");
+	printf("\tSet the real-time-clock to the current system time and date.\n");
+
+	printf("-run\n");
+	printf("\tStart the -prg/-bas program using RUN or SYS, depending\n");
+	printf("\ton the load address.\n");
+
+	printf("-scale {1|2|3|4}\n");
+	printf("\tScale output to an integer multiple of 640x480\n");
+
+	printf("-sdcard <sdcard.img>\n");
+	printf("\tSpecify SD card image (partition map + FAT32)\n");
+	
+	printf("-sound <output device>\n");
+	printf("\tSet the output device used for audio emulation. Incompatible with -nosound.\n");
+
+	printf("-stds\n");
+	printf("\tLoad standard (ROM) symbol files\n");
+
+	printf("-sym <filename>\n");
+	printf("\tLoad a symbols file\n");
+
+	printf("-test {0, 1, 2, 3}\n");
+	printf("\tImmediately invoke the TEST command with the provided test number.\n");
+
+	printf("-version\n");
+	printf("\tPrint additional version information the emulator and ROM.\n");
+
+	printf("-warp\n");
+	printf("\tEnable warp mode, run emulator as fast as possible.\n");
+	
 	printf("-wav <file.wav>[{,wait|,auto}]\n");
 	printf("\tRecord a wav for the audio output.\n");
 	printf("\tUse ,wait to start paused.\n");
@@ -73,38 +132,14 @@ static void usage()
 	printf("\tPOKE $9FB5,2 to start recording.\n");
 	printf("\tPOKE $9FB5,1 to capture a single frame.\n");
 	printf("\tPOKE $9FB5,0 to pause.\n");
-	printf("-scale {1|2|3|4}\n");
-	printf("\tScale output to an integer multiple of 640x480\n");
-	printf("-quality {nearest|linear|best}\n");
-	printf("\tScaling algorithm quality\n");
-	printf("-debug <address>\n");
-	printf("\tSet a breakpoint in the debugger\n");
-	printf("-sym <filename>\n");
-	printf("\tLoad a symbols file\n");
-	printf("-stds\n");
-	printf("\tLoad standard (ROM) symbol files\n");
-	printf("-dump {C|R|B|V}...\n");
-	printf("\tConfigure system dump: (C)PU, (R)AM, (B)anked-RAM, (V)RAM\n");
-	printf("\tMultiple characters are possible, e.g. -dump CV ; Default: RB\n");
-	printf("-nosound\n");
-	printf("\tDisables audio. Incompatible with -sound.\n");
-	printf("-sound <output device>\n");
-	printf("\tSet the output device used for audio emulation. Incompatible with -nosound.\n");
-	printf("-abufs <number of audio buffers>\n");
-	printf("\tSet the number of audio buffers used for playback. (default: 8)\n");
-	printf("\tIncreasing this will reduce stutter on slower computers,\n");
-	printf("\tbut will increase audio latency.\n");
-	printf("-rtc\n");
-	printf("\tSet the real-time-clock to the current system time and date.\n");
-	printf("-nobinds\n");
-	printf("\tDisable most emulator keyboard shortcuts.\n");
-	printf("-version\n");
-	printf("\tPrint additional version information the emulator and ROM.\n");
+	
 	printf("-ymirq\n");
 	printf("\tEnable the YM2151's IRQ generation.\n");
+	
 	printf("-ymstrict\n");
 	printf("\tEnable strict enforcement of YM behaviors.\n");
 	printf("\n");
+
 	exit(1);
 }
 
@@ -152,66 +187,17 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			usage();
 		}
 		char *v = argv[0] + 1;
-		if (!strcmp(argv[0], "-rom")) {
+		if (!strcmp(argv[0], "-abufs")) {
 			argc--;
 			argv++;
 			if (!argc || argv[0][0] == '-') {
 				usage();
 			}
 
-			ini["main"]["rom"] = argv[0];
+			ini["main"]["abufs"] = argv[0];
 
 			argc--;
 			argv++;
-		} else if (!strcmp(argv[0], "-ram")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage();
-			}
-
-			ini["main"]["ram"] = argv[0];
-
-			argc--;
-			argv++;
-		} else if (!strcmp(argv[0], "-keymap")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage_keymap();
-			}
-
-			ini["main"]["keymap"] = argv[0];
-
-			argc--;
-			argv++;
-		} else if (!strcmp(argv[0], "-hypercall_path")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage();
-			}
-
-			ini["main"]["hypercall_path"] = argv[0];
-
-			argc--;
-			argv++;
-		} else if (!strcmp(argv[0], "-prg")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage();
-			}
-
-			ini["main"]["prg"] = argv[0];
-
-			argc--;
-			argv++;
-		} else if (!strcmp(argv[0], "-run")) {
-			argc--;
-			argv++;
-
-			ini["main"]["run"] = "true";
 
 		} else if (!strcmp(argv[0], "-bas")) {
 			argc--;
@@ -224,69 +210,16 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 
 			argc--;
 			argv++;
-		} else if (!strcmp(argv[0], "-geos")) {
-			argc--;
-			argv++;
-
-			ini["main"]["geos"] = "true";
-
-		} else if (!strcmp(argv[0], "-test")) {
+		} else if (!strcmp(argv[0], "-debug")) {
 			argc--;
 			argv++;
 			if (!argc || argv[0][0] == '-') {
 				usage();
 			}
 
-			ini["main"]["test"] = argv[0];
-
-			argc--;
-			argv++;
-		} else if (!strcmp(argv[0], "-nvram")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage();
-			}
-			ini["main"]["nvram"] = argv[0];
-			argc--;
-			argv++;
-		} else if (!strcmp(argv[0], "-sdcard")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage();
-			}
-
-			ini["main"]["sdcard"] = argv[0];
-
-			argc--;
-			argv++;
-		} else if (!strcmp(argv[0], "-warp")) {
-			argc--;
-			argv++;
-
-			ini["main"]["warp"] = "true";
-
-		} else if (!strcmp(argv[0], "-echo")) {
-			argc--;
-			argv++;
-			if (argc && argv[0][0] != '-') {
-
-				ini["main"]["echo"] = argv[0];
-
-				argc--;
-				argv++;
-			} else {
-				ini["main"]["echo"] = "cooked";
-			}
-		} else if (!strcmp(argv[0], "-log")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage();
-			}
-
-			ini["main"]["log"] = argv[0];
+			// Add a breakpoint
+			uint32_t bp = strtol(argv[0], NULL, 16);
+			debugger_add_breakpoint((uint16_t)(bp & 0xfffF), (uint8_t)(bp >> 16));
 
 			argc--;
 			argv++;
@@ -301,6 +234,35 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 
 			argc--;
 			argv++;
+		} else if (!strcmp(argv[0], "-echo")) {
+			argc--;
+			argv++;
+			if (argc && argv[0][0] != '-') {
+
+				ini["main"]["echo"] = argv[0];
+
+				argc--;
+				argv++;
+			} else {
+				ini["main"]["echo"] = "cooked";
+			}
+		} else if (!strcmp(argv[0], "-hypercall_path")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["hypercall_path"] = argv[0];
+
+			argc--;
+			argv++;
+		} else if (!strcmp(argv[0], "-geos")) {
+			argc--;
+			argv++;
+
+			ini["main"]["geos"] = "true";
+
 		} else if (!strcmp(argv[0], "-gif")) {
 			argc--;
 			argv++;
@@ -312,59 +274,61 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 
 			argv++;
 			argc--;
-		} else if (!strcmp(argv[0], "-wav")) {
+		} else if (!strcmp(argv[0], "-help")) {
+			argc--;
+			argv++;
+
+			usage();
+		} else if (!strcmp(argv[0], "-keymap")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage_keymap();
+			}
+
+			ini["main"]["keymap"] = argv[0];
+
+			argc--;
+			argv++;
+		} else if (!strcmp(argv[0], "-log")) {
 			argc--;
 			argv++;
 			if (!argc || argv[0][0] == '-') {
 				usage();
 			}
 
-			ini["main"]["wav"] = argv[0];
+			ini["main"]["log"] = argv[0];
 
-			argv++;
 			argc--;
-		} else if (!strcmp(argv[0], "-debug")) {
+			argv++;
+		} else if (!strcmp(argv[0], "-nobinds")) {
+			argc--;
+			argv++;
+			ini["main"]["nobinds"] = "true";
+
+		} else if (!strcmp(argv[0], "-nosound")) {
+			argc--;
+			argv++;
+
+			ini["main"]["nosound"] = "true";
+
+		} else if (!strcmp(argv[0], "-nvram")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+			ini["main"]["nvram"] = argv[0];
+			argc--;
+			argv++;
+		} else if (!strcmp(argv[0], "-prg")) {
 			argc--;
 			argv++;
 			if (!argc || argv[0][0] == '-') {
 				usage();
 			}
 
-			// Add a breakpoint
-			uint32_t bp = strtol(argv[0], NULL, 16);
-			debugger_add_breakpoint((uint16_t)(bp & 0xfffF), (uint8_t)(bp >> 16));
-
-			argc--;
-			argv++;
-		} else if (!strcmp(argv[0], "-sym")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage();
-			}
-
-			// Add a symbols file
-			symbols_load_file(argv[0]);
-
-			argc--;
-			argv++;
-		} else if (!strcmp(argv[0], "-stds")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] != '-') {
-				usage();
-			}
-
-			ini["main"]["stds"] = "true";
-
-		} else if (!strcmp(argv[0], "-scale")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage();
-			}
-
-			ini["main"]["scale"] = argv[0];
+			ini["main"]["prg"] = argv[0];
 
 			argc--;
 			argv++;
@@ -379,12 +343,61 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 
 			argc--;
 			argv++;
-		} else if (!strcmp(argv[0], "-nosound")) {
+		} else if (!strcmp(argv[0], "-ram")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["ram"] = argv[0];
+
+			argc--;
+			argv++;
+		} else if (!strcmp(argv[0], "-rom")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["rom"] = argv[0];
+
+			argc--;
+			argv++;
+		} else if (!strcmp(argv[0], "-rtc")) {
+			argc--;
+			argv++;
+			ini["main"]["rtc"] = "true";
+
+		} else if (!strcmp(argv[0], "-run")) {
 			argc--;
 			argv++;
 
-			ini["main"]["nosound"] = "true";
+			ini["main"]["run"] = "true";
 
+		} else if (!strcmp(argv[0], "-scale")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["scale"] = argv[0];
+
+			argc--;
+			argv++;
+		} else if (!strcmp(argv[0], "-sdcard")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["sdcard"] = argv[0];
+
+			argc--;
+			argv++;
 		} else if (!strcmp(argv[0], "-sound")) {
 			argc--;
 			argv++;
@@ -393,34 +406,61 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 
 			argc--;
 			argv++;
-		} else if (!strcmp(argv[0], "-abufs")) {
+		} else if (!strcmp(argv[0], "-stds")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] != '-') {
+				usage();
+			}
+
+			ini["main"]["stds"] = "true";
+
+		} else if (!strcmp(argv[0], "-sym")) {
 			argc--;
 			argv++;
 			if (!argc || argv[0][0] == '-') {
 				usage();
 			}
 
-			ini["main"]["abufs"] = argv[0];
+			// Add a symbols file
+			symbols_load_file(argv[0]);
 
 			argc--;
 			argv++;
-
-		} else if (!strcmp(argv[0], "-rtc")) {
+		} else if (!strcmp(argv[0], "-test")) {
 			argc--;
 			argv++;
-			ini["main"]["rtc"] = "true";
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
 
-		} else if (!strcmp(argv[0], "-nobinds")) {
+			ini["main"]["test"] = argv[0];
+
 			argc--;
 			argv++;
-			ini["main"]["nobinds"] = "true";
-
 		} else if (!strcmp(argv[0], "-version")) {
 			printf("%s %s", VER_NUM, VER_NAME);
 			argc--;
 			argv++;
 			exit(0);
 
+		} else if (!strcmp(argv[0], "-warp")) {
+			argc--;
+			argv++;
+
+			ini["main"]["warp"] = "true";
+
+		} else if (!strcmp(argv[0], "-wav")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["wav"] = argv[0];
+
+			argv++;
+			argc--;
 		} else if (!strcmp(argv[0], "-ymirq")) {
 			argc--;
 			argv++;
