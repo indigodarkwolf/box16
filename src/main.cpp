@@ -254,6 +254,7 @@ int main(int argc, char **argv)
 	if (!Options.no_sound) {
 		audio_init(strlen(Options.audio_dev_name) > 0 ? Options.audio_dev_name : nullptr, Options.audio_buffers);
 		audio_set_render_callback(wav_recorder_process);
+		YM_set_irq_enabled(Options.ym_irq);
 	}
 
 	memory_init();
@@ -473,9 +474,8 @@ void emulator_loop()
 #endif
 		}
 
-		if (vera_video_get_irq_out()) {
+		if (vera_video_get_irq_out() || YM_irq()) {
 			if (!(status & 4)) {
-				//				printf("IRQ!\n");
 				debugger_interrupt();
 				irq6502();
 			}

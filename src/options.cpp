@@ -100,6 +100,8 @@ static void usage()
 	printf("\tDisable most emulator keyboard shortcuts.\n");
 	printf("-version\n");
 	printf("\tPrint additional version information the emulator and ROM.\n");
+	printf("-ymirq\n");
+	printf("\tEnable the YM2151's IRQ generation.\n");
 	printf("\n");
 	exit(1);
 }
@@ -417,6 +419,11 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			argv++;
 			exit(0);
 
+		} else if (!strcmp(argv[0], "-ymirq")) {
+			argc--;
+			argv++;
+			ini["main"]["ymirq"] = "true";
+
 		} else {
 			usage();
 		}
@@ -664,6 +671,12 @@ static void set_options(mINI::INIStructure &ini)
 			Options.no_keybinds = true;
 		}
 	}
+
+	if (ini["main"].has("ymirq")) {
+		if (!strcmp(ini["main"]["ymirq"].c_str(), "true")) {
+			Options.ym_irq = true;
+		}
+	}
 }
 
 static void set_ini(mINI::INIStructure &ini, bool all)
@@ -766,6 +779,7 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 	set_option("abufs", Options.audio_buffers, Default_options.audio_buffers);
 	set_option("rtc", Options.set_system_time, Default_options.set_system_time);
 	set_option("nobinds", Options.no_keybinds, Default_options.no_keybinds);
+	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
 }
 
 void apply_ini(mINI::INIStructure &dst, const mINI::INIStructure &src)

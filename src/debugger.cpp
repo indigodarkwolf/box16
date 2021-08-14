@@ -54,7 +54,10 @@ static bool breakpoint_hit(breakpoint_type current_pc)
 	if (debugger_step_clocks() == 0) {
 		return false;
 	}
-	return Breakpoint_check[breakpoint_addr(current_pc)];
+	if (Breakpoint_check[breakpoint_addr(current_pc)]) {
+		return Active_breakpoints.find(current_pc) != Active_breakpoints.end();
+	}
+	return false;
 }
 
 bool debugger_is_paused()

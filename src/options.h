@@ -59,6 +59,7 @@ struct options {
 
 	bool set_system_time = false;
 	bool no_keybinds     = false;
+	bool ym_irq          = false;
 };
 
 extern options Options;

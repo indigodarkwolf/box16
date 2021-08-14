@@ -33,9 +33,13 @@ void     YM_prerender(uint32_t clocks);
 void     YM_render(int16_t *buffers, uint32_t samples, uint32_t sample_rate);
 uint32_t YM_get_sample_rate();
 
+bool     YM_irq_is_enabled();
+void     YM_set_irq_enabled(bool enabled);
+
 void    YM_write(uint8_t offset, uint8_t value);
 uint8_t YM_read_status();
-void	YM_reset();
+bool    YM_irq();
+void    YM_reset();
 
 // debug stuff
 void    YM_debug_write(uint8_t addr, uint8_t value);

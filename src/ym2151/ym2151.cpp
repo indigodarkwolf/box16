@@ -32,7 +32,8 @@ public:
 	      m_backbuffer_used(0),
 	      m_previous_samples{ { 0, 0 }, { 0, 0 } },
 	      m_timers{0, 0},
-	      m_busy_timer{ 0 }
+	      m_busy_timer{ 0 },
+	      m_irq_status{ false }
 	{
 	}
 
@@ -102,7 +103,7 @@ public:
 	// needed to the change in IRQ state, signaling any consumers
 	virtual void ymfm_update_irq(bool asserted) override
 	{
-		printf("INFO: YM IRQ changed state to %s\n", asserted ? "on" : "off");
+		m_irq_status = asserted;
 	}
 
 	// the chip implementation calls this whenever data is read from outside
@@ -155,10 +156,11 @@ public:
 			}
 
 			m_chip.generate(&m_backbuffer[m_backbuffer_used], 1);
+			update_clocks();
 			++m_backbuffer_used;
 		}
 	}
-
+		
 
 	void pregenerate(uint32_t samples)
 	{
@@ -172,6 +174,7 @@ public:
 			m_chip.write_data(value, false);
 
 			m_chip.generate(&m_backbuffer[m_backbuffer_used], 1);
+			update_clocks();
 			++m_backbuffer_used;
 			--samples;
 
@@ -180,7 +183,7 @@ public:
 
 		if (samples > 0) {
 			m_chip.generate(&m_backbuffer[m_backbuffer_used], samples);
-			m_busy_timer = std::max(0, m_busy_timer - (64 * (int32_t)samples));
+			update_clocks(samples);
 
 			m_backbuffer_used += samples;
 		}
@@ -318,7 +321,12 @@ public:
 			printf("WARN: Write to YM2151 while busy.\n");
 		}
 
-		m_write_queue.push({ addr, value });
+		if (ymfm_is_busy()) {
+			m_write_queue.push({ addr, value });
+		} else {
+			m_chip.write_address(addr);
+			m_chip.write_data(value, false);
+		}
 	}
 
 	void reset()
@@ -392,6 +400,11 @@ public:
 		return 0;
 	}
 
+	bool get_irq_status()
+	{
+		return m_irq_status;
+	}
+
 	uint32_t get_sample_rate() const
 	{
 		return m_chip_sample_rate;
@@ -412,12 +425,15 @@ private:
 
 	int32_t m_timers[2];
 	int32_t m_busy_timer;
+
+	bool m_irq_status;
 };
 
 static ym2151_interface Ym_interface;
 static uint8_t          Last_address = 0;
 static uint8_t          Last_data    = 0;
 static uint8_t          Ym_registers[256];
+static bool             Ym_irq_enabled = false;
 
 void YM_prerender(uint32_t clocks)
 {
@@ -443,6 +459,16 @@ uint32_t YM_get_sample_rate()
 	return Ym_interface.get_sample_rate();
 }
 
+bool YM_irq_is_enabled()
+{
+	return Ym_irq_enabled;
+}
+
+void YM_set_irq_enabled(bool enabled)
+{
+	Ym_irq_enabled = enabled;
+}
+
 void YM_write(uint8_t offset, uint8_t value)
 {
 	// save the hassle to add interface to dig into opm_registers by caching the writes here
@@ -459,6 +485,11 @@ void YM_write(uint8_t offset, uint8_t value)
 uint8_t YM_read_status()
 {
 	return Ym_interface.read_status();
+}
+
+bool YM_irq()
+{
+	return Ym_irq_enabled && Ym_interface.get_irq_status();
 }
 
 void YM_reset()

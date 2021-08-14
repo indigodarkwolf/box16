@@ -4,6 +4,7 @@
 #include "imgui/imgui.h"
 #include "nfd.h"
 #include "options.h"
+#include "ym2151/ym2151.h"
 
 void draw_options_menu()
 {
@@ -16,12 +17,14 @@ void draw_options_menu()
 	}
 
 	auto file_option = [](char const *ext, char(&path)[PATH_MAX], char const *name, char const *tip) {
+		bool result = false;
 		ImGui::PushID(name);
 		ImGui::BeginGroup();
 		if (ImGui::Button("...")) {
 			char *open_path = nullptr;
 			if (NFD_OpenDialog(ext, nullptr, &open_path) == NFD_OKAY && open_path != nullptr) {
 				strcpy(path, open_path);
+				result = true;
 			}
 		}
 		ImGui::SameLine();
@@ -31,13 +34,15 @@ void draw_options_menu()
 			ImGui::SetTooltip("%s", tip);
 		}
 		ImGui::PopID();
+		return result;
 	};
 
 	auto bool_option = [](bool &option, char const *name, char const *tip) {
-		ImGui::Checkbox(name, &option);
+		bool result = ImGui::Checkbox(name, &option);
 		if (ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("%s", tip);
 		}
+		return result;
 	};
 
 	//===============================
@@ -254,7 +259,9 @@ void draw_options_menu()
 		ImGui::SetTooltip("Name of default audio device to use.\nCommand line: -sound <device>");
 	}
 
-	ImGui::Checkbox("No Sound", &Options.no_sound);
+	if (ImGui::Checkbox("No Sound", &Options.no_sound)) {
+
+	}
 	if (ImGui::IsItemHovered()) {
 		ImGui::SetTooltip("Disable audio subsystems entirely.\nCommand line: -nosound");
 	}
@@ -262,5 +269,9 @@ void draw_options_menu()
 	ImGui::InputInt("Audio Buffers", &Options.audio_buffers);
 	if (ImGui::IsItemHovered()) {
 		ImGui::SetTooltip("Number of audio buffers.\n(Deprecated: No longer has any effect.)\nCommand line: -abufs <qty>");
+	}
+
+	if (bool_option(Options.ym_irq, "Enable YM2151 interrupts", "Enable interrupt generation from the YM2151 chip.\nCommand line: -ymirq")) {
+		YM_set_irq_enabled(Options.ym_irq);
 	}
 }
