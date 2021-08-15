@@ -16,7 +16,7 @@ VENDOROBJ := $(OBJDIR)/vendor
 
 PKGCONFIG := pkg-config
 
-CFLAGS := --std=c++17 -O3
+CFLAGS := --std=c++17 $(DFLAGS)
 CWARNS := -Wformat -Wformat-security -Wpedantic
 
 #
@@ -37,7 +37,7 @@ NFD_OBJS := $(NFD_OBJDIR)/nfd_gtk.o $(NFD_OBJDIR)/nfd_common.o
 LPNG_SRCDIR := $(VENDORSRC)/lodepng
 LPNG_OBJDIR := $(OBJDIR)/lodepng
 
-LPNG_CFLAGS := --std=c++17 -O3 $(CFLAGS) $(CWARNS)
+LPNG_CFLAGS := $(CFLAGS) $(CWARNS)
 
 LPNG_SRCS := $(LPNG_SRCDIR)/lodepng.cpp
 LPNG_OBJS := $(LPNG_OBJDIR)/lodepng.o
@@ -48,7 +48,7 @@ LPNG_OBJS := $(LPNG_OBJDIR)/lodepng.o
 RTMIDI_SRCDIR := $(VENDORSRC)/rtmidi
 RTMIDI_OBJDIR := $(OBJDIR)/rtmidi
 
-RTMIDI_CFLAGS := --std=c++17 -O3 $(CFLAGS) $(CWARNS)
+RTMIDI_CFLAGS := $(CFLAGS) $(CWARNS)
 
 RTMIDI_SRCS := $(RTMIDI_SRCDIR)/RtMidi.cpp
 RTMIDI_OBJS := $(RTMIDI_OBJDIR)/RtMidi.o
@@ -59,7 +59,7 @@ RTMIDI_OBJS := $(RTMIDI_OBJDIR)/RtMidi.o
 YMFM_SRCDIR := $(VENDORSRC)/ymfm/src
 YMFM_OBJDIR := $(OBJDIR)/ymfm
 
-YMFM_CFLAGS := --std=c++17 -O3 $(CFLAGS) $(CWARNS)
+YMFM_CFLAGS := $(CFLAGS) $(CWARNS)
 
 YMFM_SRCS := $(YMFM_SRCDIR)/ymfm_opm.cpp
 YMFM_OBJS := $(patsubst $(YMFM_SRCDIR)/%.cpp,$(YMFM_OBJDIR)/%.o,$(YMFM_SRCS))
@@ -70,7 +70,7 @@ YMFM_OBJS := $(patsubst $(YMFM_SRCDIR)/%.cpp,$(YMFM_OBJDIR)/%.o,$(YMFM_SRCS))
 R8BRAIN_SRCDIR := $(VENDORSRC)/r8brain-free-src
 R8BRAIN_OBJDIR := $(OBJDIR)/r8brain-free-src
 
-R8BRAIN_CFLAGS := --std=c++17 -O3 $(CFLAGS) $(CWARNS)
+R8BRAIN_CFLAGS := $(CFLAGS) $(CWARNS)
 R8BRAIN_LDFLAGS := -lpthread
 R8BRAIN_SRCS := $(R8BRAIN_SRCDIR)/r8bbase.cpp
 R8BRAIN_OBJS := $(patsubst $(R8BRAIN_SRCDIR)/%.cpp,$(R8BRAIN_OBJDIR)/%.o,$(R8BRAIN_SRCS))
@@ -87,7 +87,7 @@ BOX16_INCDIRS := -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORSRC)/mINI/s
 BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
 BOX16_CFLAGS := $(shell $(PKGCONFIG) --cflags sdl2 gl glew) $(CFLAGS) $(CWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h $(MYFLAGS)
-BOX16_LDFLAGS := -O3 $(MYFLAGS) $(shell $(PKGCONFIG) --libs sdl2 gl glew)
+BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs sdl2 gl glew)
 
 #=========================
 #
@@ -98,7 +98,10 @@ BOX16_LDFLAGS := -O3 $(MYFLAGS) $(shell $(PKGCONFIG) --libs sdl2 gl glew)
 .PHONY: all
 
 default:
-	$(MAKE) -j8 all
+	$(MAKE) -j8 all DFLAGS="-O3"
+
+debug:
+	$(MAKE) -j8 all DFLAGS="-g"
 
 all: $(OUTDIR)/box16
 
