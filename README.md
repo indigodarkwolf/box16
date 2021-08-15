@@ -333,7 +333,7 @@ Release Notes
 ## Non-Release 39.2 ("Hokkaido Jingu")
 
 * Internals
-	* Replaced the YM core with ymfm, a BSD 2-clause library.
+	* Replaced the YM core with ymfm, a BSD 3-clause library.
 	* YM2151 now supports timers, IRQs, and strict enforcement of the busy status.
 * Removed a variety of redundant dll files (akumanatt)
 * Fixed anisotropic filtering for display ("best" scaling option).
