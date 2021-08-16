@@ -303,6 +303,7 @@ int main(int argc, char **argv)
 	audio_close();
 	wav_recorder_shutdown();
 	gif_recorder_shutdown();
+	display_shutdown();
 	SDL_Quit();
 
 	return 0;

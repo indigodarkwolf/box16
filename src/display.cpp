@@ -26,17 +26,22 @@ SOFTWARE.
 */
 
 #include <GL/glew.h>
+#include <atomic>
+#include <thread>
 
 #include "display.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_opengl2.h"
 #include "imgui/imgui_impl_sdl.h"
+#include "lodepng.h"
 #include "memory.h"
 #include "options.h"
 #include "overlay/overlay.h"
 #include "vera/vera_video.h"
 #include "version.h"
-#include "lodepng.h"
+
+#define USE_GL_GET_SYNC 1
+// #define USE_GL_CLIENT_WAIT_SYNC 1
 
 static display_settings Display;
 
@@ -50,6 +55,10 @@ static GLuint Display_framebuffer_texture_handle;
 
 static GLuint Video_framebuffer_texture_handle;
 static GLuint Icon_tilemap;
+
+#if defined(USE_GL_GET_SYNC) || defined(USE_GL_CLIENT_WAIT_SYNC)
+static GLsync Render_complete = 0;
+#endif
 
 static bool Initd_sdl_image           = false;
 static bool Initd_sdl_gl              = false;
@@ -201,14 +210,16 @@ void icon_set::draw(int id, int x, int y, int w, int h, SDL_Color color)
 
 static void display_video()
 {
-	const uint8_t *video_buffer = vera_video_get_framebuffer();
-	glTextureSubImage2D(Video_framebuffer_texture_handle, 0, 0, 0, Display.video_rect.w, Display.video_rect.h, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, video_buffer);
-	if (Options.scale_quality == scale_quality_t::BEST) {
-		glGenerateTextureMipmap(Video_framebuffer_texture_handle);
-	}
-	GLenum result = glGetError();
-	if (result != GL_NO_ERROR) {
-		printf("GL error %s\n", glewGetErrorString(result));
+	if (!vera_video_is_cheat_frame()) {
+		const uint8_t *video_buffer = vera_video_get_framebuffer();
+		glTextureSubImage2D(Video_framebuffer_texture_handle, 0, 0, 0, Display.video_rect.w, Display.video_rect.h, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, video_buffer);
+		if (Options.scale_quality == scale_quality_t::BEST) {
+			glGenerateTextureMipmap(Video_framebuffer_texture_handle);
+		}
+		GLenum result = glGetError();
+		if (result != GL_NO_ERROR) {
+			printf("GL error %s\n", glewGetErrorString(result));
+		}
 	}
 
 	SDL_GetWindowSize(Display_window, &Display.window_rect.w, &Display.window_rect.h);
@@ -255,47 +266,6 @@ static void display_video()
 	glVertex2i(video_rect.x, video_rect.y);
 	glEnd();
 	glBindTexture(GL_TEXTURE_2D, 0);
-
-#if 0
-	// Display led
-	static constexpr float led_fade_rate = 1.0f / 30.0f;
-	static float           led_fade      = 0.0f;
-	static int             led_timeout   = 0;
-	static int             led_icon      = ICON_ACTIVITY_LED_OFF;
-	if (led_status) {
-		led_fade    = 1.0f;
-		led_icon    = ICON_ACTIVITY_LED_ON;
-		led_timeout = 30;
-	} else {
-		led_timeout = SDL_max(led_timeout - 1, 0);
-		if (led_timeout <= 0) {
-			led_fade = SDL_max(led_fade - led_fade_rate, 0.0f);
-		}
-		led_icon = ICON_ACTIVITY_LED_OFF;
-	}
-
-	if (led_fade > 0.0f) {
-		ImVec2 topleft{ (float)(led_icon % 16) / 16.0f, (float)(led_icon >> 4) / 16.0f };
-		ImVec2 botright{ topleft.x + 1.0f / 16.0f, topleft.y + 1.0f / 16.0f };
-
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		glEnable(GL_BLEND);
-		glBindTexture(GL_TEXTURE_2D, Icon_tilemap);
-		glColor4f(1.0f, 1.0f, 1.0f, led_fade);
-		glBegin(GL_QUADS);
-		glTexCoord2f(topleft.x, topleft.y);
-		glVertex2i(video_rect.x + video_rect.w - 32, video_rect.y + video_rect.h);
-		glTexCoord2f(botright.x, topleft.y);
-		glVertex2i(video_rect.x + video_rect.w, video_rect.y + video_rect.h);
-		glTexCoord2f(botright.x, botright.y);
-		glVertex2i(video_rect.x + video_rect.w, video_rect.y + video_rect.h - 32);
-		glTexCoord2f(topleft.x, botright.y);
-		glVertex2i(video_rect.x + video_rect.w - 32, video_rect.y + video_rect.h - 32);
-		glEnd();
-		glBindTexture(GL_TEXTURE_2D, 0);
-		glDisable(GL_BLEND);
-	}
-#endif
 }
 
 bool display_init(const display_settings &settings)
@@ -466,7 +436,7 @@ bool display_init(const display_settings &settings)
 			printf("Unable to load icon resources from %s\n", icons_path);
 			return false;
 		}
-		
+
 		SDL_Surface *icon = SDL_CreateRGBSurfaceWithFormatFrom(icons_buf.data(), icons_w, icons_h, 24, icons_w * 3, SDL_PIXELFORMAT_RGB24);
 		SDL_SetWindowIcon(Display_window, icon);
 	}
@@ -507,6 +477,10 @@ bool display_init(const display_settings &settings)
 
 	SDL_ShowCursor(SDL_DISABLE);
 
+#if defined(USE_GL_GET_SYNC) || defined(USE_GL_CLIENT_WAIT_SYNC)
+	Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+#endif
+
 	return true;
 }
 
@@ -539,6 +513,24 @@ void display_shutdown()
 
 void display_process()
 {
+#if defined(USE_GL_GET_SYNC)
+	GLsizei num_sync_values;
+	GLint   sync_status;
+	glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
+
+	if (num_sync_values != 0 && sync_status == GL_UNSIGNALED) {
+		return;
+	}
+
+	glDeleteSync(Render_complete);
+#elif defined(USE_GL_CLIENT_WAIT_SYNC)
+	if (glClientWaitSync(Render_complete, 0, 0) == GL_TIMEOUT_EXPIRED) {
+		return;
+	}
+
+	glDeleteSync(Render_complete);
+#endif
+
 	ImGui_ImplOpenGL2_NewFrame();
 	ImGui_ImplSDL2_NewFrame(Display_window);
 
@@ -575,6 +567,10 @@ void display_process()
 
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 	SDL_GL_SwapWindow(Display_window);
+
+#if defined(USE_GL_GET_SYNC) || defined(USE_GL_CLIENT_WAIT_SYNC)
+	Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+#endif
 }
 
 const display_settings &display_get_settings()

@@ -134,6 +134,7 @@ void vera_video_set_dc_vstop(uint8_t value);
 
 void vera_video_set_cheat_mask(int mask);
 int  vera_video_get_cheat_mask();
+bool vera_video_is_cheat_frame();
 void vera_video_set_log_video(bool enable);
 bool vera_video_get_log_video();
 

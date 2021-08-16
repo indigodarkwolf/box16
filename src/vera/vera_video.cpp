@@ -768,7 +768,7 @@ static void render_line(uint16_t y)
 		memset(sprite_line_col, 0, SCREEN_WIDTH);
 	}
 
-	if (frame_count & cheat_mask) {
+	if (vera_video_is_cheat_frame()) {
 		// sprites were needed for the collision IRQ, but we can skip
 		// everything else if we're cheating and not actually updating.
 		return;
@@ -1381,6 +1381,11 @@ void vera_video_set_cheat_mask(int mask)
 int vera_video_get_cheat_mask()
 {
 	return cheat_mask;
+}
+
+bool vera_video_is_cheat_frame()
+{
+	return frame_count & cheat_mask;
 }
 
 void vera_video_set_log_video(bool enable)
