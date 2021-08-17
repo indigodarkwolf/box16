@@ -46,6 +46,11 @@ public:
 		return value;
 	}
 
+	const T &get_newest() const
+	{
+		return m_elems[(m_oldest + m_count - 1) % SIZE];
+	}
+
 	const T &get(int index) const
 	{
 		return m_elems[(m_oldest + index) % SIZE];
@@ -113,6 +118,11 @@ public:
 			--m_count;
 		}
 		return value;
+	}
+
+	const T &get_newest() const
+	{
+		return m_elems[(m_oldest + m_count - 1) & m_size];
 	}
 
 	const T &get(int index) const

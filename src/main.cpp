@@ -464,7 +464,11 @@ void emulator_loop()
 
 			midi_process();
 			gif_recorder_update(vera_video_get_framebuffer());
-			display_process();
+			static uint32_t last_display_us = timing_total_microseconds();
+			if (timing_total_microseconds() - last_display_us > 16000) { // Close enough I'm willing to pay for OpenGL's sync.
+				display_process();
+				last_display_us = timing_total_microseconds();
+			}
 			if (!sdl_events_update()) {
 				break;
 			}

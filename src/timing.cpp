@@ -6,57 +6,74 @@
 #include "ring_buffer.h"
 
 struct tick_record {
-	uint32_t sdl_ticks;
-	int      frames;
+	uint32_t us;
+	uint32_t total_us;
+	uint32_t total_frames;
 };
 
 static ring_buffer<tick_record, 100> Tick_history;
-int                                  Timing_perf = 0;
-static int                           frames;
-static int32_t                       sdlTicks_base;
-static int32_t                       last_perf_update;
-static int32_t                       perf_frame_count;
+uint32_t                             Timing_perf = 0;
+static uint32_t                      Total_frames;
+static uint64_t                      Base_performance_time;
+static uint64_t                      Last_performance_time;
+static uint64_t                      Performance_frequency;
+
+static constexpr uint32_t Expected_frametime_us = 1000000 / 60;
+
+static uint32_t perf_to_us(const uint64_t perf)
+{
+	return (uint32_t)(1000000 * perf / Performance_frequency);
+}
 
 void timing_init()
 {
-	frames           = 0;
-	sdlTicks_base    = SDL_GetTicks();
-	last_perf_update = 0;
-	perf_frame_count = 0;
+	Total_frames          = 0;
+	Base_performance_time = SDL_GetPerformanceCounter();
+	Last_performance_time = Base_performance_time;
+	Performance_frequency = SDL_GetPerformanceFrequency();
 
-	tick_record tick = { SDL_GetTicks(), 0 };
+	tick_record tick = { 0, 0, 0 };
 	Tick_history.add(tick);
 }
 
 void timing_update()
 {
-	frames++;
+	Total_frames++;
+	const uint64_t current_performance_time = SDL_GetPerformanceCounter();
 
-	tick_record tick = { SDL_GetTicks(), frames };
+	const tick_record &last_tick       = Tick_history.get_newest();
+	const uint64_t     tick_perf_diff  = current_performance_time - Last_performance_time;
+	const uint64_t     total_perf_diff = current_performance_time - Base_performance_time;
+	tick_record        tick            = { perf_to_us(tick_perf_diff), perf_to_us(total_perf_diff), Total_frames };
+
+	const uint32_t us_elapsed = tick.total_us - last_tick.total_us;
+	if (Options.warp_factor == 0 && us_elapsed < Expected_frametime_us) { // 60 fps
+		usleep(Expected_frametime_us - us_elapsed);
+
+		const uint64_t current_performance_time = SDL_GetPerformanceCounter();
+		const uint64_t tick_perf_diff           = current_performance_time - Last_performance_time;
+		const uint64_t total_perf_diff          = current_performance_time - Base_performance_time;
+
+		tick = { perf_to_us(tick_perf_diff), perf_to_us(total_perf_diff), Total_frames };
+	}
+
 	Tick_history.add(tick);
 
-	const tick_record &oldest_tick = Tick_history.get_oldest();
-
-	int ticks_elapsed  = tick.sdl_ticks - oldest_tick.sdl_ticks;
-	int frames_elapsed = 1 + tick.frames - oldest_tick.frames;
-
-	int32_t diff_time = 1000 * frames_elapsed / 60 - ticks_elapsed;
-	if (Options.warp_factor == 0 && diff_time > 0) {
-		usleep(900 * diff_time);
-	}
-
-	int nominal_frames_elapsed = 1 + ticks_elapsed * 60 / 1000;
-
-	Timing_perf = 100 * frames_elapsed / nominal_frames_elapsed;
+	const tick_record &first_tick   = Tick_history.get_oldest();
+	const uint32_t     diff_time_us = tick.total_us - first_tick.total_us;
+	const uint32_t     diff_frames  = tick.total_frames - first_tick.total_frames;
+	Timing_perf                     = (uint32_t)((100 * (diff_frames * Expected_frametime_us) + (diff_time_us >> 1)) / (diff_time_us));
 
 	if (Options.log_speed) {
-		float frames_behind = -((float)diff_time / 16.666666f);
-		int   load          = (int)((1 + frames_behind) * 100);
+		printf("Speed: %d%%\n", Timing_perf);
+		uint32_t load = (uint32_t)(100 * tick.us / Expected_frametime_us);
 		printf("Load: %d%%\n", load > 100 ? 100 : load);
-
-		if ((int)frames_behind > 0) {
-			printf("Rendering is behind %d frames.\n", -(int)frames_behind);
-		} else {
-		}
 	}
+
+	Last_performance_time = current_performance_time;
+}
+
+uint32_t timing_total_microseconds()
+{
+	return Tick_history.get_newest().total_us;
 }
