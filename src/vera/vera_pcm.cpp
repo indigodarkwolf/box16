@@ -29,8 +29,6 @@ static void fifo_reset(void)
 
 void pcm_reset(void)
 {
-	audio_lock_scope lock;
-
 	fifo_reset();
 	ctrl  = 0;
 	rate  = 0;
@@ -41,8 +39,6 @@ void pcm_reset(void)
 
 void pcm_write_ctrl(uint8_t val)
 {
-	audio_lock_scope lock;
-
 	if (val & 0x80) {
 		fifo_reset();
 	}
@@ -52,8 +48,6 @@ void pcm_write_ctrl(uint8_t val)
 
 uint8_t pcm_read_ctrl(void)
 {
-	audio_lock_scope lock;
-
 	uint8_t result = ctrl;
 	if (fifo_cnt == sizeof(fifo)) {
 		result |= 0x80;
@@ -63,7 +57,6 @@ uint8_t pcm_read_ctrl(void)
 
 void pcm_write_rate(uint8_t val)
 {
-	audio_lock_scope lock;
 	rate = val;
 }
 
@@ -74,7 +67,6 @@ uint8_t pcm_read_rate(void)
 
 void pcm_write_fifo(uint8_t val)
 {
-	audio_lock_scope lock;
 	if (fifo_cnt < sizeof(fifo)) {
 		fifo[fifo_wridx++] = val;
 		if (fifo_wridx == sizeof(fifo)) {
@@ -99,7 +91,6 @@ static uint8_t read_fifo(void)
 
 bool pcm_is_fifo_almost_empty(void)
 {
-	audio_lock_scope lock;
 	return fifo_cnt < 1024;
 }
 

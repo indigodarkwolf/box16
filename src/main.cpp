@@ -298,6 +298,15 @@ int main(int argc, char **argv)
 	emulator_loop();
 #endif
 
+	if (nvram_dirty && strlen(Options.nvram_path) > 0) {
+		SDL_RWops *f = SDL_RWFromFile(Options.nvram_path, "wb");
+		if (f) {
+			SDL_RWwrite(f, nvram, 1, sizeof(nvram));
+			SDL_RWclose(f);
+		}
+		nvram_dirty = false;
+	}
+
 	SDL_free(const_cast<char *>(base_path));
 
 	audio_close();
@@ -431,37 +440,14 @@ void emulator_loop()
 		}
 #endif
 
-#ifdef LOAD_HYPERCALLS
-		if ((pc == 0xffd5 || pc == 0xffd8) && is_kernal() && RAM[FA] == 8 && !sdcard_is_attached()) {
-			if (pc == 0xffd5) {
-				LOAD();
-			} else {
-				SAVE();
-			}
-			pc = (RAM[0x100 + sp + 1] | (RAM[0x100 + sp + 2] << 8)) + 1;
-			sp += 2;
-			continue;
-		}
-#endif
-
 		uint64_t old_clockticks6502 = clockticks6502;
 		step6502();
 		cpu_visualization_step();
 		uint8_t clocks = (uint8_t)(clockticks6502 - old_clockticks6502);
-		vera_spi_step(clocks);
 		bool new_frame = vera_video_step(MHZ, clocks);
 		audio_render(clocks);
 
 		if (new_frame) {
-			if (nvram_dirty && strlen(Options.nvram_path) > 0) {
-				SDL_RWops *f = SDL_RWFromFile(Options.nvram_path, "wb");
-				if (f) {
-					SDL_RWwrite(f, nvram, 1, sizeof(nvram));
-					SDL_RWclose(f);
-				}
-				nvram_dirty = false;
-			}
-
 			midi_process();
 			gif_recorder_update(vera_video_get_framebuffer());
 			static uint32_t last_display_us = timing_total_microseconds();
@@ -487,72 +473,92 @@ void emulator_loop()
 			}
 		}
 
-		if (pc == 0xffff) {
-			if (save_on_exit) {
-				machine_dump();
-			}
-			break;
-		}
-
-		if (Options.echo_mode != ECHO_MODE_NONE && pc == 0xffd2 && is_kernal()) {
-			uint8_t c = a;
-			if (Options.echo_mode == ECHO_MODE_COOKED) {
-				if (c == 0x0d) {
-					printf("\n");
-				} else if (c == 0x0a) {
-					// skip
-				} else if (c < 0x20 || c >= 0x80) {
-					printf("\\X%02X", c);
-				} else {
-					printf("%c", c);
-				}
-			} else if (Options.echo_mode == ECHO_MODE_ISO) {
-				if (c == 0x0d) {
-					printf("\n");
-				} else if (c == 0x0a) {
-					// skip
-				} else if (c < 0x20 || (c >= 0x80 && c < 0xa0)) {
-					printf("\\X%02X", c);
-				} else {
-					print_iso8859_15_char(c);
-				}
-			} else {
-				printf("%c", c);
-			}
-			fflush(stdout);
-		}
-
-		if (pc == 0xffcf && is_kernal()) {
-			// as soon as BASIC starts reading a line...
-			if (prg_file) {
-				// ...inject the app into RAM
-				uint8_t  start_lo = SDL_ReadU8(prg_file);
-				uint8_t  start_hi = SDL_ReadU8(prg_file);
-				uint16_t start;
-				if (prg_override_start >= 0) {
-					start = prg_override_start;
-				} else {
-					start = start_hi << 8 | start_lo;
-				}
-				uint16_t end = start + (uint16_t)SDL_RWread(prg_file, RAM + start, 1, 65536 - start);
-				SDL_RWclose(prg_file);
-				prg_file = NULL;
-				if (start == 0x0801) {
-					// set start of variables
-					RAM[VARTAB]     = end & 0xff;
-					RAM[VARTAB + 1] = end >> 8;
-				}
-
-				if (Options.run_after_load) {
-					if (start == 0x0801) {
-						keyboard_add_text("RUN\r");
+		switch (pc) {
+#ifdef LOAD_HYPERCALLS
+			case 0xffd5:
+			case 0xffd8:
+				if (is_kernal() && RAM[FA] == 8 && !sdcard_is_attached()) {
+					if (pc == 0xffd5) {
+						LOAD();
 					} else {
-						char sys_text[10];
-						sprintf(sys_text, "SYS$%04X\r", start);
-						keyboard_add_text(sys_text);
+						SAVE();
+					}
+					pc = (RAM[0x100 + sp + 1] | (RAM[0x100 + sp + 2] << 8)) + 1;
+					sp += 2;
+					continue;
+				}
+				break;
+#endif
+			case 0xffd2:
+				if (Options.echo_mode != ECHO_MODE_NONE && is_kernal()) {
+					uint8_t c = a;
+					if (Options.echo_mode == ECHO_MODE_COOKED) {
+						if (c == 0x0d) {
+							printf("\n");
+						} else if (c == 0x0a) {
+							// skip
+						} else if (c < 0x20 || c >= 0x80) {
+							printf("\\X%02X", c);
+						} else {
+							printf("%c", c);
+						}
+					} else if (Options.echo_mode == ECHO_MODE_ISO) {
+						if (c == 0x0d) {
+							printf("\n");
+						} else if (c == 0x0a) {
+							// skip
+						} else if (c < 0x20 || (c >= 0x80 && c < 0xa0)) {
+							printf("\\X%02X", c);
+						} else {
+							print_iso8859_15_char(c);
+						}
+					} else {
+						printf("%c", c);
+					}
+					fflush(stdout);
+				}
+				break;
+
+			case 0xffcf:
+				if (is_kernal()) {
+					// as soon as BASIC starts reading a line...
+					if (prg_file) {
+						// ...inject the app into RAM
+						uint8_t  start_lo = SDL_ReadU8(prg_file);
+						uint8_t  start_hi = SDL_ReadU8(prg_file);
+						uint16_t start;
+						if (prg_override_start >= 0) {
+							start = prg_override_start;
+						} else {
+							start = start_hi << 8 | start_lo;
+						}
+						uint16_t end = start + (uint16_t)SDL_RWread(prg_file, RAM + start, 1, 65536 - start);
+						SDL_RWclose(prg_file);
+						prg_file = NULL;
+						if (start == 0x0801) {
+							// set start of variables
+							RAM[VARTAB]     = end & 0xff;
+							RAM[VARTAB + 1] = end >> 8;
+						}
+
+						if (Options.run_after_load) {
+							if (start == 0x0801) {
+								keyboard_add_text("RUN\r");
+							} else {
+								char sys_text[10];
+								sprintf(sys_text, "SYS$%04X\r", start);
+								keyboard_add_text(sys_text);
+							}
+						}
 					}
 				}
-			}
+				break;
+
+			case 0xffff:
+				if (save_on_exit) {
+					machine_dump();
+				}
+				return;
 		}
 
 		keyboard_process();

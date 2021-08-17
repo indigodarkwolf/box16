@@ -2247,7 +2247,11 @@ static void draw_menu_bar()
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - 96.0f);
 			ImGui::Tile(ICON_ACTIVITY_LED_ON, (float)activity_led / 255.0f);
 		}
-		ImGui::Text("Speed: %d%%", Timing_perf);
+		if (Timing_perf >= 1000) {
+			ImGui::Text("Speed: %dX", Timing_perf / 100);
+		} else {
+			ImGui::Text("Speed: %d%%", Timing_perf);
+		}
 		ImGui::EndMainMenuBar();
 	}
 }

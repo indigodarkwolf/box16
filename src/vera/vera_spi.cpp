@@ -2,9 +2,13 @@
 // Copyright (c) 2019 Michael Steil
 // All rights reserved. License: 2-clause BSD
 
+#include "vera_spi.h"
+
 #include "sdcard.h"
 #include <stdbool.h>
 #include <stdio.h>
+
+#include "cpu/fake6502.h"
 
 bool    ss;
 bool    busy;
@@ -18,6 +22,13 @@ void vera_spi_init()
 	busy          = false;
 	autotx        = false;
 	received_byte = 0xff;
+}
+
+void vera_spi_autostep()
+{
+	static uint64_t clocks = 0;
+	vera_spi_step((int)(clockticks6502 - clocks));
+	clocks = clockticks6502;
 }
 
 void vera_spi_step(int clocks)
@@ -46,6 +57,7 @@ uint8_t debug_vera_spi_read(uint8_t reg)
 
 uint8_t vera_spi_read(uint8_t reg)
 {
+	vera_spi_autostep();
 	switch (reg) {
 		case 0:
 			if (autotx && ss && !busy) {
@@ -63,6 +75,7 @@ uint8_t vera_spi_read(uint8_t reg)
 
 void vera_spi_write(uint8_t reg, uint8_t value)
 {
+	vera_spi_autostep();
 	switch (reg) {
 		case 0:
 			if (ss && !busy) {
