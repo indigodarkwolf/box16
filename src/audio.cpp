@@ -114,7 +114,6 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 		if (dev_name != NULL) {
 			audio_usage();
 		}
-		exit(-1);
 	}
 
 	Obtained_sample_rate = obtained.freq;
@@ -144,6 +143,10 @@ void audio_close(void)
 
 void audio_render(int cpu_clocks)
 {
+	if (Audio_dev == 0) {
+		return;
+	}
+
 	YM_prerender(cpu_clocks);
 
 	Clocks_rendered += cpu_clocks;

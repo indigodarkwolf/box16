@@ -2185,6 +2185,15 @@ static void draw_menu_bar()
 					vera_video_set_cheat_mask(0x3f);
 				}
 			}
+			bool audio_enabled = !Options.no_sound;
+			if (ImGui::Checkbox("Enable Audio", &audio_enabled)) {
+				if (audio_enabled) {
+					audio_init(strlen(Options.audio_dev_name) > 0 ? Options.audio_dev_name : nullptr, Options.audio_buffers);
+				} else {
+					audio_close();
+				}
+				Options.no_sound = !audio_enabled;
+			}
 
 			ImGui::EndMenu();
 		}
