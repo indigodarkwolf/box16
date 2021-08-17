@@ -103,6 +103,9 @@ default:
 debug:
 	$(MAKE) -j8 all DFLAGS="-g"
 
+profiling:
+	$(MAKE) -j8 all DFLAGS="-g -O3 -pg"
+
 all: $(OUTDIR)/box16
 
 clean:

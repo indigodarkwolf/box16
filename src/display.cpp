@@ -252,7 +252,9 @@ static void display_video()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 #if defined(GL_EXT_texture_filter_anisotropic)
-	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, (Options.scale_quality == scale_quality_t::BEST) ? Max_anisotropy : 1.0f);
+	if(Max_anisotropy > 0) {
+		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, (Options.scale_quality == scale_quality_t::BEST) ? Max_anisotropy : 1.0f);
+	}
 #endif
 	glColor3f(1.0f, 1.0f, 1.0f);
 	glBegin(GL_QUADS);
@@ -350,13 +352,16 @@ bool display_init(const display_settings &settings)
 	Initd_glew = true;
 
 #if defined(GL_EXT_texture_filter_anisotropic)
-	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &Max_anisotropy);
+	if(glewIsSupported("EXT_texture_filter_anisotropic")) {
+		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &Max_anisotropy);
+	} else {
+		Max_anisotropy = 0;
+	}
 #endif
 	// Initialize display framebuffer
 	{
 		glGenFramebuffers(1, &Display_framebuffer_handle);
 		glBindFramebuffer(GL_FRAMEBUFFER, Display_framebuffer_handle);
-
 		glGenTextures(1, &Display_framebuffer_texture_handle);
 		glBindTexture(GL_TEXTURE_2D, Display_framebuffer_texture_handle);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Display.video_rect.w, Display.video_rect.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
