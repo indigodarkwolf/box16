@@ -830,7 +830,7 @@ static void render_line(uint16_t y)
 	}
 
 	// Look up all color indices.
-	uint32_t *framebuffer4_begin = ((uint32_t *)framebuffer) + (y * SCREEN_WIDTH);
+	uint32_t *const framebuffer4_begin = ((uint32_t *)framebuffer) + (y * SCREEN_WIDTH);
 	{
 		uint32_t *framebuffer4 = framebuffer4_begin;
 		for (uint16_t x = 0; x < SCREEN_WIDTH; x++) {
@@ -871,8 +871,11 @@ bool vera_video_step(float mhz, float cycles)
 			back_porch = NTSC_BACK_PORCH_Y;
 			y          = scan_pos_y - back_porch;
 			if (y < SCREEN_HEIGHT) {
-				const uint16_t yy = y % (SCREEN_HEIGHT >> 1);
-				render_line((yy << 1) + (y > (SCREEN_HEIGHT >> 1)));
+				const uint16_t yy            = y % (SCREEN_HEIGHT >> 1);
+				const uint16_t ntsc_y_offset = (y >= (SCREEN_HEIGHT >> 1));
+				render_line((yy << 1) + ntsc_y_offset);
+				reg_composer[0] &= 0x7F;
+				reg_composer[0] |= ntsc_y_offset << 7; 
 			}
 		} else {
 			back_porch = VGA_BACK_PORCH_Y;
@@ -1183,6 +1186,9 @@ void vera_video_write(uint8_t reg, uint8_t value)
 			int i           = reg - 0x09 + (io_dcsel ? 4 : 0);
 			reg_composer[i] = value;
 			if (i == 0) {
+				if ((value & 0x3) == 1) {
+					reg_composer[0] &= 0x7f;
+				}
 				video_palette.dirty = true;
 			}
 			break;
@@ -1335,6 +1341,9 @@ const uint8_t vera_video_get_dc_vstop()
 void vera_video_set_dc_video(uint8_t value)
 {
 	reg_composer[0]     = value;
+	if ((value & 0x3) == 1) {
+		reg_composer[0] &= 0x7f;
+	}
 	video_palette.dirty = true;
 }
 
