@@ -114,7 +114,7 @@ static void draw_debugger_cpu_status()
 
 				char label[4] = "r0";
 				for (int i = start; i <= end; ++i) {
-					sprintf(label, i < 10 ? " r%d" : "r%d", i);
+					snprintf(label, 4, i < 10 ? " r%d" : "r%d", i);
 					ImGui::Text("%s", label);
 					ImGui::SameLine();
 					uint16_t value = (int)get_mem16(2 + (i << 1), 0);
@@ -290,14 +290,14 @@ static void draw_debugger_vera_status()
 			ImGui::Text("Scale");
 			ImGui::SameLine();
 
-			sprintf(hex, "%02X", (int)vera_video_get_dc_hscale());
+			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hscale());
 			if (ImGui::InputText("H", hex, 5, hex_flags)) {
 				vera_video_set_dc_hscale(parse<8>(hex));
 			}
 
 			ImGui::SameLine();
 
-			sprintf(hex, "%02X", (int)vera_video_get_dc_vscale());
+			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vscale());
 			if (ImGui::InputText("V", hex, 3, hex_flags)) {
 				vera_video_set_dc_vscale(parse<8>(hex));
 			}
@@ -307,13 +307,13 @@ static void draw_debugger_vera_status()
 		ImGui::Dummy(ImVec2(width_uint8, 0));
 		ImGui::SameLine();
 		ImGui::PushID("vstart");
-		sprintf(hex, "%02X", (int)vera_video_get_dc_vstart());
+		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstart());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
 			vera_video_set_dc_vstart(parse<8>(hex));
 		}
 		ImGui::PopID();
 		ImGui::PushID("hstart");
-		sprintf(hex, "%02X", (int)vera_video_get_dc_hstart());
+		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstart());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
 			vera_video_set_dc_hstart(parse<8>(hex));
 		}
@@ -322,7 +322,7 @@ static void draw_debugger_vera_status()
 		ImGui::Dummy(ImVec2(width_uint8, 0));
 		ImGui::SameLine();
 		ImGui::PushID("hstop");
-		sprintf(hex, "%02X", (int)vera_video_get_dc_hstop());
+		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstop());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
 			vera_video_set_dc_hstop(parse<8>(hex));
 		}
@@ -330,7 +330,7 @@ static void draw_debugger_vera_status()
 		ImGui::Dummy(ImVec2(width_uint8, 0));
 		ImGui::SameLine();
 		ImGui::PushID("vstop");
-		sprintf(hex, "%02X", (int)vera_video_get_dc_vstop());
+		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstop());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
 			vera_video_set_dc_vstop(parse<8>(hex));
 		}
@@ -712,7 +712,7 @@ static void draw_debugger_vera_sprite()
 					// #
 					ImGui::TableNextColumn();
 					char idx_txt[4];
-					sprintf(idx_txt, "%d", id);
+					snprintf(idx_txt, 4, "%d", id);
 					// SpanAllColumns flag currently makes selectable has more precedence than all edit widgets
 					if (ImGui::Selectable(idx_txt, sprite_id == id /*, ImGuiSelectableFlags_SpanAllColumns */)) {
 						sprite_id = id;
@@ -1650,7 +1650,7 @@ static void draw_breakpoints()
 
 					ImGui::TableNextColumn();
 					char addr_text[5];
-					sprintf(addr_text, "%04X", address);
+					snprintf(addr_text, 5, "%04X", address);
 					if (ImGui::Selectable(addr_text, false, ImGuiSelectableFlags_AllowDoubleClick)) {
 						disasm.set_dump_start(address);
 						if (address >= 0xc000) {
@@ -1737,7 +1737,7 @@ static void draw_symbols_list()
 						ImGui::PushID(id++);
 						bool is_selected = selected && (selected_addr == address) && (selected_bank == bank);
 						char display_name[128];
-						sprintf(display_name, "%04x %s", address, name.c_str());
+						snprintf(display_name, 128, "%04x %s", address, name.c_str());
 						if (ImGui::Selectable(display_name, is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
 							selected      = true;
 							selected_addr = address;
@@ -1906,7 +1906,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	char cycles_raw[32];
-	int  digits = sprintf(cycles_raw, "%" SDL_PRIu64, debugger_step_clocks());
+	int  digits = snprintf(cycles_raw, 32, "%" SDL_PRIu64, debugger_step_clocks());
 
 	char  cycles_formatted[32];
 	char *r = cycles_raw;
@@ -1960,7 +1960,7 @@ static void draw_debugger_vera_psg()
 				ImGui::TableNextColumn();
 			}
 
-			std::sprintf(chtxt, "%d", i);
+			snprintf(chtxt, 3, "%d", i);
 			ImGui::PushID(i);
 			const psg_channel *channel = psg_get_channel(i);
 

@@ -102,11 +102,11 @@ void draw_midi_overlay()
 					channel_idx = num_unused_channels - 1;
 				}
 				char channel_label[4];
-				sprintf(channel_label, "%d", unused_channels[channel_idx]);
+				snprintf(channel_label, 4, "%d", unused_channels[channel_idx]);
 				if (ImGui::BeginCombo("Channel", channel_label)) {
 					for (uint8_t c = 0; c < num_unused_channels; ++c) {
 						char channel_label[4];
-						sprintf(channel_label, "%d", unused_channels[c]);
+						snprintf(channel_label, 4, "%d", unused_channels[c]);
 						if (ImGui::Selectable(channel_label, c == channel_idx)) {
 							channel_idx = c;
 						}

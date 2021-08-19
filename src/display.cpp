@@ -307,11 +307,7 @@ bool display_init(const display_settings &settings)
 		}
 
 		char title[128];
-#if defined(WIN32)
-		sprintf_s(title, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
-#else
-		sprintf(title, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
-#endif
+		snprintf(title, 128, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
 
 		Display_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, Display.window_rect.w, Display.window_rect.h, sdl_window_flags);
 		if (Display_window == nullptr) {

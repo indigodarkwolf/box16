@@ -130,7 +130,7 @@ void draw_debugger_ym2151()
 				}
 				ImGui::TableNextColumn();
 				char buf[5];
-				std::sprintf(buf, "%d", tim->cur);
+				snprintf(buf, 5, "%d", tim->cur);
 				ImGui::ProgressBar(tim->cur / (float)TIM_MAX, ImVec2(0, 0), buf);
 				ImGui::SameLine();
 				ImGui::Text("Counter");
@@ -221,7 +221,7 @@ void debugger_draw_ym_lfo_and_noise(uint8_t *regs)
 		}
 		ImGui::TableNextColumn();
 		char buf[4];
-		std::sprintf(buf, "%d", (int)(lcnt * 256));
+		snprintf(buf, 4, "%d", (int)(lcnt * 256));
 		ImGui::ProgressBar(lcnt, ImVec2(0, 0), buf);
 		ImGui::SameLine(0, ImGui::GetStyle().ItemInnerSpacing.x);
 		ImGui::Text("Cur. Phase");
@@ -396,7 +396,7 @@ void debugger_draw_ym_voice(int i, uint8_t *regs, ym_channel_data &ch, ym_keyon_
 		const uint8_t oct  = note / 12;
 		// C#8 +00.0
 		char kcinfo[12];
-		std::sprintf(kcinfo, "%c%c%d %+05.1f", notes[ni], notes[ni + 1], oct, cents);
+		snprintf(kcinfo, 12, "%c%c%d %+05.1f", notes[ni], notes[ni + 1], oct, cents);
 		ImGui::SetNextItemWidth(-28);
 		if (ImGui::SliderFloat("KC", &ch.kc, 0, 96, kcinfo, ImGuiSliderFlags_NoRoundToFormat)) {
 			fpkc = std::min((int)(ch.kc * 256), (96 * 256) - 1);
@@ -565,7 +565,7 @@ void debugger_draw_ym_voice(int i, uint8_t *regs, ym_channel_data &ch, ym_keyon_
 			ImGui::TableNextColumn();
 			char buf[11] = ".5";
 			if (slot.mul > 0) {
-				std::sprintf(buf, "%d", slot.mul);
+				snprintf(buf, 11, "%d", slot.mul);
 			}
 			ImGui::SetNextItemWidth(-FLT_MIN);
 			if (ImGui::SliderInt("mul", &slot.mul, 0, 15, buf)) {
@@ -647,7 +647,7 @@ void debugger_draw_ym_voice(int i, uint8_t *regs, ym_channel_data &ch, ym_keyon_
 			ImGui::PopID();
 			float out = slot_state.final_env;
 			char  buf2[5];
-			std::sprintf(buf2, "%d", (int)((1 - out) * 1024));
+			snprintf(buf2, 5, "%d", (int)((1 - out) * 1024));
 			ImGui::TableNextColumn();
 			ImGui::ProgressBar(out, ImVec2(-FLT_MIN, 0), buf2);
 			if (ImGui::IsItemHovered()) {
