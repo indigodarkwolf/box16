@@ -1630,10 +1630,15 @@ static void draw_breakpoints()
 
 				const auto &breakpoints = debugger_get_breakpoints();
 				for (auto &[address, bank] : breakpoints) {
+					ImGui::PushID(address);
+					ImGui::PushID(bank);
+
 					ImGui::TableNextRow();
 					ImGui::TableNextColumn();
 					if (ImGui::TileButton(ICON_REMOVE)) {
 						debugger_remove_breakpoint(address, bank);
+						ImGui::PopID();
+						ImGui::PopID();
 						break;
 					}
 
@@ -1678,6 +1683,9 @@ static void draw_breakpoints()
 							}
 						}
 					}
+
+					ImGui::PopID();
+					ImGui::PopID();
 				}
 
 				ImGui::EndTable();

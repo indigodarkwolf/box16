@@ -417,28 +417,22 @@ static void render_sprite_line(const uint16_t y)
 
 		const uint16_t eff_sy = props->vflip ? ((props->sprite_height - 1) - (y - props->sprite_y)) : (y - props->sprite_y);
 
-		int16_t       eff_sx      = (props->hflip ? (props->sprite_width - 1) : 0);
-		const int16_t eff_sx_incr = props->hflip ? -1 : 1;
-
 		const uint8_t *bitmap_data = video_ram + props->sprite_address + (eff_sy << (props->sprite_width_log2 - (1 - props->color_mode)));
 
-		uint8_t unpacked_sprite_line[64];
+		const uint16_t width = props->sprite_width;
+		uint8_t        unpacked_sprite_line[64];
 		if (props->color_mode == 0) {
 			// 4bpp
-			expand_4bpp_data(unpacked_sprite_line, bitmap_data, props->sprite_width);
+			expand_4bpp_data(unpacked_sprite_line, bitmap_data, width);
 		} else {
 			// 8bpp
-			memcpy(unpacked_sprite_line, bitmap_data, props->sprite_width);
+			memcpy(unpacked_sprite_line, bitmap_data, width);
 		}
 
 		const uint32_t scale          = reg_composer[1];
 		const uint16_t scaled_x_start = ((uint32_t)props->sprite_x << 7) / scale;
-		const uint16_t scaled_x_end   = scaled_x_start + ((uint32_t)props->sprite_width << 7) / scale;
-
-		// scaled_x = line_x * scale >> 7
-		// scaled_sprite_x = sprite_x * scale >> 7;
-		// scaled_sprite_x_end = scaled_sprite_x + sprite_width * scale >> 7;
-		// line_x = (eff_x << 7) / scale
+		const uint16_t scaled_x_end   = scaled_x_start + (((uint32_t)width << 7) / scale);
+		const bool hflip = props->hflip;
 		for (uint16_t sx = scaled_x_start; sx < scaled_x_end; sx += 1) {
 			if (sx >= SCREEN_WIDTH) {
 				continue;
@@ -458,7 +452,7 @@ static void render_sprite_line(const uint16_t y)
 			if (sprite_budget == 0)
 				break;
 
-			const uint8_t col_index = unpacked_sprite_line[x];
+			const uint8_t col_index = unpacked_sprite_line[hflip ? width - x - 1: x];
 
 			// palette offset
 			if (col_index > 0) {

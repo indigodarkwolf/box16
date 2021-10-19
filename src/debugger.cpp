@@ -248,6 +248,7 @@ void debugger_add_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
 	if (Breakpoints.find(new_bp) == Breakpoints.end()) {
 		Breakpoints.insert(new_bp);
 		Active_breakpoints.insert(new_bp);
+		Breakpoint_check[address] = true;
 	}
 }
 
@@ -260,6 +261,13 @@ void debugger_remove_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
 	breakpoint_type old_bp{ address, bank };
 	Breakpoints.erase(old_bp);
 	Active_breakpoints.erase(old_bp);
+	Breakpoint_check[address] = false;
+	for (const auto &bp : Active_breakpoints) {
+		if (breakpoint_addr(bp) == address) {
+			Breakpoint_check[address] = true;
+			break;
+		}
+	}
 }
 
 void debugger_activate_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
@@ -274,6 +282,7 @@ void debugger_activate_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
 	}
 	if (Active_breakpoints.find(new_bp) == Active_breakpoints.end()) {
 		Active_breakpoints.insert(new_bp);
+		Breakpoint_check[address] = true;
 	}
 }
 
@@ -285,6 +294,14 @@ void debugger_deactivate_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
 
 	breakpoint_type old_bp{ address, bank };
 	Active_breakpoints.erase(old_bp);
+
+	Breakpoint_check[address] = false;
+	for (const auto &bp : Active_breakpoints) {
+		if (breakpoint_addr(bp) == address) {
+			Breakpoint_check[address] = true;
+			break;
+		}
+	}
 }
 
 bool debugger_breakpoint_is_active(uint16_t address, uint8_t bank /* = 0 */)
