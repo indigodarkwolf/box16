@@ -101,7 +101,7 @@ void imgui_debugger_disasm::follow_pc()
 
 void imgui_debugger_disasm::draw()
 {
-	ImGui::BeginChild("disasm", ImVec2(397.0f, 401.0f));
+	ImGui::BeginChild("disasm", ImVec2(397.0f, 518.0f));
 	{
 		bool paused = debugger_is_paused();
 
@@ -159,7 +159,7 @@ void imgui_debugger_disasm::draw()
 
 		ImGui::Separator();
 
-		ImGui::BeginChild("memory dump", ImVec2(382.0, 361.0f));
+		ImGui::BeginChild("memory dump", ImVec2(382.0, 458.0f));
 		{
 			float line_height = ImGui::CalcTextSize("0xFFFF").y;
 

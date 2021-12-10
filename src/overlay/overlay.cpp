@@ -108,6 +108,10 @@ static void draw_debugger_cpu_status()
 			ImGui::EndGroup();
 
 			ImGui::NewLine();
+			ImGui::InputHexLabel("RAM Bank", RAM[0]);
+			ImGui::InputHexLabel("ROM Bank", RAM[1]);
+
+			ImGui::NewLine();
 
 			auto registers = [&](int start, int end) {
 				ImGui::PushItemWidth(width_uint16);
@@ -147,7 +151,7 @@ static void draw_debugger_cpu_status()
 		ImGui::TextDisabled("CPU Stack");
 		ImGui::NewLine();
 
-		ImGui::BeginChild("cpu stack", ImVec2(44, 410));
+		ImGui::BeginChild("cpu stack", ImVec2(44, 460));
 		{
 			for (uint16_t i = (uint16_t)sp + 0x100; i < 0x200; ++i) {
 				uint8_t value = debug_read6502(i);
