@@ -31,8 +31,8 @@
 #include "symbols.h"
 #include "timing.h"
 #include "vera/sdcard.h"
-#include "vera/vera_psg.h"
 #include "vera/vera_video.h"
+#include "psg_overlay.h"
 #include "ym2151_overlay.h"
 
 bool Show_options          = false;
@@ -1939,143 +1939,6 @@ static void draw_debugger_controls()
 		ImGui::Text("%s cycles%s", cycles_formatted, debugger_step_interrupted() ? " (Interrupted)" : "");
 	} else {
 		ImGui::TextDisabled("%s cycles%s", cycles_formatted, debugger_step_interrupted() ? " (Interrupted)" : "");
-	}
-}
-
-static void draw_debugger_vera_psg()
-{
-	if (ImGui::BeginTable("psg mon", 8)) {
-		ImGui::TableSetupColumn("Ch", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Raw Bytes", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Freq", ImGuiTableColumnFlags_WidthStretch);
-		ImGui::TableSetupColumn("Wave", ImGuiTableColumnFlags_WidthFixed, 88);
-		ImGui::TableSetupColumn("Width", ImGuiTableColumnFlags_WidthStretch);
-		ImGui::TableSetupColumn("L", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("R", ImGuiTableColumnFlags_WidthFixed);
-		ImGui::TableSetupColumn("Vol", ImGuiTableColumnFlags_WidthStretch);
-		ImGui::TableHeadersRow();
-
-		static char chtxt[3];
-		for (unsigned int i = 0; i < 16; ++i) {
-			ImGui::TableNextRow();
-			if (i == 0) {
-				ImGui::TableSetColumnIndex(2);  // freq
-				ImGui::PushItemWidth(-FLT_MIN); // Right-aligned
-				ImGui::TableSetColumnIndex(3);  // wave
-				ImGui::PushItemWidth(-FLT_MIN);
-				ImGui::TableSetColumnIndex(4); // width
-				ImGui::PushItemWidth(-FLT_MIN);
-				ImGui::TableSetColumnIndex(7); // vol
-				ImGui::PushItemWidth(-FLT_MIN);
-				ImGui::TableSetColumnIndex(0);
-			} else {
-				ImGui::TableNextColumn();
-			}
-
-			snprintf(chtxt, 3, "%d", i);
-			ImGui::PushID(i);
-			const psg_channel *channel = psg_get_channel(i);
-
-			ImGui::Text(chtxt);
-
-			ImGui::TableNextColumn();
-			ImGui::PushID("raw");
-			uint8_t ch_data[4];
-			ch_data[0] = channel->freq & 0xff;
-			ch_data[1] = channel->freq >> 8;
-			ch_data[2] = channel->volume | (channel->left << 6) | (channel->right << 7);
-			ch_data[3] = channel->pw | channel->waveform << 6;
-			for (int j = 0; j < 4; ++j) {
-				if (j) {
-					ImGui::SameLine();
-				}
-				if (ImGui::InputHex(j, ch_data[j])) {
-					psg_writereg(i * 4 + j, ch_data[j]);
-				}
-			}
-			ImGui::PopID();
-
-			ImGui::TableNextColumn();
-			float freq = channel->freq;
-			ImGui::PushID("freq");
-			if (ImGui::SliderFloat("", &freq, 0, 0xffff, "%.0f", ImGuiSliderFlags_Logarithmic | ImGuiSliderFlags_AlwaysClamp)) {
-				psg_set_channel_frequency(i, (uint16_t)freq);
-			}
-			ImGui::PopID();
-
-			ImGui::TableNextColumn();
-			static const char *waveforms[] = {
-				"Pulse",
-				"Sawtooth",
-				"Triangle",
-				"Noise"
-			};
-			int wf = channel->waveform;
-			ImGui::PushID("waveforms");
-			if (ImGui::Combo("", &wf, waveforms, IM_ARRAYSIZE(waveforms))) {
-				psg_set_channel_waveform(i, wf);
-			}
-			ImGui::PopID();
-
-			ImGui::TableNextColumn();
-			int pulse_width = channel->pw;
-			ImGui::PushID("pulse_width");
-			if (ImGui::SliderInt("", &pulse_width, 0, 63, "%d", ImGuiSliderFlags_AlwaysClamp)) {
-				psg_set_channel_pulse_width(i, pulse_width);
-			}
-			ImGui::PopID();
-
-			ImGui::TableNextColumn();
-			bool left = channel->left;
-			ImGui::PushID("left");
-			if (ImGui::Checkbox("", &left)) {
-				psg_set_channel_left(i, left);
-			}
-			ImGui::PopID();
-
-			ImGui::TableNextColumn();
-			bool right = channel->right;
-			ImGui::PushID("right");
-			if (ImGui::Checkbox("", &right)) {
-				psg_set_channel_right(i, right);
-			}
-			ImGui::PopID();
-
-			ImGui::TableNextColumn();
-			int volume = channel->volume;
-			ImGui::PushID("volume");
-			if (ImGui::SliderInt("", &volume, 0, 63, "%d", ImGuiSliderFlags_AlwaysClamp)) {
-				psg_set_channel_volume(i, volume);
-			}
-			ImGui::PopID();
-
-			ImGui::PopID();
-		}
-
-		ImGui::EndTable();
-	}
-
-	int16_t psg_buffer[2 * SAMPLES_PER_BUFFER];
-	audio_get_psg_buffer(psg_buffer);
-	{
-		float left_samples[SAMPLES_PER_BUFFER];
-		float right_samples[SAMPLES_PER_BUFFER];
-
-		float *l = left_samples;
-		float *r = right_samples;
-
-		const int16_t *b = psg_buffer;
-		for (int i = 0; i < SAMPLES_PER_BUFFER; ++i) {
-			*l = *b;
-			++l;
-			++b;
-			*r = *b;
-			++r;
-			++b;
-		}
-
-		ImGui::PlotLines("Left", left_samples, SAMPLES_PER_BUFFER, 0, nullptr, INT16_MIN, INT16_MAX, ImVec2(0, 80.0f));
-		ImGui::PlotLines("Right", right_samples, SAMPLES_PER_BUFFER, 0, nullptr, INT16_MIN, INT16_MAX, ImVec2(0, 80.0f));
 	}
 }
 

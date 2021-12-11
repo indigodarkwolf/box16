@@ -20,11 +20,16 @@ static uint8_t volume_lut[16] = {0, 1, 2, 3, 4, 5, 6, 8, 11, 14, 18, 23, 30, 38,
 static int16_t cur_l, cur_r;
 static uint8_t phase;
 
+static unsigned dbg_minsiz;
+static unsigned dbg_maxsiz;
+
 static void fifo_reset(void)
 {
 	fifo_wridx = 0;
 	fifo_rdidx = 0;
 	fifo_cnt   = 0;
+	dbg_minsiz = 0;
+	dbg_maxsiz = 0;
 }
 
 void pcm_reset(void)
@@ -74,6 +79,9 @@ void pcm_write_fifo(uint8_t val)
 		}
 		fifo_cnt++;
 	}
+	if (fifo_cnt > dbg_maxsiz) {
+		dbg_maxsiz = fifo_cnt;
+	}
 }
 
 static uint8_t read_fifo(void)
@@ -86,6 +94,9 @@ static uint8_t read_fifo(void)
 		fifo_rdidx = 0;
 	}
 	fifo_cnt--;
+	if (fifo_cnt < dbg_minsiz) {
+		dbg_minsiz = fifo_cnt;
+	}
 	return result;
 }
 
@@ -130,4 +141,15 @@ void pcm_render(int16_t *buf, unsigned num_samples)
 		*(buf++) = ((int)cur_l * (int)volume_lut[ctrl & 0xF]) >> 6;
 		*(buf++) = ((int)cur_r * (int)volume_lut[ctrl & 0xF]) >> 6;
 	}
+}
+
+pcm_debug_info pcm_get_debug_info(void)
+{
+	return pcm_debug_info{ fifo, fifo_rdidx, fifo_cnt, dbg_minsiz, dbg_maxsiz };
+}
+
+void pcm_reset_debug_values(void)
+{
+	dbg_minsiz = fifo_cnt;
+	dbg_maxsiz = fifo_cnt;
 }

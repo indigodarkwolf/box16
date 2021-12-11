@@ -6,6 +6,7 @@
 
 #include <SDL.h>
 
+#define SAMPLERATE (25000000 / 512)
 #ifdef __EMSCRIPTEN__
 #	define SAMPLES_PER_BUFFER (1024)
 #else
