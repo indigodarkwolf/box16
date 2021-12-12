@@ -118,7 +118,7 @@ static void draw_debugger_cpu_status()
 
 				char label[4] = "r0";
 				for (int i = start; i <= end; ++i) {
-					snprintf(label, 4, i < 10 ? " r%d" : "r%d", i);
+					sprintf(label, i < 10 ? " r%d" : "r%d", i);
 					ImGui::Text("%s", label);
 					ImGui::SameLine();
 					uint16_t value = (int)get_mem16(2 + (i << 1), 0);
@@ -294,14 +294,14 @@ static void draw_debugger_vera_status()
 			ImGui::Text("Scale");
 			ImGui::SameLine();
 
-			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hscale());
+			sprintf(hex, "%02X", (int)vera_video_get_dc_hscale());
 			if (ImGui::InputText("H", hex, 5, hex_flags)) {
 				vera_video_set_dc_hscale(parse<8>(hex));
 			}
 
 			ImGui::SameLine();
 
-			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vscale());
+			sprintf(hex, "%02X", (int)vera_video_get_dc_vscale());
 			if (ImGui::InputText("V", hex, 3, hex_flags)) {
 				vera_video_set_dc_vscale(parse<8>(hex));
 			}
@@ -311,13 +311,13 @@ static void draw_debugger_vera_status()
 		ImGui::Dummy(ImVec2(width_uint8, 0));
 		ImGui::SameLine();
 		ImGui::PushID("vstart");
-		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstart());
+		sprintf(hex, "%02X", (int)vera_video_get_dc_vstart());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
 			vera_video_set_dc_vstart(parse<8>(hex));
 		}
 		ImGui::PopID();
 		ImGui::PushID("hstart");
-		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstart());
+		sprintf(hex, "%02X", (int)vera_video_get_dc_hstart());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
 			vera_video_set_dc_hstart(parse<8>(hex));
 		}
@@ -326,7 +326,7 @@ static void draw_debugger_vera_status()
 		ImGui::Dummy(ImVec2(width_uint8, 0));
 		ImGui::SameLine();
 		ImGui::PushID("hstop");
-		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstop());
+		sprintf(hex, "%02X", (int)vera_video_get_dc_hstop());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
 			vera_video_set_dc_hstop(parse<8>(hex));
 		}
@@ -334,7 +334,7 @@ static void draw_debugger_vera_status()
 		ImGui::Dummy(ImVec2(width_uint8, 0));
 		ImGui::SameLine();
 		ImGui::PushID("vstop");
-		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstop());
+		sprintf(hex, "%02X", (int)vera_video_get_dc_vstop());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
 			vera_video_set_dc_vstop(parse<8>(hex));
 		}
@@ -716,7 +716,7 @@ static void draw_debugger_vera_sprite()
 					// #
 					ImGui::TableNextColumn();
 					char idx_txt[4];
-					snprintf(idx_txt, 4, "%d", id);
+					sprintf(idx_txt, "%d", id);
 					// SpanAllColumns flag currently makes selectable has more precedence than all edit widgets
 					if (ImGui::Selectable(idx_txt, sprite_id == id /*, ImGuiSelectableFlags_SpanAllColumns */)) {
 						sprite_id = id;
@@ -1659,7 +1659,7 @@ static void draw_breakpoints()
 
 					ImGui::TableNextColumn();
 					char addr_text[5];
-					snprintf(addr_text, 5, "%04X", address);
+					sprintf(addr_text, "%04X", address);
 					if (ImGui::Selectable(addr_text, false, ImGuiSelectableFlags_AllowDoubleClick)) {
 						disasm.set_dump_start(address);
 						if (address >= 0xc000) {
@@ -1749,7 +1749,7 @@ static void draw_symbols_list()
 						ImGui::PushID(id++);
 						bool is_selected = selected && (selected_addr == address) && (selected_bank == bank);
 						char display_name[128];
-						snprintf(display_name, 128, "%04x %s", address, name.c_str());
+						sprintf(display_name, "%04x %s", address, name.c_str());
 						if (ImGui::Selectable(display_name, is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
 							selected      = true;
 							selected_addr = address;
@@ -1918,7 +1918,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	char cycles_raw[32];
-	int  digits = snprintf(cycles_raw, 32, "%" SDL_PRIu64, debugger_step_clocks());
+	int  digits = sprintf(cycles_raw, "%" SDL_PRIu64, debugger_step_clocks());
 
 	char  cycles_formatted[32];
 	char *r = cycles_raw;

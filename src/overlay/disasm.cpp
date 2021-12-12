@@ -122,7 +122,7 @@ void imgui_debugger_disasm::draw()
 		{
 			static char hex[5] = { "0000" };
 			if (reset_input) {
-				snprintf(hex, 5, "%04X", dump_start);
+				sprintf(hex, "%04X", dump_start);
 				reset_input = false;
 			}
 			if (ImGui::InputHexLabel("Disasm Address", hex)) {
@@ -196,7 +196,7 @@ void imgui_debugger_disasm::draw()
 						for (auto &sym : symbols) {
 							ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 							char addr_text[5];
-							snprintf(addr_text, 5, "%04X", i);
+							sprintf(addr_text, "%04X", i);
 							if (ImGui::Selectable(addr_text, false, 0, ImGui::CalcTextSize(addr_text))) {
 								set_dump_start(i);
 							}
@@ -227,7 +227,7 @@ void imgui_debugger_disasm::draw()
 
 					if (!found_symbols) {
 						char addr_text[5];
-						snprintf(addr_text, 5, "%04X", addr);
+						sprintf(addr_text, "%04X", addr);
 						if (ImGui::Selectable(addr_text, false, 0, ImGui::CalcTextSize(addr_text))) {
 							set_dump_start(addr);
 						}

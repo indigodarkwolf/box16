@@ -68,7 +68,7 @@ void machine_dump()
 		if (!index) {
 			strcpy(filename, "dump.bin");
 		} else {
-			snprintf(filename, 22, "dump-%i.bin", index);
+			sprintf(filename, "dump-%i.bin", index);
 		}
 		if (access(filename, F_OK) == -1) {
 			break;
@@ -239,7 +239,7 @@ int main(int argc, char **argv)
 
 	if (Options.run_test) {
 		char test_text[256];
-		snprintf(test_text, 256, "TEST %d\r", Options.test_number);
+		sprintf(test_text, "TEST %d\r", Options.test_number);
 		keyboard_add_text(test_text);
 	}
 
@@ -546,7 +546,7 @@ void emulator_loop()
 								keyboard_add_text("RUN\r");
 							} else {
 								char sys_text[10];
-								snprintf(sys_text, 10, "SYS$%04X\r", start);
+								sprintf(sys_text, "SYS$%04X\r", start);
 								keyboard_add_text(sys_text);
 							}
 						}

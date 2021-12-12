@@ -910,7 +910,7 @@ static int options_get_derived_path(char *derived_path, const char *path, const 
 	int path_len = 0;
 
 	if (is_absolute_path(path) || strlen(base_path) == 0 || strcmp(base_path, ".") == 0) {
-		path_len = snprintf(derived_path, PATH_MAX, "%s", path);
+		path_len = sprintf(derived_path, "%s", path);
 	} else {
 		path_len = snprintf(derived_path, PATH_MAX, "%s/%s", base_path, path);
 		path_len = path_len < (PATH_MAX - 1) ? path_len : (PATH_MAX - 1);
