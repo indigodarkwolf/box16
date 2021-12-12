@@ -265,6 +265,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClCompile Include="..\..\vendor\lodepng\lodepng.cpp" />
     <ClCompile Include="..\..\vendor\r8brain-free-src\r8bbase.cpp" />
     <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opm.cpp" />
+    <ClCompile Include="..\..\src\overlay\psg_overlay.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\audio.h" />
@@ -306,6 +307,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClInclude Include="..\..\src\overlay\midi_overlay.h" />
     <ClInclude Include="..\..\src\overlay\options_menu.h" />
     <ClInclude Include="..\..\src\overlay\overlay.h" />
+    <ClInclude Include="..\..\src\overlay\psg_overlay.h" />
     <ClInclude Include="..\..\src\overlay\ram_dump.h" />
     <ClInclude Include="..\..\src\overlay\util.h" />
     <ClInclude Include="..\..\src\overlay\vram_dump.h" />

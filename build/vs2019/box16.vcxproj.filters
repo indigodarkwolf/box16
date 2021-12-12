@@ -5,10 +5,6 @@
       <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
       <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
     </Filter>
-    <Filter Include="Header Files">
-      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
-      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
-    </Filter>
     <Filter Include="Source Files\compat">
       <UniqueIdentifier>{0fcad539-e3cf-4e49-b68b-4a6fd5d101e9}</UniqueIdentifier>
     </Filter>
@@ -41,6 +37,9 @@
     </Filter>
     <Filter Include="Vendor Source Files\r8brain-free-src">
       <UniqueIdentifier>{df869226-23eb-4cac-9f1b-7a1d64a5c782}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{fe82bbb0-2a22-4543-a74d-8e837e76276e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -199,6 +198,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\wav_recorder.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\overlay\psg_overlay.cpp">
+      <Filter>Source Files\overlay</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -450,6 +452,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\wav_recorder.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\overlay\psg_overlay.h">
+      <Filter>Source Files\overlay</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

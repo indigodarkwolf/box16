@@ -16,8 +16,6 @@
 #include "vera/vera_psg.h"
 #include "ym2151/ym2151.h"
 
-#define SAMPLERATE (25000000 / 512)
-
 static SDL_AudioDeviceID Audio_dev            = 0;
 static int               Obtained_sample_rate = 0;
 static int               Clocks_per_sample    = 0;
