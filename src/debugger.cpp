@@ -3,6 +3,10 @@
 #include "glue.h"
 #include "memory.h"
 
+//
+// Breakpoints
+//
+
 static breakpoint_list Breakpoints;
 static breakpoint_list Active_breakpoints;
 static bool            Breakpoint_check[0x10000];
@@ -313,4 +317,48 @@ bool debugger_breakpoint_is_active(uint16_t address, uint8_t bank /* = 0 */)
 const breakpoint_list &debugger_get_breakpoints()
 {
 	return Breakpoints;
+}
+
+//
+// Memory watch
+//
+
+char const *Debugger_size_types[Num_debugger_size_types] = {
+	"U8",
+	"U16",
+	"U24",
+	"U32",
+	"S8",
+	"S16",
+	"S24",
+	"S32"
+};
+
+static watch_address_list Watchlist;
+
+void debugger_add_watch(uint16_t address, uint8_t bank, uint8_t size_type)
+{
+	if (address < 0xa000) {
+		bank = 0;
+	}
+
+	watch_address_type new_watch{ address, bank, size_type };
+	if (Watchlist.find(new_watch) == Watchlist.end()) {
+		Watchlist.insert(new_watch);
+	}
+}
+
+void debugger_remove_watch(uint16_t address, uint8_t bank, uint8_t size_type)
+{
+	if (address < 0xa000) {
+		bank = 0;
+	}
+
+	watch_address_type old_watch{ address, bank, size_type };
+	Watchlist.erase(old_watch);
+}
+
+const watch_address_list &debugger_get_watchlist()
+{
+	return Watchlist;
 }

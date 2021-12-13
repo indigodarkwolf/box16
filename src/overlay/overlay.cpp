@@ -1713,6 +1713,180 @@ static void draw_breakpoints()
 	ImGui::EndGroup();
 }
 
+static void draw_watch_list()
+{
+	ImGui::BeginGroup();
+	{
+		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
+		if (ImGui::TreeNodeEx("Watch List", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+			static bool show_hex = true;
+			ImGui::Checkbox("Show Hex Values", &show_hex);
+
+			if (ImGui::BeginTable("watch list", 6)) {
+				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
+				ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 64);
+				ImGui::TableSetupColumn("Bank", ImGuiTableColumnFlags_WidthFixed, 48);
+				ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, 64);
+				ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, 88);
+				ImGui::TableSetupColumn("Symbol");
+				ImGui::TableHeadersRow();
+
+				const auto &watchlist = debugger_get_watchlist();
+				for (auto &[address, bank, size] : watchlist) {
+					ImGui::PushID(address);
+					ImGui::PushID(bank);
+
+					ImGui::TableNextRow();
+					ImGui::TableNextColumn();
+					if (ImGui::TileButton(ICON_REMOVE)) {
+						debugger_remove_watch(address, bank, size);
+						ImGui::PopID();
+						ImGui::PopID();
+						break;
+					}
+
+					ImGui::TableNextColumn();
+					char addr_text[5];
+					sprintf(addr_text, "%04X", address);
+					if (ImGui::Selectable(addr_text, false, ImGuiSelectableFlags_AllowDoubleClick)) {
+						disasm.set_dump_start(address);
+						if (address >= 0xc000) {
+							disasm.set_rom_bank(bank);
+						} else if (address >= 0xa000) {
+							disasm.set_ram_bank(bank);
+						}
+					}
+
+					ImGui::TableNextColumn();
+					if (address < 0xa000) {
+						ImGui::Text("--");
+					} else {
+						ImGui::Text("%s %02X", address < 0xc000 ? "RAM" : "ROM", bank);
+					}
+
+					ImGui::TableNextColumn();
+					uint8_t new_size = size;
+					if (ImGui::InputCombo(0, Debugger_size_types, new_size)) {
+						const uint16_t new_address = address;
+						const uint8_t new_bank = bank;
+						debugger_remove_watch(address, bank, size);
+						debugger_add_watch(new_address, new_bank, new_size);
+						ImGui::PopID();
+						ImGui::PopID();
+						break;
+					}
+
+					ImGui::TableNextColumn();
+					const uint8_t type_size = (size & 3) + 1;
+					const bool    is_signed = (size & 4);
+					union {
+						uint32_t u;
+						uint8_t  b[4];
+					} value;
+
+					value.u = 0;
+					{
+						uint8_t i = 0;
+						for (; i < type_size; ++i) {
+							value.b[i] = debug_read6502(address + i, bank);
+						}
+						if (is_signed && (value.b[i-1] & 0x80)) {
+							for (; i < 4; ++i) {
+								value.b[i] = 0xff;
+							}
+						}
+					}
+
+					bool edited = false;
+					if (show_hex) {
+						switch (type_size) {
+							case 1:
+								edited = ImGui::InputHex<uint32_t, 8>(1, value.u);
+								break;
+							case 2:
+								edited = ImGui::InputHex<uint32_t, 16>(1, value.u);
+								break;
+							case 3:
+								edited = ImGui::InputHex<uint32_t, 24>(1, value.u);
+								break;
+							case 4:
+								edited = ImGui::InputHex<uint32_t, 32>(1, value.u);
+								break;
+						}
+					} else if (is_signed) {
+						ImGui::PushItemWidth(88.0f);
+						edited = ImGui::InputScalar("", ImGuiDataType_S32, &value.u, 0, 0, "%d");
+						ImGui::PopItemWidth();
+					} else {
+						ImGui::PushItemWidth(88.0f);
+						edited = ImGui::InputScalar("", ImGuiDataType_U32, &value.u, 0, 0, "%u");
+						ImGui::PopItemWidth();
+					}
+
+					if (edited) {
+						for (uint8_t i = 0; i < type_size; ++i) {
+							debug_write6502(address + i, bank, value.b[i]);
+						}
+					}
+
+					ImGui::TableNextColumn();
+					for (auto &sym : symbols_find(address)) {
+						if (ImGui::Selectable(sym.c_str(), false, ImGuiSelectableFlags_AllowDoubleClick)) {
+							disasm.set_dump_start(address);
+							if (address >= 0xc000) {
+								disasm.set_rom_bank(bank);
+							} else if (address >= 0xa000) {
+								disasm.set_ram_bank(bank);
+							}
+						}
+					}
+
+					ImGui::PopID();
+					ImGui::PopID();
+				}
+
+				ImGui::EndTable();
+			}
+
+			static uint16_t new_address = 0;
+			static uint8_t  new_bank    = 0;
+			static uint8_t  size_type   = 0;
+			ImGui::InputHexLabel("New Address", new_address);
+			ImGui::SameLine();
+			ImGui::InputHexLabel("Bank", new_bank);
+			ImGui::SameLine();
+			ImGui::InputCombo("Type", Debugger_size_types, size_type);
+
+			//{
+			//	ImGui::Text("Type");
+			//	ImGui::SameLine();
+
+			//	ImGui::PushID("size type");
+			//	ImGui::PushItemWidth(hex_widths[7]);
+			//	if (ImGui::BeginCombo("", Debugger_size_types[size_type])) {
+			//		for (uint8_t i = 0; i < Num_debugger_size_types; ++i) {
+			//			if (ImGui::Selectable(Debugger_size_types[i], (size_type == i))) {
+			//				size_type = i;
+			//			}
+			//		}
+			//		ImGui::EndCombo();
+			//	}
+			//	ImGui::PopItemWidth();
+			//	ImGui::PopID();
+			//}
+
+			if (ImGui::Button("Add")) {
+				debugger_add_watch(new_address, new_bank, size_type);
+			}
+
+			ImGui::Dummy(ImVec2(0, 5));
+			ImGui::TreePop();
+		}
+		ImGui::PopStyleVar();
+	}
+	ImGui::EndGroup();
+}
+
 static void draw_symbols_list()
 {
 	ImGui::BeginGroup();
@@ -1770,6 +1944,10 @@ static void draw_symbols_list()
 
 			if (ImGui::Button("Add Breakpoint at Symbol") && selected) {
 				debugger_add_breakpoint(selected_addr, selected_bank);
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Add Watch at Symbol") && selected) {
+				debugger_add_watch(selected_addr, selected_bank, 1);
 			}
 
 			ImGui::Dummy(ImVec2(0, 5));
@@ -2163,6 +2341,7 @@ void overlay_draw()
 			ImGui::SameLine();
 			draw_debugger_cpu_status();
 			draw_breakpoints();
+			draw_watch_list();
 			draw_symbols_list();
 			draw_symbols_files();
 		}

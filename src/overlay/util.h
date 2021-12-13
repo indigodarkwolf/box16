@@ -39,8 +39,8 @@ static uint32_t parse(char const *str)
 }
 
 constexpr const ImGuiInputTextFlags hex_flags     = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CtrlEnterForNewLine;
-constexpr const float               hex_widths[]  = { 2.0f, 9.0f, 16.0f, 23.0f, 30.0f, 37.0f, 44.0f, 51.0f };
-constexpr const char *              hex_formats[] = { "", "", "%01X", "%02X", "%03X", "%04X", "%05X", "%06X" };
+constexpr const float               hex_widths[]  = { 2.0f, 9.0f, 16.0f, 23.0f, 30.0f, 37.0f, 44.0f, 51.0f, 58.0f, 65.0f };
+constexpr const char *              hex_formats[] = { "", "", "%01X", "%02X", "%03X", "%04X", "%05X", "%06X", "%07X", "%08X" };
 
 namespace ImGui
 {
@@ -105,6 +105,50 @@ namespace ImGui
 		PopID();
 		return result;
 	}
+
+	template <size_t ARRAY_SIZE, typename INDEX_TYPE>
+	bool InputCombo(int id, char const *(&elements)[ARRAY_SIZE], INDEX_TYPE &selected)
+	{
+		ImGui::PushID(id);
+		ImGui::PushItemWidth(hex_widths[7]);
+		bool result = false;
+		if (ImGui::BeginCombo("", elements[selected])) {
+			for (INDEX_TYPE i = 0; i < ARRAY_SIZE; ++i) {
+				if (ImGui::Selectable(elements[i], (selected == i))) {
+					selected = i;
+					result   = true;
+				}
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::PopItemWidth();
+		ImGui::PopID();
+		return result;
+	}
+
+	template <size_t ARRAY_SIZE, typename INDEX_TYPE>
+	bool InputCombo(char const *name, char const *(&elements)[ARRAY_SIZE], INDEX_TYPE &selected) 
+	{
+		ImGui::Text(name);
+		ImGui::SameLine();
+
+		ImGui::PushID(name);
+		ImGui::PushItemWidth(hex_widths[7]);
+		bool result = false;
+		if (ImGui::BeginCombo("", elements[selected])) {
+			for (INDEX_TYPE i = 0; i < ARRAY_SIZE; ++i) {
+				if (ImGui::Selectable(elements[i], (selected == i))) {
+					selected = i;
+					result   = true;
+				}
+			}
+			ImGui::EndCombo();
+		}
+		ImGui::PopItemWidth();
+		ImGui::PopID();
+		return result;
+	}
+
 } // namespace ImGui
 
 static uint16_t get_mem16(uint16_t address, uint8_t bank)
