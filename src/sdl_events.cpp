@@ -48,13 +48,13 @@ bool sdl_events_update()
 		ImGui_ImplSDL2_ProcessEvent(&event);
 
 		if (ImGui::GetIO().WantCaptureMouse) {
-			return true;
+			continue;
 		}
 		if (ImGui::GetIO().WantCaptureKeyboard) {
-			return true;
+			continue;
 		}
 		if (ImGui::GetIO().WantTextInput) {
-			return true;
+			continue;
 		}
 
 		switch (event.type) {
