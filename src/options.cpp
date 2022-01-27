@@ -122,6 +122,10 @@ static void usage()
 	printf("-version\n");
 	printf("\tPrint additional version information the emulator and ROM.\n");
 
+	printf("-vsync {none|get|wait}\n");
+	printf("\tUse specified vsync rendering strategy to avoid visual tearing.\n");
+	printf("\tUse 'none' if the content area remains white after start.\n");
+
 	printf("-warp\n");
 	printf("\tEnable warp mode, run emulator as fast as possible.\n");
 	
@@ -340,6 +344,17 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			}
 
 			ini["main"]["quality"] = argv[0];
+
+			argc--;
+			argv++;
+		} else if (!strcmp(argv[0], "-vsync")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["vsync"] = argv[0];
 
 			argc--;
 			argv++;
@@ -686,6 +701,19 @@ static void set_options(mINI::INIStructure &ini)
 		}
 	}
 
+	if (ini["main"].has("vsync")) {
+		char const *q = ini["main"]["vsync"].c_str();
+		if (!strcmp(q, "none")) {
+			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_NONE;
+		} else if (!strcmp(q, "get")) {
+			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_GET_SYNC;
+		} else if (!strcmp(q, "wait")) {
+			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_WAIT_SYNC;
+		} else {
+			usage();
+		}
+	}
+
 	if (ini["main"].has("nosound")) {
 		if (!strcmp(ini["main"]["nosound"].c_str(), "true")) {
 			if (strlen(Options.audio_dev_name) > 0) {
@@ -777,6 +805,15 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 		return "nearest";
 	};
 
+	auto vsync_mode_str = [](vsync_mode_t mode) -> const char * {
+		switch (mode) {
+			case VSYNC_MODE_NONE: return "none";
+			case VSYNC_MODE_GET_SYNC: return "get";
+			case VSYNC_MODE_WAIT_SYNC: return "wait";
+		}
+		return "none";
+	};
+
 	set_option("rom", Options.rom_path, Default_options.rom_path);
 	set_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
 	set_option("keymap", keymaps[Options.keymap], keymaps[Default_options.keymap]);
@@ -827,6 +864,7 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 	set_option("stds", Options.load_standard_symbols, Default_options.load_standard_symbols);
 	set_option("scale", Options.window_scale, Default_options.window_scale);
 	set_option("quality", quality_str(Options.scale_quality), quality_str(Default_options.scale_quality));
+	set_option("vsync", vsync_mode_str(Options.vsync_mode), vsync_mode_str(Default_options.vsync_mode));
 	set_option("nosound", Options.no_sound, Default_options.no_sound);
 	set_option("sound", Options.audio_dev_name, Default_options.audio_dev_name);
 	set_option("abufs", Options.audio_buffers, Default_options.audio_buffers);

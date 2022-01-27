@@ -40,9 +40,6 @@ SOFTWARE.
 #include "vera/vera_video.h"
 #include "version.h"
 
-#define USE_GL_GET_SYNC 1
-// #define USE_GL_CLIENT_WAIT_SYNC 1
-
 static display_settings Display;
 
 static SDL_Window *  Display_window = nullptr;
@@ -56,9 +53,7 @@ static GLuint Display_framebuffer_texture_handle;
 static GLuint Video_framebuffer_texture_handle;
 static GLuint Icon_tilemap;
 
-#if defined(USE_GL_GET_SYNC) || defined(USE_GL_CLIENT_WAIT_SYNC)
 static GLsync Render_complete = 0;
-#endif
 
 static bool Initd_sdl_image           = false;
 static bool Initd_sdl_gl              = false;
@@ -482,9 +477,8 @@ bool display_init(const display_settings &settings)
 
 	SDL_ShowCursor(SDL_DISABLE);
 
-#if defined(USE_GL_GET_SYNC) || defined(USE_GL_CLIENT_WAIT_SYNC)
-	Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-#endif
+	if (Options.vsync_mode == VSYNC_MODE_GET_SYNC || Options.vsync_mode == VSYNC_MODE_WAIT_SYNC)
+		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 
 	return true;
 }
@@ -518,23 +512,32 @@ void display_shutdown()
 
 void display_process()
 {
-#if defined(USE_GL_GET_SYNC)
-	GLsizei num_sync_values;
-	GLint   sync_status;
-	glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
-
-	if (num_sync_values != 0 && sync_status == GL_UNSIGNALED) {
-		return;
+	if (Render_complete == 0 && Options.vsync_mode != VSYNC_MODE_NONE) {
+		// Handle asynchronous vsync enable (i.e. vsync was disabled from the menu)
+		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	} else if (Render_complete != 0 && Options.vsync_mode == VSYNC_MODE_NONE) {
+		// Handle asynchronous vsync disable
+		glDeleteSync(Render_complete);
+		Render_complete = 0;
 	}
 
-	glDeleteSync(Render_complete);
-#elif defined(USE_GL_CLIENT_WAIT_SYNC)
-	if (glClientWaitSync(Render_complete, 0, 0) == GL_TIMEOUT_EXPIRED) {
-		return;
-	}
+	if (Options.vsync_mode == VSYNC_MODE_GET_SYNC) {
+		GLsizei num_sync_values;
+		GLint   sync_status;
+		glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
 
-	glDeleteSync(Render_complete);
-#endif
+		if (num_sync_values != 0 && sync_status == GL_UNSIGNALED) {
+			return;
+		}
+
+		glDeleteSync(Render_complete);
+	} else if (Options.vsync_mode == VSYNC_MODE_WAIT_SYNC) {
+		if (glClientWaitSync(Render_complete, 0, 0) == GL_TIMEOUT_EXPIRED) {
+			return;
+		}
+
+		glDeleteSync(Render_complete);
+	}
 
 	ImGui_ImplOpenGL2_NewFrame();
 	ImGui_ImplSDL2_NewFrame(Display_window);
@@ -573,9 +576,9 @@ void display_process()
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 	SDL_GL_SwapWindow(Display_window);
 
-#if defined(USE_GL_GET_SYNC) || defined(USE_GL_CLIENT_WAIT_SYNC)
-	Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-#endif
+	if (Options.vsync_mode == VSYNC_MODE_GET_SYNC || Options.vsync_mode == VSYNC_MODE_WAIT_SYNC) {
+		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	}
 }
 
 const display_settings &display_get_settings()

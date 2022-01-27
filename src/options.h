@@ -21,6 +21,12 @@ enum class option_source {
 	CMDLINE
 };
 
+enum vsync_mode_t {
+	VSYNC_MODE_NONE = 0,
+	VSYNC_MODE_GET_SYNC,
+	VSYNC_MODE_WAIT_SYNC,
+};
+
 struct options {
 	char hyper_path[PATH_MAX]  = ".";
 	char rom_path[PATH_MAX]    = "rom.bin";
@@ -52,6 +58,7 @@ struct options {
 	int             warp_factor   = 0;
 	int             window_scale  = 2;
 	scale_quality_t scale_quality = scale_quality_t::NEAREST;
+	vsync_mode_t    vsync_mode    = vsync_mode_t::VSYNC_MODE_GET_SYNC;
 
 	char audio_dev_name[PATH_MAX] = "";
 	bool no_sound                 = false;
