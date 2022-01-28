@@ -238,6 +238,32 @@ void draw_options_menu()
 		ImGui::SetTooltip("Set scaling quality:\nNearest: Scale by nearest pixel.\nLinear: Scale by linearly averaging between pixels.\nBest: Scale by anisotropic filtering.\nCommand line: -quality {nearest|linear|best}");
 	}
 
+	static auto vsync_name = [](vsync_mode_t vsync_mode) {
+		switch (vsync_mode) {
+			case vsync_mode_t::VSYNC_MODE_NONE: return "None";
+			case vsync_mode_t::VSYNC_MODE_GET_SYNC: return "Get";
+			case vsync_mode_t::VSYNC_MODE_WAIT_SYNC: return "Wait";
+			default: return "Nearest";
+		}
+	};
+
+	if (ImGui::BeginCombo("Vsync Mode", vsync_name(Options.vsync_mode))) {
+		auto selection = [](vsync_mode_t vsync_mode) {
+			if (ImGui::Selectable(vsync_name(vsync_mode), Options.vsync_mode == vsync_mode)) {
+				Options.vsync_mode = vsync_mode;
+			}
+		};
+
+		selection(vsync_mode_t::VSYNC_MODE_NONE);
+		selection(vsync_mode_t::VSYNC_MODE_GET_SYNC);
+		selection(vsync_mode_t::VSYNC_MODE_WAIT_SYNC);
+
+		ImGui::EndCombo();
+	}
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Set vsync mode:\nNone: Do not wait for vsync.\nGet: Check vsync asynchronously.\nWait: Wait for vsync.\nCommand line: -vsync {none|get|wait}");
+	}
+
 	file_option("gif", Options.gif_path, "GIF path", "Location to save gifs\nCommand line: -gif <path>[,wait]");
 	file_option("wav", Options.wav_path, "WAV path", "Location to save wavs\nCommand line: -wav <path>[,wait]");
 	bool_option(Options.load_standard_symbols, "Load Standard Symbols", "Load all symbols files typically included with ROM distributions.\nCommand line: -stds");
