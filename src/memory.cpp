@@ -268,8 +268,8 @@ static uint8_t debug_read(uint16_t address, uint8_t bank)
 		case MEMMAP_IO_SOUND: return 0;
 		case MEMMAP_IO_VIDEO: return vera_debug_video_read(address & 0x1f);
 		case MEMMAP_IO_LCD: return 0;
-		case MEMMAP_IO_VIA1: return via1_read(address & 0xf);
-		case MEMMAP_IO_VIA2: return via2_read(address & 0xf);
+		case MEMMAP_IO_VIA1: return via1_read(address & 0xf, true);
+		case MEMMAP_IO_VIA2: return via2_read(address & 0xf, true);
 		case MEMMAP_IO_RTC: return 0; // TODO: RTC
 		case MEMMAP_IO_MOUSE: return mouse_read(address & 0x1f);
 		case MEMMAP_IO_EMU: return debug_emu_read(address & 0xf);
@@ -291,8 +291,8 @@ static uint8_t real_read(uint16_t address)
 		case MEMMAP_IO_SOUND: return sound_read(address);
 		case MEMMAP_IO_VIDEO: return vera_video_read(address & 0x1f);
 		case MEMMAP_IO_LCD: return 0;
-		case MEMMAP_IO_VIA1: return via1_read(address & 0xf);
-		case MEMMAP_IO_VIA2: return via2_read(address & 0xf);
+		case MEMMAP_IO_VIA1: return via1_read(address & 0xf, false);
+		case MEMMAP_IO_VIA2: return via2_read(address & 0xf, false);
 		case MEMMAP_IO_RTC: return 0; // TODO: RTC
 		case MEMMAP_IO_MOUSE: return mouse_read(address & 0x1f);
 		case MEMMAP_IO_EMU: return real_emu_read(address & 0xf);
