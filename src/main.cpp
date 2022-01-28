@@ -445,6 +445,9 @@ void emulator_loop()
 		cpu_visualization_step();
 		uint8_t clocks = (uint8_t)(clockticks6502 - old_clockticks6502);
 		bool new_frame = vera_video_step(MHZ, clocks);
+		bool via1_irq_old = via1_irq();
+		via1_step(clocks);
+		via2_step(clocks);
 		audio_render(clocks);
 
 		if (new_frame) {
@@ -466,10 +469,15 @@ void emulator_loop()
 #endif
 		}
 
-		if (vera_video_get_irq_out() || YM_irq()) {
+		if (!via1_irq_old && via1_irq()) {
+			nmi6502();
+			debugger_interrupt();
+		}
+
+		if (vera_video_get_irq_out() || YM_irq() || via2_irq()) {
 			if (!(status & 4)) {
-				debugger_interrupt();
 				irq6502();
+				debugger_interrupt();
 			}
 		}
 
