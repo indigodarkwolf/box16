@@ -129,6 +129,10 @@ You can start `box16`/`box16.exe` either by double-clicking it, or from the comm
 	* POKE $9FB6,0 will pause wav recording
 	* POKE $9FB6,1 will unpause wav recording
 	* POKE $9FB6,2 will unpause wav recording at the fist non-zero audio signal
+* `-vsync {none|get|wait}` uses specified vsync rendering strategy to avoid visual tearing. Some drivers may not support all types of vsync.
+	* `none`: Use if the content area remains white after start. Disables vsync.
+	* `get`: Default, should work with OpenGL ES >= 3.0
+	* `wait`: Alternative, should work with OpenGL >= 3.2
 * `-ymirq` will enable interrupts from the YM2151 audio chip (this is disabled by default to match the behavior of the official emulator r38)
 * `-ymstrict` will enable strict enforcement of the YM2151's busy status, dropping writes to the chip if it's busy at the time of write (this is disabled by default to match the behavior of the official emulator r38)
 
