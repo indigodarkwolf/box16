@@ -25,7 +25,7 @@
 extern uint8_t  a, x, y, sp, status;
 extern uint16_t pc;
 extern uint8_t *RAM;
-extern uint8_t  ROM[];
+extern uint8_t  ROM[ROM_SIZE];
 extern uint32_t instructions;
 
 extern bool        save_on_exit;

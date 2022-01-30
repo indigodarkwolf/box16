@@ -7,10 +7,12 @@
 #include "debugger.h"
 #include "symbols.h"
 #include "version.h"
+#include "rom_patch.h"
 
 options       Options;
 const options Default_options;
 char          Options_base_path[PATH_MAX];
+char          Options_prefs_path[PATH_MAX];
 char          Options_ini_path[PATH_MAX];
 
 mINI::INIStructure Cmdline_ini;
@@ -32,6 +34,9 @@ static void usage()
 	printf("-bas <app.txt>\n");
 	printf("\tInject a BASIC program in ASCII encoding through the\n");
 	printf("\tkeyboard.\n");
+
+	printf("-create_patch <from.bin>\n");
+	printf("\tCreate a patch from one ROM image to the ROM being used.\n");
 
 	printf("-debug <address>\n");
 	printf("\tSet a breakpoint in the debugger\n");
@@ -72,12 +77,18 @@ static void usage()
 	printf("-nobinds\n");
 	printf("\tDisable most emulator keyboard shortcuts.\n");
 
+	printf("-nopatch\n");
+	printf("\tDisables patching, overriding patch settings in ini file.\n");
+
 	printf("-nosound\n");
 	printf("\tDisables audio. Incompatible with -sound.\n");
 
 	printf("-nvram <nvram.bin>\n");
 	printf("\tSpecify NVRAM image. By default, the machine starts with\n");
 	printf("\tempty NVRAM and does not save it to disk.\n");
+
+	printf("-patch <patch.bpf>\n");
+	printf("\tApply the following patch file to rom.\n");
 
 	printf("-prg <app.prg>[,<load_addr>]\n");
 	printf("\tLoad application from the local disk into RAM\n");
@@ -214,6 +225,20 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 
 			argc--;
 			argv++;
+
+		} else if (!strcmp(argv[0], "-create_patch")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["main"]["create_patch"] = "true";
+			ini["main"]["patch_target"] = argv[0];
+
+			argc--;
+			argv++;
+
 		} else if (!strcmp(argv[0], "-debug")) {
 			argc--;
 			argv++;
@@ -310,6 +335,12 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			argv++;
 			ini["main"]["nobinds"] = "true";
 
+		} else if (!strcmp(argv[0], "-nopatch")) {
+			argc--;
+			argv++;
+
+			ini["main"]["ignore_patch"] = "true";
+
 		} else if (!strcmp(argv[0], "-nosound")) {
 			argc--;
 			argv++;
@@ -325,6 +356,18 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			ini["main"]["nvram"] = argv[0];
 			argc--;
 			argv++;
+
+		} else if (!strcmp(argv[0], "-patch")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+			ini["main"]["patch"] = argv[0];
+			ini["main"]["ignore_patch"] = "false";
+			argc--;
+			argv++;
+
 		} else if (!strcmp(argv[0], "-prg")) {
 			argc--;
 			argv++;
@@ -525,6 +568,26 @@ static void set_options(mINI::INIStructure &ini)
 {
 	if (ini["main"].has("rom")) {
 		strcpy(Options.rom_path, ini["main"]["rom"].c_str());
+	}
+
+	if (ini["main"].has("patch")) {
+		strcpy(Options.patch_path, ini["main"]["patch"].c_str());
+		if (Options.patch_path[0] != '\0') {
+			Options.ignore_patch = false;
+		}
+	}
+
+	if (ini["main"].has("create_patch")) {
+		if (!strcmp(ini["main"]["create_patch"].c_str(), "true")) {
+			strcpy(Options.patch_target, ini["main"]["patch_target"].c_str());
+			Options.create_patch = true;
+		}
+	}
+
+	if (ini["main"].has("ignore_patch")) {
+		if (!strcmp(ini["main"]["ignore_patch"].c_str(), "true")) {
+			Options.ignore_patch = true;
+		}
 	}
 
 	if (ini["main"].has("ram")) {
@@ -815,6 +878,7 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 	};
 
 	set_option("rom", Options.rom_path, Default_options.rom_path);
+	set_option("patch", Options.patch_path, Default_options.patch_path);
 	set_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
 	set_option("keymap", keymaps[Options.keymap], keymaps[Default_options.keymap]);
 	set_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
@@ -882,15 +946,22 @@ void apply_ini(mINI::INIStructure &dst, const mINI::INIStructure &src)
 }
 
 
-void load_options(const char *path, int argc, char **argv)
+void load_options(const char *base_path, const char *prefs_path, int argc, char **argv)
 {
-	if (path != nullptr) {
-		strncpy(Options_base_path, path, PATH_MAX);
+	if (base_path != nullptr) {
+		strncpy(Options_base_path, base_path, PATH_MAX);
 		fixup_directory(Options_base_path);
-		snprintf(Options_ini_path, PATH_MAX, "%s/box16.ini", Options_base_path);
-		Options_ini_path[PATH_MAX - 1] = 0;
 	} else {
 		Options_base_path[0] = 0;
+	}
+
+	if (prefs_path != nullptr) {
+		strncpy(Options_prefs_path, prefs_path, PATH_MAX);
+		fixup_directory(Options_prefs_path);
+
+		snprintf(Options_ini_path, PATH_MAX, "%s/box16.ini", Options_prefs_path);
+		Options_ini_path[PATH_MAX - 1] = 0;
+	} else {
 		snprintf(Options_ini_path, PATH_MAX, "box16.ini");
 		Options_ini_path[PATH_MAX - 1] = 0;
 	}
@@ -963,6 +1034,11 @@ int options_get_base_path(char *real_path, const char *path)
 	return options_get_derived_path(real_path, path, Options_base_path);
 }
 
+int options_get_prefs_path(char *real_path, const char *path)
+{
+	return options_get_derived_path(real_path, path, Options_prefs_path);
+}
+
 int options_get_relative_path(char *real_path, const char *path)
 {
 	return options_get_derived_path(real_path, path, "./");
@@ -975,20 +1051,20 @@ int options_get_hyper_path(char *hyper_path, const char *path)
 
 bool option_cmdline_option_was_set(char const *cmdline_option)
 {
-	return Cmdline_ini.has(cmdline_option);
+	return Cmdline_ini["main"].has(cmdline_option);
 }
 
 bool option_inifile_option_was_set(char const *cmdline_option)
 {
-	return Inifile_ini.has(cmdline_option);
+	return Inifile_ini["main"].has(cmdline_option);
 }
 
 option_source option_get_source(char const *cmdline_option)
 {
-	if (Cmdline_ini.has(cmdline_option)) {
+	if (Cmdline_ini["main"].has(cmdline_option)) {
 		return option_source::CMDLINE;
 	}
-	if (Inifile_ini.has(cmdline_option)) {
+	if (Inifile_ini["main"].has(cmdline_option)) {
 		return option_source::INIFILE;
 	}
 	return option_source::DEFAULT;

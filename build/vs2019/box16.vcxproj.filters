@@ -202,6 +202,9 @@
     <ClCompile Include="..\..\src\overlay\psg_overlay.cpp">
       <Filter>Source Files\overlay</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\rom_patch.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\compat\compat.h">
@@ -455,6 +458,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\overlay\psg_overlay.h">
       <Filter>Source Files\overlay</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\rom_patch.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

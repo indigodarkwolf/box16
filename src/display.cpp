@@ -269,11 +269,13 @@ bool display_init(const display_settings &settings)
 {
 	Display = settings;
 
-	if (Display.window_rect.w == 0)
+	if (Display.window_rect.w == 0) {
 		Display.window_rect.w = Display.video_rect.w;
+	}
 
-	if (Display.window_rect.h == 0)
+	if (Display.window_rect.h == 0) {
 		Display.window_rect.h = Display.video_rect.h + 10; // Account for menu
+	}
 
 	// Initialize SDL_GL
 	{
@@ -584,6 +586,11 @@ void display_process()
 const display_settings &display_get_settings()
 {
 	return Display;
+}
+
+SDL_Window *display_get_window()
+{
+	return Display_window;
 }
 
 void display_toggle_fullscreen()

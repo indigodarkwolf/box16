@@ -248,6 +248,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClCompile Include="..\..\src\overlay\vram_dump.cpp" />
     <ClCompile Include="..\..\src\overlay\ym2151_overlay.cpp" />
     <ClCompile Include="..\..\src\ps2.cpp" />
+    <ClCompile Include="..\..\src\rom_patch.cpp" />
     <ClCompile Include="..\..\src\rtc.cpp" />
     <ClCompile Include="..\..\src\sdl_events.cpp" />
     <ClCompile Include="..\..\src\smc.cpp" />
@@ -314,6 +315,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
     <ClInclude Include="..\..\src\overlay\ym2151_overlay.h" />
     <ClInclude Include="..\..\src\ps2.h" />
     <ClInclude Include="..\..\src\ring_buffer.h" />
+    <ClInclude Include="..\..\src\rom_patch.h" />
     <ClInclude Include="..\..\src\rom_symbols.h" />
     <ClInclude Include="..\..\src\rtc.h" />
     <ClInclude Include="..\..\src\sdl_events.h" />

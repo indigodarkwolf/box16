@@ -30,6 +30,7 @@
 #include "overlay/overlay.h"
 #include "ps2.h"
 #include "ring_buffer.h"
+#include "rom_patch.h"
 #include "rom_symbols.h"
 #include "rtc.h"
 #include "sdl_events.h"
@@ -128,8 +129,10 @@ static bool is_kernal()
 #undef main
 int main(int argc, char **argv)
 {
-	const char *base_path = SDL_GetBasePath();
-	load_options(base_path, argc, argv);
+	const char *base_path    = SDL_GetBasePath();
+	const char *private_path = SDL_GetPrefPath("Box16", "Box16");
+
+	load_options(base_path, private_path, argc, argv);
 
 	if (Options.log_video) {
 		vera_video_set_log_video(true);
@@ -139,48 +142,118 @@ int main(int argc, char **argv)
 		vera_video_set_cheat_mask(0x3f);
 	}
 
-	// Load ROM
-	{
+	auto open_cmdline_file = [](char const *path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
 		SDL_RWops *f = nullptr;
 
-		option_source optsrc  = option_get_source("rom");
+		option_source optsrc  = option_get_source(cmdline_option);
 		char const *  srcname = option_get_source_name(optsrc);
 
 		char rel_path_buffer[PATH_MAX];
-		int  rel_path_len = options_get_relative_path(rel_path_buffer, Options.rom_path);
+		int  rel_path_len = options_get_relative_path(rel_path_buffer, path);
 
 		char base_path_buffer[PATH_MAX];
-		int  base_path_len = options_get_base_path(base_path_buffer, Options.rom_path);
+		int  base_path_len = options_get_base_path(base_path_buffer, path);
+
+		char prefs_path_buffer[PATH_MAX];
+		int  prefs_path_len = options_get_prefs_path(prefs_path_buffer, path);
 
 		if (optsrc == option_source::DEFAULT) {
-			f = SDL_RWFromFile(base_path_buffer, "rb");
+			f = SDL_RWFromFile(base_path_buffer, mode);
 			if (f) {
-				goto have_rom;
+				goto have_file;
 			}
 
-			f = SDL_RWFromFile(rel_path_buffer, "rb");
+			f = SDL_RWFromFile(prefs_path_buffer, mode);
 			if (f) {
-				goto have_rom;
+				goto have_file;
+			}
+
+			f = SDL_RWFromFile(rel_path_buffer, mode);
+			if (f) {
+				goto have_file;
 			}
 		} else {
-			f = SDL_RWFromFile(rel_path_buffer, "rb");
+			f = SDL_RWFromFile(rel_path_buffer, mode);
 			if (f) {
-				goto have_rom;
+				goto have_file;
 			}
 
-			f = SDL_RWFromFile(base_path_buffer, "rb");
+			f = SDL_RWFromFile(prefs_path_buffer, mode);
 			if (f) {
-				goto have_rom;
+				goto have_file;
+			}
+
+			f = SDL_RWFromFile(base_path_buffer, mode);
+			if (f) {
+				goto have_file;
 			}
 		}
 
-		printf("Could not find ROM in the following locations:\n\t%s\n\t%s\n\n-rom sourced from: %s", rel_path_buffer, base_path_buffer, srcname);
-		exit(1);
+		printf("Could not find %s in the following locations:\n\t%s\n\t%s\n\n-%s sourced from: %s", cmdline_option, rel_path_buffer, base_path_buffer, cmdline_option, srcname);
+		return nullptr;
 
-	have_rom:
-		printf("Using ROM at %s\n\t-rom sourced from: %s\n", base_path_buffer, srcname);
+	have_file:
+		printf("Using %s at %s\n\t-%s sourced from: %s\n", cmdline_option, base_path_buffer, cmdline_option, srcname);
+		return f;
+	};
+
+	auto error = [](const char *title, const char *format, ...) {
+		char    message_buffer[1024];
+		va_list list;
+		va_start(list, format);
+		vsprintf(message_buffer, format, list);
+		va_end(list);
+
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message_buffer, display_get_window());
+		exit(1);
+	};
+
+	// Load ROM
+	{
+		SDL_RWops *f = open_cmdline_file(Options.rom_path, "rom", "rb");
+		if (f == nullptr) {
+			error("ROM error", "Could not find ROM from %s", Options.rom_path);
+		}
+
+		memset(ROM, 0, ROM_SIZE);
 		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
+	}
+
+	if (Options.create_patch) {
+		struct rom_struct {
+			uint8_t bytes[ROM_SIZE];
+		};
+
+		auto *target = new rom_struct;
+		memset(target->bytes, 0, ROM_SIZE);
+
+		SDL_RWops *target_file = open_cmdline_file(Options.patch_target, "patch_target", "rb");
+		if (target_file != nullptr) {
+			SDL_RWread(target_file, target->bytes, ROM_SIZE, 1);
+			SDL_RWclose(target_file);
+
+			SDL_RWops *patch_file = open_cmdline_file(Options.patch_path, "patch", "wb");
+			if (patch_file != nullptr) {
+				rom_patch_create(ROM, target->bytes, patch_file);
+				SDL_RWclose(patch_file);
+			}
+		}
+
+		delete target;
+	}
+
+	// Load patch
+	if (!Options.ignore_patch) {
+		SDL_RWops *patch_file = open_cmdline_file(Options.patch_path, "patch", "rb");
+		if (patch_file == nullptr) {
+			error("Patch error", "Could not find patch file from %s", Options.patch_path);
+		}
+
+		int result = rom_patch_load(patch_file, ROM);
+		if (result != ROM_PATCH_LOAD_OK) {
+			error("Patch error", "Could not load patch file from %s:\nerror %d", Options.patch_path, result);
+		}
 	}
 
 	if (strlen(Options.nvram_path) > 0) {
@@ -307,6 +380,7 @@ int main(int argc, char **argv)
 		nvram_dirty = false;
 	}
 
+	SDL_free(const_cast<char *>(private_path));
 	SDL_free(const_cast<char *>(base_path));
 
 	audio_close();

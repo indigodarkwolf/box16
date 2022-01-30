@@ -50,6 +50,7 @@ void display_shutdown();
 void display_process();
 
 const display_settings &display_get_settings();
+SDL_Window *            display_get_window();
 
 void display_toggle_fullscreen();
 

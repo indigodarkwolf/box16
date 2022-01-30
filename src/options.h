@@ -28,14 +28,19 @@ enum vsync_mode_t {
 };
 
 struct options {
-	char hyper_path[PATH_MAX]  = ".";
-	char rom_path[PATH_MAX]    = "rom.bin";
-	char prg_path[PATH_MAX]    = "";
-	char bas_path[PATH_MAX]    = "";
-	char sdcard_path[PATH_MAX] = "";
-	char nvram_path[PATH_MAX]  = "";
-	char gif_path[PATH_MAX]    = "";
-	char wav_path[PATH_MAX]    = "";
+	char hyper_path[PATH_MAX]   = ".";
+	char rom_path[PATH_MAX]     = "rom.bin";
+	char patch_path[PATH_MAX]   = "patch.bpf";
+	char patch_target[PATH_MAX] = "";
+	char prg_path[PATH_MAX]     = "";
+	char bas_path[PATH_MAX]     = "";
+	char sdcard_path[PATH_MAX]  = "";
+	char nvram_path[PATH_MAX]   = "";
+	char gif_path[PATH_MAX]     = "";
+	char wav_path[PATH_MAX]     = "";
+
+	bool ignore_patch = true;
+	bool create_patch = false;
 
 	bool run_after_load = false;
 	bool run_geos       = false;
@@ -72,11 +77,12 @@ struct options {
 
 extern options Options;
 
-void load_options(const char *base_dir, int argc, char **argv);
+void load_options(const char *base_dir, const char *prefs_dir, int argc, char **argv);
 void load_options();
 void save_options(bool all);
 
 int options_get_base_path(char *real_path, const char *path);
+int options_get_prefs_path(char *real_path, const char *path);
 int options_get_relative_path(char *real_path, const char *path);
 int options_get_hyper_path(char *hyper_path, const char *path);
 

@@ -429,12 +429,12 @@ static void render_sprite_line(const uint16_t y)
 			memcpy(unpacked_sprite_line, bitmap_data, width);
 		}
 
-		const uint32_t scale          = reg_composer[1];
-		const uint16_t scaled_x_start = ((uint32_t)props->sprite_x << 7) / scale;
-		const uint16_t scaled_x_end   = scaled_x_start + (((uint32_t)width << 7) / scale);
+		const int32_t scale          = reg_composer[1];
+		const int16_t scaled_x_start = ((int32_t)props->sprite_x << 7) / scale;
+		const int16_t scaled_x_end   = scaled_x_start + (((int32_t)width << 7) / scale);
 		const bool hflip = props->hflip;
-		for (uint16_t sx = scaled_x_start; sx < scaled_x_end; sx += 1) {
-			if (sx >= SCREEN_WIDTH) {
+		for (int16_t sx = scaled_x_start; sx < scaled_x_end; sx += 1) {
+			if ((uint16_t)sx >= SCREEN_WIDTH) {
 				continue;
 			}
 
