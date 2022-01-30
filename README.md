@@ -81,6 +81,7 @@ You can start `box16`/`box16.exe` either by double-clicking it, or from the comm
 * When starting `box16` without arguments, it will pick up the system ROM (`rom.bin`) from the executable's directory.
 * `-abufs <number>` Is provided for backward-compatibility with x16emu toolchains, but is non-functional in Box16.
 * `-bas` lets you specify a BASIC program in ASCII format that automatically typed in (and tokenized).
+* `-create_patch <patch_target.bin>` creates a ROM patch file, which can then patch the current ROM to match the specified patch target.
 * `-debug <address>` adds a breakpoint to the debugger.
 * `-dump {C|R|B|V}` configure system dump (e.g. `-dump CB`):
 	* `C`: CPU registers (7 B: A,X,Y,SP,STATUS,PC)
@@ -106,8 +107,10 @@ You can start `box16`/`box16.exe` either by double-clicking it, or from the comm
 	* `S`: speed (CPU load, frame misses)
 	* `V`: video I/O reads and writes
 * `-nobinds` will disable most emulator keyboard bindings, allowing the X16 to see most keys and key chords.
+* `-nopatch` will specifically ignore any other patch-related settings and attempt to use the current ROM as-is.
 * `-nosound` can be used to specify that the audio subsystem should not be enabled in the first place.
 * `-nvram` lets you specify a 64 byte file for the system's non-volatile RAM. If it does not exist, it will be created once the NVRAM is modified.
+* `-patch <patch.bpf>` specify a patch file to apply to the current ROM.
 * `-prg` lets you specify a `.prg` file that gets injected into RAM after start.
 * `-quality {nearest|linear|best}` lets you specify video scaling quality.
 * `-ram <ramsize>` will adjust the amount of banked RAM emulated, in KB. (8, 16, 31, 64, ... 2048)
