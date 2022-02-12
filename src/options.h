@@ -30,7 +30,7 @@ enum vsync_mode_t {
 struct options {
 	char hyper_path[PATH_MAX]   = ".";
 	char rom_path[PATH_MAX]     = "rom.bin";
-	char patch_path[PATH_MAX]   = "patch.bpf";
+	char patch_path[PATH_MAX]   = "";
 	char patch_target[PATH_MAX] = "";
 	char prg_path[PATH_MAX]     = "";
 	char bas_path[PATH_MAX]     = "";
