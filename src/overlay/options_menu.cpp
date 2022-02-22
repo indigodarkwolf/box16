@@ -168,13 +168,15 @@ void draw_options_menu()
 	ImGui::TextDisabled("Machine Options");
 	ImGui::Separator();
 
-	if (ImGui::InputPow2("Himem KBs", &Options.num_ram_banks, "%d")) {
-		if (Options.num_ram_banks < 8) {
-			Options.num_ram_banks = 8;
+	decltype(Options.num_ram_banks) num_ram_banks = Options.num_ram_banks * 8;
+	if (ImGui::InputPow2("Himem KBs", &num_ram_banks, "%d")) {
+		if (num_ram_banks < 8) {
+			num_ram_banks = 8;
 		}
-		if (Options.num_ram_banks > 2048) {
-			Options.num_ram_banks = 2048;
+		if (num_ram_banks > 2048) {
+			num_ram_banks = 2048;
 		}
+		Options.num_ram_banks = num_ram_banks / 8;
 	}
 	if (ImGui::IsItemHovered()) {
 		ImGui::SetTooltip("KBs of bankable Hi RAM (8-2048, in powers of 2)\nCommand line: -ram <qty>");

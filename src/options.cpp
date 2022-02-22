@@ -968,10 +968,17 @@ void load_options(const char *base_path, const char *prefs_path, int argc, char 
 
 	mINI::INIFile      file(Options_ini_path);
 	bool force_write = !file.read(Inifile_ini);
-	set_options(Inifile_ini);
 
 	parse_cmdline(Cmdline_ini, argc, argv);
-	set_options(Cmdline_ini);
+
+	mINI::INIStructure options_ini = Inifile_ini;
+	for (const auto &section : Cmdline_ini) {
+		for (const auto &key : section.second) {
+			options_ini[section.first][key.first] = key.second;
+		}
+	}
+
+	set_options(options_ini);
 
 	if (force_write) {
 		save_options(true);
