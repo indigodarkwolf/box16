@@ -114,7 +114,7 @@ bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
 		std::istringstream sline(line.substr(start, end - start));
 		sline >> cmd;
 
-		if (cmd == "al") {
+		if (cmd == "al" || cmd == "add_label") {
 			uint32_t    addr;
 			std::string label;
 

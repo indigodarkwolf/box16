@@ -125,7 +125,13 @@ static void usage()
 	printf("\tLoad standard (ROM) symbol files\n");
 
 	printf("-sym <filename>\n");
-	printf("\tLoad a symbols file\n");
+	printf("\tLoad a VICE label file. Note that not all VICE debug commands are available.\n");
+	printf("\tSupported commands are:\n");
+	printf("\t\tadd_label <address> <label>\n");
+	printf("\t\tal <address> <label>\n");
+	printf("\t\t\tMap a given address to a label.\n");
+	printf("\t\tbreak <address>\n");
+	printf("\t\t\tSet a breakpoint at the specified address.\n");
 
 	printf("-test {0, 1, 2, 3}\n");
 	printf("\tImmediately invoke the TEST command with the provided test number.\n");
