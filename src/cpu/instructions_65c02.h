@@ -69,9 +69,7 @@ bra()
 	oldpc = pc;
 	pc += reladdr;
 	if ((oldpc & 0xFF00) != (pc & 0xFF00))
-		clockticks6502 += 2; //check if jump crossed a page boundary
-	else
-		clockticks6502++;
+		clockticks6502++; //check if jump crossed a page boundary
 }
 
 // *******************************************************************************************
