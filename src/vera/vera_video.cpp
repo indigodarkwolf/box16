@@ -26,41 +26,20 @@
 
 #define NUM_SPRITES 128
 
-// TODO: No idea where these constants really originate from. Original reference was NTSC horizontal front porch of 80,
-//		 used to offset start of drawing, and NTSC vertical front porch of 22, also used to offset start of drawing.
-//	     This seems to indicate that timing is relative to ends of sync pulses, except the reference implementation then
-//		 used the wrong porch values (front porch instead of back porch). This creates a lot of open questions about the
-//		 exact timings of the VERA relative to h-sync and v-sync.
-//
-//		 At least the VGA timings are easy to lookup (http://tinyvga.com/vga-timing/640x480@60Hz), the NTSC timings are
-//		 somewhat more difficult, and may require some indirect reference followed by some computation to determine the
-//		 proper values.
-//
-//		 In any event, it seems we only really need one "offset" value in each dimension:
-//			1) the number of horizontal pixel clock cycles before start of drawing a line
-//			2) the number of vertical lines before the start of drawing a frame
-//		 NTSC may require a third "inter-field" offset for vertical timing.
-//
-//		 For now, assume timings are broken, NTSC moreso than VGA.
+// both VGA and NTSC
+#define SCAN_HEIGHT 525
+#define PIXEL_FREQ 25.0f
 
 // VGA
-#define VGA_FRONT_PORCH_X 16
-#define VGA_SYNC_PULSE_X 96
-#define VGA_BACK_PORCH_X 48
-
-#define VGA_FRONT_PORCH_Y 10
-#define VGA_SYNC_PULSE_Y 2
-#define VGA_BACK_PORCH_Y 33
-
-#define VGA_PIXEL_FREQ 25.175f // Note: 60hz frames
+#define VGA_SCAN_WIDTH 800
+#define VGA_X_OFFSET 0
+#define VGA_Y_OFFSET 0
 
 // NTSC: 262.5 lines per frame, lower field first
-#define NTSC_BACK_PORCH_X 80                   // ??
-#define NTSC_FRONT_PORCH_X 0                   // ??
-#define NTSC_BACK_PORCH_Y 23                   // ??
-#define NTSC_FRONT_PORCH_Y 7                   // ??
-#define NTSC_PIXEL_FREQ (15.750f * 800 / 1000) // Note: 60hz fields, 30hz frames (two fields)
-
+#define NTSC_HALF_SCAN_WIDTH 794
+#define NTSC_X_OFFSET 270
+#define NTSC_Y_OFFSET_LOW 42
+#define NTSC_Y_OFFSET_HIGH 568
 #define TITLE_SAFE_X 0.067
 #define TITLE_SAFE_Y 0.05
 
@@ -98,8 +77,10 @@ static uint8_t sprite_line_collisions;
 static bool    layer_line_enable[2];
 static bool    sprite_line_enable;
 
-static float    scan_pos_x;
-static uint16_t scan_pos_y;
+static float    vga_scan_pos_x;
+static uint16_t vga_scan_pos_y;
+static float    ntsc_half_cnt;
+static uint16_t ntsc_scan_pos_y;
 
 static int frame_count = 0;
 static int cheat_mask  = 0;
@@ -158,8 +139,10 @@ void vera_video_reset()
 
 	sprite_line_collisions = 0;
 
-	scan_pos_x = 0;
-	scan_pos_y = 0;
+	vga_scan_pos_x  = 0;
+	vga_scan_pos_y  = 0;
+	ntsc_half_cnt   = 0;
+	ntsc_scan_pos_y = 0;
 
 	psg_reset();
 	pcm_reset();
@@ -735,6 +718,10 @@ static uint8_t calculate_line_col_index(uint8_t spr_zindex, uint8_t spr_col_inde
 
 static void render_line(uint16_t y)
 {
+	if (y >= SCREEN_HEIGHT) {
+		return;
+	}
+
 	uint8_t out_mode = reg_composer[0] & 3;
 
 	uint8_t  border_color = reg_composer[3];
@@ -850,58 +837,86 @@ static void render_line(uint16_t y)
 	}
 }
 
-bool vera_video_step(float mhz, float cycles)
+static void update_isr_and_coll(uint16_t y, uint16_t compare)
 {
-	const uint8_t out_mode = reg_composer[0] & 3;
-
-	bool  new_frame = false;
-	float advance   = ((out_mode & 2) ? NTSC_PIXEL_FREQ : VGA_PIXEL_FREQ) * cycles / mhz;
-	scan_pos_x += advance;
-	if (scan_pos_x > SCAN_WIDTH) {
-		scan_pos_x -= SCAN_WIDTH;
-		uint16_t y;
-		uint16_t back_porch;
-		if (out_mode & 2) {
-			back_porch = NTSC_BACK_PORCH_Y;
-			y          = scan_pos_y - back_porch;
-			if (y < SCREEN_HEIGHT) {
-				const uint16_t yy            = y % (SCREEN_HEIGHT >> 1);
-				const uint16_t ntsc_y_offset = (y >= (SCREEN_HEIGHT >> 1));
-				render_line((yy << 1) + ntsc_y_offset);
-				reg_composer[0] &= 0x7F;
-				reg_composer[0] |= ntsc_y_offset << 7; 
+	if (y == SCREEN_HEIGHT) {
+		if (ien & 4) {
+			if (sprite_line_collisions != 0) {
+				isr |= 4;
 			}
-		} else {
-			back_porch = VGA_BACK_PORCH_Y;
-			y          = scan_pos_y - back_porch;
-			if (y < SCREEN_HEIGHT) {
-				render_line(y);
+			isr = (isr & 0xf) | sprite_line_collisions;
+		}
+		sprite_line_collisions = 0;
+		if (ien & 1) { // VSYNC IRQ
+			isr |= 1;
+		}
+	}
+	if ((ien & 2) && (y < SCREEN_HEIGHT) && (y == compare)) { // LINE IRQ
+		isr |= 2;
+	}
+}
+
+bool vera_video_step(float mhz, float steps)
+{
+	uint16_t y         = 0;
+	bool     ntsc_mode = reg_composer[0] & 2;
+	bool     new_frame = false;
+	vga_scan_pos_x += PIXEL_FREQ * steps / mhz;
+	if (vga_scan_pos_x > VGA_SCAN_WIDTH) {
+		vga_scan_pos_x -= VGA_SCAN_WIDTH;
+		if (!ntsc_mode) {
+			render_line(vga_scan_pos_y - VGA_Y_OFFSET);
+		}
+		vga_scan_pos_y++;
+		if (vga_scan_pos_y == SCAN_HEIGHT) {
+			vga_scan_pos_y = 0;
+			if (!ntsc_mode) {
+				new_frame = true;
+				frame_count++;
 			}
 		}
-		y++;
-		if (y == SCREEN_HEIGHT) {
-			if (ien & 4) {
-				if (sprite_line_collisions != 0) {
-					isr |= 4;
+		if (!ntsc_mode) {
+			update_isr_and_coll(vga_scan_pos_y - VGA_Y_OFFSET, irq_line);
+		}
+	}
+	ntsc_half_cnt += PIXEL_FREQ * steps / mhz;
+	if (ntsc_half_cnt > NTSC_HALF_SCAN_WIDTH) {
+		ntsc_half_cnt -= NTSC_HALF_SCAN_WIDTH;
+		if (ntsc_mode) {
+			if (ntsc_scan_pos_y < SCAN_HEIGHT) {
+				y = ntsc_scan_pos_y - NTSC_Y_OFFSET_LOW;
+				if ((y & 1) == 0) {
+					render_line(y);
 				}
-				isr = (isr & 0xf) | sprite_line_collisions;
-			}
-			sprite_line_collisions = 0;
-
-			if (ien & 1) { // VSYNC IRQ
-				isr |= 1;
+			} else {
+				y = ntsc_scan_pos_y - NTSC_Y_OFFSET_HIGH;
+				if ((y & 1) == 0) {
+					render_line(y | 1);
+				}
 			}
 		}
-		scan_pos_y++;
-		if (scan_pos_y == SCAN_HEIGHT) {
-			scan_pos_y = 0;
-			new_frame  = true;
-			frame_count++;
+		ntsc_scan_pos_y++;
+		if (ntsc_scan_pos_y == SCAN_HEIGHT) {
+			reg_composer[0] |= 0x80;
+			if (ntsc_mode) {
+				new_frame = true;
+				frame_count++;
+			}
 		}
-		if (ien & 2) { // LINE IRQ
-			y = scan_pos_y - back_porch;
-			if (y < SCREEN_HEIGHT && y == irq_line) {
-				isr |= 2;
+		if (ntsc_scan_pos_y == SCAN_HEIGHT * 2) {
+			reg_composer[0] &= ~0x80;
+			ntsc_scan_pos_y = 0;
+			if (ntsc_mode) {
+				new_frame = true;
+				frame_count++;
+			}
+		}
+		if (ntsc_mode) {
+			// this is correct enough for even screen heights
+			if (ntsc_scan_pos_y < SCAN_HEIGHT) {
+				update_isr_and_coll(ntsc_scan_pos_y - NTSC_Y_OFFSET_LOW, irq_line & ~1);
+			} else {
+				update_isr_and_coll(ntsc_scan_pos_y - NTSC_Y_OFFSET_HIGH, irq_line & ~1);
 			}
 		}
 	}
@@ -1177,13 +1192,13 @@ void vera_video_write(uint8_t reg, uint8_t value)
 		case 0x0A:
 		case 0x0B:
 		case 0x0C: {
-			int i           = reg - 0x09 + (io_dcsel ? 4 : 0);
-			reg_composer[i] = value;
+			int i = reg - 0x09 + (io_dcsel ? 4 : 0);
 			if (i == 0) {
-				if ((value & 0x3) == 1) {
-					reg_composer[0] &= 0x7f;
-				}
+				// interlace field bit is read-only
+				reg_composer[0]     = (reg_composer[0] & ~0x7f) | (value & 0x7f);
 				video_palette.dirty = true;
+			} else {
+				reg_composer[i] = value;
 			}
 			break;
 		}
@@ -1496,20 +1511,32 @@ bool vera_video_safety_frame_is_enabled()
 
 float vera_video_get_scan_pos_x()
 {
-	return scan_pos_x;
+	return (reg_composer[0] & 2) ? floorf((ntsc_half_cnt + (ntsc_scan_pos_y & 1) * NTSC_HALF_SCAN_WIDTH) / 2) : vga_scan_pos_x;
 }
 
 uint16_t vera_video_get_scan_pos_y()
 {
-	return scan_pos_y;
+	if (reg_composer[0] & 2) {
+		uint16_t y = ntsc_scan_pos_y & ~1;
+		if (y >= SCAN_HEIGHT) {
+			y -= SCAN_HEIGHT;
+		}
+		return y;
+	}
+	return vga_scan_pos_y;
 }
 
 vera_video_rect vera_video_get_scan_visible()
 {
-	const uint8_t out_mode = reg_composer[0] & 3;
-	if (out_mode & 2) {
-		return vera_video_rect{ NTSC_BACK_PORCH_X, NTSC_BACK_PORCH_X + SCREEN_WIDTH, NTSC_BACK_PORCH_Y, NTSC_BACK_PORCH_Y + SCREEN_HEIGHT };
+	if (reg_composer[0] & 2) {
+		return vera_video_rect{
+			NTSC_X_OFFSET / 2, NTSC_X_OFFSET / 2 + SCREEN_WIDTH,
+			NTSC_Y_OFFSET_LOW, NTSC_Y_OFFSET_LOW + SCREEN_HEIGHT
+		};
 	} else {
-		return vera_video_rect{ VGA_BACK_PORCH_X, VGA_BACK_PORCH_X + SCREEN_WIDTH, VGA_BACK_PORCH_Y, VGA_BACK_PORCH_Y + SCREEN_HEIGHT };
+		return vera_video_rect{
+			VGA_X_OFFSET, VGA_X_OFFSET + SCREEN_WIDTH,
+			VGA_Y_OFFSET, VGA_Y_OFFSET + SCREEN_HEIGHT
+		};
 	}
 }
