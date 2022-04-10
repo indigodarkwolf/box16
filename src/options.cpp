@@ -965,7 +965,7 @@ void load_options(const char *base_path, const char *prefs_path, int argc, char 
 		strncpy(Options_prefs_path, prefs_path, PATH_MAX);
 		fixup_directory(Options_prefs_path);
 
-		snprintf(Options_ini_path, PATH_MAX, "%s/box16.ini", Options_prefs_path);
+		snprintf(Options_ini_path, PATH_MAX, "%.*s/box16.ini", PATH_MAX - 11, Options_prefs_path);
 		Options_ini_path[PATH_MAX - 1] = 0;
 	} else {
 		snprintf(Options_ini_path, PATH_MAX, "box16.ini");
