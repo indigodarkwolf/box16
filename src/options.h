@@ -25,6 +25,7 @@ enum vsync_mode_t {
 	VSYNC_MODE_NONE = 0,
 	VSYNC_MODE_GET_SYNC,
 	VSYNC_MODE_WAIT_SYNC,
+	VSYNC_MODE_DEBUG,
 };
 
 struct options {

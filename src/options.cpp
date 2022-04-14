@@ -778,6 +778,8 @@ static void set_options(mINI::INIStructure &ini)
 			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_GET_SYNC;
 		} else if (!strcmp(q, "wait")) {
 			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_WAIT_SYNC;
+		} else if (!strcmp(q, "debug")) {
+			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_DEBUG;
 		} else {
 			usage();
 		}
@@ -879,6 +881,7 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 			case VSYNC_MODE_NONE: return "none";
 			case VSYNC_MODE_GET_SYNC: return "get";
 			case VSYNC_MODE_WAIT_SYNC: return "wait";
+			case VSYNC_MODE_DEBUG: return "debug";
 		}
 		return "none";
 	};

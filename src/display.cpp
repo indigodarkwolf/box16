@@ -37,6 +37,7 @@ SOFTWARE.
 #include "memory.h"
 #include "options.h"
 #include "overlay/overlay.h"
+#include "timing.h"
 #include "vera/vera_video.h"
 #include "version.h"
 
@@ -54,6 +55,7 @@ static GLuint Video_framebuffer_texture_handle;
 static GLuint Icon_tilemap;
 
 static GLsync Render_complete = 0;
+static uint32_t Last_render_time = 0;
 
 static bool Initd_sdl_image           = false;
 static bool Initd_sdl_gl              = false;
@@ -514,31 +516,45 @@ void display_shutdown()
 
 void display_process()
 {
-	if (Render_complete == 0 && Options.vsync_mode != VSYNC_MODE_NONE) {
-		// Handle asynchronous vsync enable (i.e. vsync was disabled from the menu)
-		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
-	} else if (Render_complete != 0 && Options.vsync_mode == VSYNC_MODE_NONE) {
-		// Handle asynchronous vsync disable
-		glDeleteSync(Render_complete);
-		Render_complete = 0;
+	uint32_t current_render_time = timing_total_microseconds();
+	if (Options.vsync_mode != VSYNC_MODE_NONE && current_render_time - Last_render_time > 5000000) {
+		// Seems like vsync isn't working, let's disable it.
+		SDL_ShowSimpleMessageBox(SDL_MessageBoxFlags::SDL_MESSAGEBOX_WARNING, "V-Sync was automatically disabled", "Box16 has detected a problem with the current V-Sync settings.\nV-Sync has been disabled.", display_get_window());
+		Options.vsync_mode = VSYNC_MODE_NONE;
 	}
 
-	if (Options.vsync_mode == VSYNC_MODE_GET_SYNC) {
-		GLsizei num_sync_values;
-		GLint   sync_status;
-		glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
+	if (Render_complete != 0) {
+		switch (Options.vsync_mode) {
+			case VSYNC_MODE_NONE:
+				// Handle asynchronous vsync disable
+				glDeleteSync(Render_complete);
+				Render_complete = 0;
+				break;
 
-		if (num_sync_values != 0 && sync_status == GL_UNSIGNALED) {
-			return;
+			case VSYNC_MODE_GET_SYNC: {
+				GLsizei num_sync_values;
+				GLint   sync_status;
+				glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
+
+				if (num_sync_values != 0 && sync_status == GL_UNSIGNALED) {
+					return;
+				}
+
+				glDeleteSync(Render_complete);
+				Render_complete = 0;
+				break;
+			}
+			case VSYNC_MODE_WAIT_SYNC:
+				if (glClientWaitSync(Render_complete, 0, 0) == GL_TIMEOUT_EXPIRED) {
+					return;
+				}
+
+				glDeleteSync(Render_complete);
+				Render_complete = 0;
+				break;
+			case VSYNC_MODE_DEBUG:
+				return;
 		}
-
-		glDeleteSync(Render_complete);
-	} else if (Options.vsync_mode == VSYNC_MODE_WAIT_SYNC) {
-		if (glClientWaitSync(Render_complete, 0, 0) == GL_TIMEOUT_EXPIRED) {
-			return;
-		}
-
-		glDeleteSync(Render_complete);
 	}
 
 	ImGui_ImplOpenGL2_NewFrame();
@@ -578,9 +594,14 @@ void display_process()
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 	SDL_GL_SwapWindow(Display_window);
 
-	if (Options.vsync_mode == VSYNC_MODE_GET_SYNC || Options.vsync_mode == VSYNC_MODE_WAIT_SYNC) {
+	if (Options.vsync_mode != VSYNC_MODE_NONE) {
 		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		if (Render_complete == 0) {
+			printf("Error: glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0) returned 0, V-Sync is probably not supported by this system's drivers.\n");
+		}
 	}
+
+	Last_render_time = current_render_time;
 }
 
 const display_settings &display_get_settings()
