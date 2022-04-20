@@ -5,6 +5,7 @@
 #include "imgui/imgui.h"
 #include "util.h"
 #include "ym2151/ym2151.h"
+#include <cstdio>
 
 static void ym2151_reg_input(uint8_t *regs, uint8_t idx)
 {
