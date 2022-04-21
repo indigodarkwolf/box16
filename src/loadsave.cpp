@@ -5,7 +5,6 @@
 #include "loadsave.h"
 
 #include <SDL.h>
-#include <dirent.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
@@ -23,11 +22,8 @@
 
 static int create_directory_listing(uint8_t *data)
 {
-	uint8_t *      data_start = data;
-	struct stat    st;
-	DIR *          dirp;
-	struct dirent *dp;
-	int            file_size;
+	uint8_t *data_start = data;
+	int      file_size;
 
 	// We inject this directly into RAM, so
 	// this does not include the load address!
@@ -40,11 +36,17 @@ static int create_directory_listing(uint8_t *data)
 	*data++ = 0;
 	*data++ = 0x12; // REVERSE ON
 	*data++ = '"';
-	for (int i = 0; i < 16; i++) {
-		*data++ = ' ';
-	}
-	if (!(getcwd((char *)data - 16, 256))) {
-		return false;
+
+	const std::string path_str = Options.hyper_path.generic_string();
+	{
+		int       i    = 0;
+		const int stop = MIN((int)path_str.length(), 16);
+		for (; i < stop; ++i) {
+			*data++ = path_str[i];
+		}
+		for (; i < 16; ++i) {
+			*data++ = ' ';
+		}
 	}
 	*data++ = '"';
 	*data++ = ' ';
@@ -55,13 +57,16 @@ static int create_directory_listing(uint8_t *data)
 	*data++ = 'C';
 	*data++ = 0;
 
-	if (!(dirp = opendir(Options.hyper_path))) {
+	if (!std::filesystem::exists(Options.hyper_path)) {
 		return 0;
 	}
-	while ((dp = readdir(dirp))) {
-		size_t namlen = strlen(dp->d_name);
-		stat(dp->d_name, &st);
-		file_size = (st.st_size + 255) / 256;
+
+	for (const auto &entry : std::filesystem::directory_iterator(Options.hyper_path)) {
+		const std::string            filename = entry.path().filename().generic_string();
+		size_t                       namlen   = filename.length();
+		std::filesystem::file_status st       = entry.status();
+
+		file_size = ((int)entry.file_size() + 255) / 256;
 		if (file_size > 0xFFFF) {
 			file_size = 0xFFFF;
 		}
@@ -85,7 +90,7 @@ static int create_directory_listing(uint8_t *data)
 		if (namlen > 16) {
 			namlen = 16; // TODO hack
 		}
-		memcpy(data, dp->d_name, namlen);
+		memcpy(data, filename.c_str(), namlen);
 		data += namlen;
 		*data++ = '"';
 		for (size_t i = namlen; i < 16; i++) {
@@ -113,7 +118,7 @@ static int create_directory_listing(uint8_t *data)
 	// link
 	*data++ = 0;
 	*data++ = 0;
-	(void)closedir(dirp);
+
 	return (int)(reinterpret_cast<uintptr_t>(data) - reinterpret_cast<uintptr_t>(data_start));
 }
 
@@ -132,14 +137,13 @@ void LOAD()
 		a           = 0;
 	} else {
 		char      filename[PATH_MAX];
-		const int hyperpath_len = snprintf(filename, PATH_MAX, "%s/", Options.hyper_path);
-		filename[PATH_MAX - 1]  = '\0';
+		const int len = MIN(RAM[FNLEN], PATH_MAX - 1);
+		memcpy(filename, kernal_filename, len);
+		filename[len] = 0;
 
-		const int len = MIN(RAM[FNLEN], sizeof(filename) - hyperpath_len - 1);
-		memcpy(filename + hyperpath_len, kernal_filename, len);
-		filename[hyperpath_len + len] = 0;
+		std::filesystem::path filepath = Options.hyper_path / filename;
 
-		SDL_RWops *f = SDL_RWFromFile(filename, "rb");
+		SDL_RWops *f = SDL_RWFromFile(filepath.generic_string().c_str(), "rb");
 		if (!f) {
 			a           = 4; // FNF
 			RAM[STATUS] = a;
@@ -181,7 +185,7 @@ void LOAD()
 			// banked RAM
 			while (1) {
 				size_t len = 0xc000 - start;
-				bytes_read = (uint16_t)SDL_RWread(f, RAM + (((uint16_t)memory_get_ram_bank() % Options.num_ram_banks) << 13) + start, 1, len);
+				bytes_read = (uint16_t)SDL_RWread(f, RAM + (((memory_get_ram_bank() % (uint8_t)Options.num_ram_banks) << 13) & 0xffffff) + start, 1, len);
 				if (bytes_read < len)
 					break;
 
@@ -209,12 +213,11 @@ void SAVE()
 	char const *kernal_filename = (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8];
 
 	char      filename[PATH_MAX];
-	const int hyperpath_len = snprintf(filename, PATH_MAX, "%s/", Options.hyper_path);
-	filename[PATH_MAX - 1]  = '\0';
+	const int len = MIN(RAM[FNLEN], PATH_MAX - 1);
+	memcpy(filename, kernal_filename, len);
+	filename[len] = '\0';
 
-	const int len = MIN(RAM[FNLEN], sizeof(filename) - hyperpath_len - 1);
-	memcpy(filename + hyperpath_len, kernal_filename, len);
-	filename[hyperpath_len + len] = 0;
+	std::filesystem::path filepath = Options.hyper_path / filename;
 
 	uint16_t start = RAM[a] | RAM[a + 1] << 8;
 	uint16_t end   = x | y << 8;
@@ -224,7 +227,7 @@ void SAVE()
 		return;
 	}
 
-	SDL_RWops *f = SDL_RWFromFile(filename, "wb");
+	SDL_RWops *f = SDL_RWFromFile(filepath.generic_string().c_str(), "wb");
 	if (!f) {
 		a           = 4; // FNF
 		RAM[STATUS] = a;

@@ -433,11 +433,11 @@ bool display_init(const display_settings &settings)
 		unsigned                   icons_w;
 		unsigned                   icons_h;
 
-		char icons_path[PATH_MAX];
+		std::filesystem::path icons_path;
 		options_get_base_path(icons_path, "box16-icon56-24.png");
 
-		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path, LCT_RGB) != 0) {
-			printf("Unable to load icon resources from %s\n", icons_path);
+		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path.generic_string(), LCT_RGB) != 0) {
+			printf("Unable to load icon resources from %s\n", icons_path.generic_string().c_str());
 			return false;
 		}
 
@@ -452,11 +452,11 @@ bool display_init(const display_settings &settings)
 		unsigned                   icons_w;
 		unsigned                   icons_h;
 
-		char icons_path[PATH_MAX];
+		std::filesystem::path icons_path;
 		options_get_base_path(icons_path, "icons.png");
 
-		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path, LCT_RGBA) != 0) {
-			printf("Unable to load icon resources from %s\n", icons_path);
+		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path.generic_string(), LCT_RGBA) != 0) {
+			printf("Unable to load icon resources from %s\n", icons_path.generic_string().c_str());
 			return false;
 		}
 		SDL_Surface *icons = SDL_CreateRGBSurfaceWithFormatFrom(icons_buf.data(), icons_w, icons_h, 32, icons_w * 4, SDL_PIXELFORMAT_RGBA8888);
@@ -481,7 +481,7 @@ bool display_init(const display_settings &settings)
 
 	SDL_ShowCursor(SDL_DISABLE);
 
-	if (Options.vsync_mode == VSYNC_MODE_GET_SYNC || Options.vsync_mode == VSYNC_MODE_WAIT_SYNC)
+	if (Options.vsync_mode == vsync_mode_t::VSYNC_MODE_GET_SYNC || Options.vsync_mode == vsync_mode_t::VSYNC_MODE_WAIT_SYNC)
 		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 
 	return true;
@@ -517,21 +517,21 @@ void display_shutdown()
 void display_process()
 {
 	uint32_t current_render_time = timing_total_microseconds();
-	if (Options.vsync_mode != VSYNC_MODE_NONE && current_render_time - Last_render_time > 5000000) {
+	if (Options.vsync_mode != vsync_mode_t::VSYNC_MODE_NONE && current_render_time - Last_render_time > 5000000) {
 		// Seems like vsync isn't working, let's disable it.
 		SDL_ShowSimpleMessageBox(SDL_MessageBoxFlags::SDL_MESSAGEBOX_WARNING, "V-Sync was automatically disabled", "Box16 has detected a problem with the current V-Sync settings.\nV-Sync has been disabled.", display_get_window());
-		Options.vsync_mode = VSYNC_MODE_NONE;
+		Options.vsync_mode = vsync_mode_t::VSYNC_MODE_NONE;
 	}
 
 	if (Render_complete != 0) {
 		switch (Options.vsync_mode) {
-			case VSYNC_MODE_NONE:
+			case vsync_mode_t::VSYNC_MODE_NONE:
 				// Handle asynchronous vsync disable
 				glDeleteSync(Render_complete);
 				Render_complete = 0;
 				break;
 
-			case VSYNC_MODE_GET_SYNC: {
+			case vsync_mode_t::VSYNC_MODE_GET_SYNC: {
 				GLsizei num_sync_values;
 				GLint   sync_status;
 				glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
@@ -544,7 +544,7 @@ void display_process()
 				Render_complete = 0;
 				break;
 			}
-			case VSYNC_MODE_WAIT_SYNC:
+			case vsync_mode_t::VSYNC_MODE_WAIT_SYNC:
 				if (glClientWaitSync(Render_complete, 0, 0) == GL_TIMEOUT_EXPIRED) {
 					return;
 				}
@@ -552,7 +552,7 @@ void display_process()
 				glDeleteSync(Render_complete);
 				Render_complete = 0;
 				break;
-			case VSYNC_MODE_DEBUG:
+			case vsync_mode_t::VSYNC_MODE_DEBUG:
 				return;
 		}
 	}
@@ -594,7 +594,7 @@ void display_process()
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 	SDL_GL_SwapWindow(Display_window);
 
-	if (Options.vsync_mode != VSYNC_MODE_NONE) {
+	if (Options.vsync_mode != vsync_mode_t::VSYNC_MODE_NONE) {
 		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		if (Render_complete == 0) {
 			printf("Error: glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0) returned 0, V-Sync is probably not supported by this system's drivers.\n");
@@ -707,6 +707,30 @@ namespace ImGui
 			}
 		}
 		return result;
+	}
+
+	bool InputText(const char *label, std::filesystem::path &path, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void *user_data)
+	{
+		char input_buffer[PATH_MAX];
+		strncpy(input_buffer, path.generic_string().c_str(), PATH_MAX);
+		input_buffer[PATH_MAX - 1] = '\0';
+		if (InputText(label, input_buffer, PATH_MAX, flags, callback, user_data)) {
+			path = input_buffer;
+			return true;
+		}
+		return false;
+	}
+
+	bool InputText(const char *label, std::string &str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void *user_data)
+	{
+		char input_buffer[PATH_MAX];
+		strncpy(input_buffer, str.c_str(), PATH_MAX);
+		input_buffer[PATH_MAX - 1] = '\0';
+		if (InputText(label, input_buffer, PATH_MAX, flags, callback, user_data)) {
+			str = input_buffer;
+			return true;
+		}
+		return false;
 	}
 
 } // namespace ImGui

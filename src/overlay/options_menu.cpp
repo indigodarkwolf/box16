@@ -8,27 +8,35 @@
 
 void draw_options_menu()
 {
+	static char const *last_failure = nullptr;
+
 	if (ImGui::Button("Save to box16.ini")) {
-		save_options(true);
+		if (last_failure != nullptr) {
+			char message[PATH_MAX];
+			sprintf(message, "There is an error in the options set,\nplease correct \"%s\" before saving.", last_failure);
+			SDL_ShowSimpleMessageBox(SDL_MessageBoxFlags::SDL_MESSAGEBOX_WARNING, "Errors in options", message, display_get_window());
+		} else {
+			save_options(true);
+		}
 	}
 	ImGui::SameLine();
 	if (ImGui::Button("Load from box16.ini")) {
 		load_options();
 	}
 
-	auto file_option = [](char const *ext, char(&path)[PATH_MAX], char const *name, char const *tip) {
+	auto file_option = [](char const *ext, std::filesystem::path &path, char const *name, char const *tip) {
 		bool result = false;
 		ImGui::PushID(name);
 		ImGui::BeginGroup();
 		if (ImGui::Button("...")) {
 			char *open_path = nullptr;
 			if (NFD_OpenDialog(ext, nullptr, &open_path) == NFD_OKAY && open_path != nullptr) {
-				strcpy(path, open_path);
+				path = open_path;
 				result = true;
 			}
 		}
 		ImGui::SameLine();
-		ImGui::InputText(name, path, PATH_MAX);
+		ImGui::InputText(name, path);
 		ImGui::EndGroup();
 		if (ImGui::IsItemHovered()) {
 			ImGui::SetTooltip("%s", tip);
@@ -56,10 +64,10 @@ void draw_options_menu()
 	{
 		if (ImGui::Button("...")) {
 			char *open_path = nullptr;
-			if (NFD_PickFolder(Options.hyper_path, &open_path) == NFD_OKAY && open_path != nullptr) {
-				strcpy(Options.hyper_path, open_path);
+			if (NFD_PickFolder(Options.hyper_path.generic_string().c_str(), &open_path) == NFD_OKAY && open_path != nullptr) {
+				Options.hyper_path = open_path;
 			} else if (NFD_PickFolder("", &open_path) == NFD_OKAY && open_path != nullptr) {
-				strcpy(Options.hyper_path, open_path);
+				Options.hyper_path = open_path;
 			}
 		}
 		ImGui::SameLine();
@@ -84,7 +92,7 @@ void draw_options_menu()
 
 	ImGui::TextDisabled("Boot Options");
 	ImGui::Separator();
-	bool_option(Options.ignore_patch, "Ignore patch", "Ignore the patch file, if any.\nCommand line: -nopatch");
+	bool_option(Options.apply_patch, "Ignore patch", "Ignore the patch file, if any.\nCommand line: -nopatch");
 
 	file_option("prg", Options.prg_path, "PRG path", "PRG file to LOAD after boot, if any.\nCommand line: -prg <path>");
 	file_option("bas", Options.bas_path, "BAS path", "Text BAS file to automatically type into the console after boot, if any.\nCommand line: -bas <path>");
@@ -148,9 +156,9 @@ void draw_options_menu()
 		"Cooked",
 		"ISO",
 	};
-	if (ImGui::BeginCombo("Echo Mode", echo_mode_labels[Options.echo_mode])) {
+	if (ImGui::BeginCombo("Echo Mode", echo_mode_labels[(int)Options.echo_mode])) {
 		for (int i = 0; i < 4; ++i) {
-			ImGui::Selectable(echo_mode_labels[i], Options.echo_mode == i);
+			ImGui::Selectable(echo_mode_labels[i], (int)Options.echo_mode == i);
 		}
 		ImGui::EndCombo();
 	}
@@ -270,7 +278,7 @@ void draw_options_menu()
 	}
 
 	file_option("gif", Options.gif_path, "GIF path", "Location to save gifs\nCommand line: -gif <path>[,wait]");
-	file_option("wav", Options.wav_path, "WAV path", "Location to save wavs\nCommand line: -wav <path>[,wait]");
+	file_option("wav", Options.wav_path, "WAV path", "Location to save wavs\nCommand line: -wav <path>[{,wait|,auto}]");
 	bool_option(Options.load_standard_symbols, "Load Standard Symbols", "Load all symbols files typically included with ROM distributions.\nCommand line: -stds");
 
 	bool_option(Options.no_keybinds, "No Keybinds", "Disable all emulator keyboard bindings.\nDoes not affect F12 (emulator debug break) or key shortcuts when the ASM Monitor is open.\nCommand line: -nobinds");
@@ -285,7 +293,7 @@ void draw_options_menu()
 	ImGui::TextDisabled("Audio");
 	ImGui::Separator();
 
-	ImGui::InputText("Audio Device Name", Options.audio_dev_name, PATH_MAX);
+	ImGui::InputText("Audio Device Name", Options.audio_dev_name);
 	if (ImGui::IsItemHovered()) {
 		ImGui::SetTooltip("Name of default audio device to use.\nCommand line: -sound <device>");
 	}

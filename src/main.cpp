@@ -58,8 +58,8 @@ bool debugger_enabled = true;
 
 bool save_on_exit = true;
 
-SDL_RWops *prg_file;
-int        prg_override_start = -1;
+bool       has_boot_tasks = false;
+SDL_RWops *prg_file = nullptr;
 
 void machine_dump()
 {
@@ -132,7 +132,7 @@ int main(int argc, char **argv)
 	const char *base_path    = SDL_GetBasePath();
 	const char *private_path = SDL_GetPrefPath("Box16", "Box16");
 
-	load_options(base_path, private_path, argc, argv);
+	options_init(base_path, private_path, argc, argv);
 
 	if (Options.log_video) {
 		vera_video_set_log_video(true);
@@ -142,58 +142,20 @@ int main(int argc, char **argv)
 		vera_video_set_cheat_mask(0x3f);
 	}
 
-	auto open_cmdline_file = [](char const *path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
+	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
 		SDL_RWops *f = nullptr;
 
 		option_source optsrc  = option_get_source(cmdline_option);
-		char const *  srcname = option_get_source_name(optsrc);
+		char const   *srcname = option_get_source_name(optsrc);
 
-		char rel_path_buffer[PATH_MAX];
-		int  rel_path_len = options_get_relative_path(rel_path_buffer, path);
+		std::filesystem::path real_path;
+		if (options_find_file(real_path, path)) {
+			const std::string &real_path_string = real_path.generic_string();
 
-		char base_path_buffer[PATH_MAX];
-		int  base_path_len = options_get_base_path(base_path_buffer, path);
-
-		char prefs_path_buffer[PATH_MAX];
-		int  prefs_path_len = options_get_prefs_path(prefs_path_buffer, path);
-
-		if (optsrc == option_source::DEFAULT) {
-			f = SDL_RWFromFile(base_path_buffer, mode);
-			if (f) {
-				goto have_file;
-			}
-
-			f = SDL_RWFromFile(prefs_path_buffer, mode);
-			if (f) {
-				goto have_file;
-			}
-
-			f = SDL_RWFromFile(rel_path_buffer, mode);
-			if (f) {
-				goto have_file;
-			}
-		} else {
-			f = SDL_RWFromFile(rel_path_buffer, mode);
-			if (f) {
-				goto have_file;
-			}
-
-			f = SDL_RWFromFile(prefs_path_buffer, mode);
-			if (f) {
-				goto have_file;
-			}
-
-			f = SDL_RWFromFile(base_path_buffer, mode);
-			if (f) {
-				goto have_file;
-			}
+			f = SDL_RWFromFile(real_path_string.c_str(), mode);
+			printf("Using %s at %s\n", cmdline_option, real_path_string.c_str());
 		}
-
-		printf("Could not find %s in the following locations:\n\t%s\n\t%s\n\n-%s sourced from: %s", cmdline_option, rel_path_buffer, base_path_buffer, cmdline_option, srcname);
-		return nullptr;
-
-	have_file:
-		printf("Using %s at %s\n\t-%s sourced from: %s\n", cmdline_option, base_path_buffer, cmdline_option, srcname);
+		printf("\t-%s sourced from: %s\n ", cmdline_option, srcname);
 		return f;
 	};
 
@@ -210,9 +172,9 @@ int main(int argc, char **argv)
 
 	// Load ROM
 	{
-		SDL_RWops *f = open_cmdline_file(Options.rom_path, "rom", "rb");
+		SDL_RWops *f = open_file(Options.rom_path, "rom", "rb");
 		if (f == nullptr) {
-			error("ROM error", "Could not find ROM from %s", Options.rom_path);
+			error("ROM error", "Could not find ROM.");
 		}
 
 		memset(ROM, 0, ROM_SIZE);
@@ -220,6 +182,7 @@ int main(int argc, char **argv)
 		SDL_RWclose(f);
 	}
 
+	// Create ROM patch file
 	if (Options.create_patch) {
 		struct rom_struct {
 			uint8_t bytes[ROM_SIZE];
@@ -228,12 +191,12 @@ int main(int argc, char **argv)
 		auto *target = new rom_struct;
 		memset(target->bytes, 0, ROM_SIZE);
 
-		SDL_RWops *target_file = open_cmdline_file(Options.patch_target, "patch_target", "rb");
+		SDL_RWops *target_file = open_file(Options.patch_target, "patch_target", "rb");
 		if (target_file != nullptr) {
 			SDL_RWread(target_file, target->bytes, ROM_SIZE, 1);
 			SDL_RWclose(target_file);
 
-			SDL_RWops *patch_file = open_cmdline_file(Options.patch_path, "patch", "wb");
+			SDL_RWops *patch_file = open_file(Options.patch_path, "patch", "wb");
 			if (patch_file != nullptr) {
 				rom_patch_create(ROM, target->bytes, patch_file);
 				SDL_RWclose(patch_file);
@@ -244,77 +207,60 @@ int main(int argc, char **argv)
 	}
 
 	// Load patch
-	if (!Options.ignore_patch) {
-		SDL_RWops *patch_file = open_cmdline_file(Options.patch_path, "patch", "rb");
+	if (Options.apply_patch) {
+		SDL_RWops *patch_file = open_file(Options.patch_path, "patch", "rb");
 		if (patch_file == nullptr) {
-			error("Patch error", "Could not find patch file from %s", Options.patch_path);
+			error("Patch error", "Could not find patch file");
 		}
 
 		int result = rom_patch_load(patch_file, ROM);
 		if (result != ROM_PATCH_LOAD_OK) {
-			error("Patch error", "Could not load patch file from %s:\nerror %d", Options.patch_path, result);
+			error("Patch error", "Could not load patch file from %s:\nerror %d", Options.patch_path.generic_string().c_str(), result);
 		}
 	}
 
-	if (strlen(Options.nvram_path) > 0) {
-		SDL_RWops *f = SDL_RWFromFile(Options.nvram_path, "rb");
+	// Load NVRAM, if specified
+	if (!Options.nvram_path.empty()) {
+		SDL_RWops *f = open_file(Options.nvram_path, "nvram", "rb");
 		if (f) {
-			printf("%s %u\n", Options.nvram_path, (uint32_t)sizeof(nvram));
-			size_t l = SDL_RWread(f, nvram, 1, sizeof(nvram));
-			printf("%d %x %x\n", (uint32_t)l, nvram[0], nvram[1]);
+			SDL_RWread(f, nvram, sizeof(nvram), 1);
 			SDL_RWclose(f);
 		}
 	}
 
-	if (strlen(Options.sdcard_path) > 0) {
-		sdcard_set_file(Options.sdcard_path);
+	// Open SDCard, if specified
+	if (!Options.sdcard_path.empty()) {
+		std::filesystem::path sdcard_path;
+		if (options_find_file(sdcard_path, Options.sdcard_path)) {
+			sdcard_set_file(sdcard_path.generic_string().c_str());
+		}
 	}
 
-	prg_override_start = -1;
-	if (strlen(Options.prg_path) > 0) {
-		char path_buffer[PATH_MAX];
-		int  path_len = options_get_hyper_path(path_buffer, Options.prg_path);
+	if (!Options.prg_path.empty()) {
+		std::filesystem::path prg_path;
+		options_get_hyper_path(prg_path, Options.prg_path);
 
-		auto find_comma = [](char *path_buffer, int path_len) -> char * {
-			char *c = path_buffer + path_len - 1;
-			while (path_len) {
-				if (!isalnum(*c)) {
-					return (*c == ',') ? c : nullptr;
-				}
-				--c;
-				--path_len;
-			}
-			return nullptr;
-		};
-
-		char *comma = find_comma(&path_buffer[0], path_len);
-		if (comma) {
-			prg_override_start = (uint16_t)strtol(comma + 1, NULL, 16);
-			*comma             = 0;
-		}
-
-		prg_file = SDL_RWFromFile(path_buffer, "rb");
+		prg_file = SDL_RWFromFile(prg_path.generic_string().c_str(), "rb");
 		if (!prg_file) {
-			printf("Cannot open PRG file %s!\n", path_buffer);
+			printf("Cannot open PRG file %s (%s)!\n", prg_path.generic_string().c_str(), std::filesystem::absolute(prg_path).generic_string().c_str());
 			exit(1);
 		}
+
+		has_boot_tasks = true;
 	}
 
-	if (strlen(Options.bas_path) > 0) {
-		keyboard_add_file(Options.bas_path);
-		if (Options.run_after_load) {
-			keyboard_add_text("RUN\r");
-		}
+	if (!Options.bas_path.empty()) {
+		has_boot_tasks = true;
 	}
+
 	if (Options.run_geos) {
-		keyboard_add_text("GEOS\r");
+		has_boot_tasks = true;
 	}
 
 	if (Options.run_test) {
-		char test_text[256];
-		sprintf(test_text, "TEST %d\r", Options.test_number);
-		keyboard_add_text(test_text);
+		has_boot_tasks = true;
 	}
+
 
 #ifdef SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR
 	// Don't disable compositing (on KDE for example)
@@ -325,7 +271,7 @@ int main(int argc, char **argv)
 	SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMECONTROLLER | SDL_INIT_AUDIO);
 
 	if (!Options.no_sound) {
-		audio_init(strlen(Options.audio_dev_name) > 0 ? Options.audio_dev_name : nullptr, Options.audio_buffers);
+		audio_init(Options.audio_dev_name.size() > 0 ? Options.audio_dev_name.c_str() : nullptr, Options.audio_buffers);
 		audio_set_render_callback(wav_recorder_process);
 		YM_set_irq_enabled(Options.ym_irq);
 		YM_set_strict_busy(Options.ym_strict);
@@ -344,12 +290,35 @@ int main(int argc, char **argv)
 
 	vera_video_reset();
 
-	if (strlen(Options.gif_path) > 0) {
-		gif_recorder_set_path(Options.gif_path);
+	if (!Options.gif_path.empty()) {
+		gif_recorder_set_path(Options.gif_path.generic_string().c_str());
+		switch (Options.gif_start) {
+			case gif_recorder_start_t::GIF_RECORDER_START_WAIT:
+				gif_recorder_set(RECORD_GIF_PAUSE);
+				break;
+			case gif_recorder_start_t::GIF_RECORDER_START_NOW:
+				gif_recorder_set(RECORD_GIF_RECORD);
+				break;
+			default: 
+				break;
+		}
 	}
 
-	if (strlen(Options.wav_path) > 0) {
-		wav_recorder_set_path(Options.wav_path);
+	if (!Options.wav_path.empty()) {
+		wav_recorder_set_path(Options.wav_path.generic_string().c_str());
+		switch (Options.wav_start) {
+			case wav_recorder_start_t::WAV_RECORDER_START_WAIT:
+				wav_recorder_set(RECORD_WAV_PAUSE);
+				break;
+			case wav_recorder_start_t::WAV_RECORDER_START_AUTO: 
+				wav_recorder_set(RECORD_WAV_AUTOSTART); 
+				break;
+			case wav_recorder_start_t::WAV_RECORDER_START_NOW: 
+				wav_recorder_set(RECORD_WAV_RECORD); 
+				break;
+			default: 
+				break;
+		}
 	}
 
 	gif_recorder_init(SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -371,8 +340,8 @@ int main(int argc, char **argv)
 	emulator_loop();
 #endif
 
-	if (nvram_dirty && strlen(Options.nvram_path) > 0) {
-		SDL_RWops *f = SDL_RWFromFile(Options.nvram_path, "wb");
+	if (nvram_dirty && !Options.nvram_path.empty()) {
+		SDL_RWops *f = SDL_RWFromFile(Options.nvram_path.generic_string().c_str(), "wb");
 		if (f) {
 			SDL_RWwrite(f, nvram, 1, sizeof(nvram));
 			SDL_RWclose(f);
@@ -400,7 +369,7 @@ int main(int argc, char **argv)
 char *label_for_address(uint16_t address)
 {
 	uint16_t *addresses;
-	char **   labels;
+	char    **labels;
 	int       count;
 	switch (memory_get_rom_bank()) {
 		case 0:
@@ -517,9 +486,9 @@ void emulator_loop()
 		uint64_t old_clockticks6502 = clockticks6502;
 		step6502();
 		cpu_visualization_step();
-		uint8_t clocks = (uint8_t)(clockticks6502 - old_clockticks6502);
-		bool new_frame = vera_video_step(MHZ, clocks);
-		bool via1_irq_old = via1_irq();
+		uint8_t clocks       = (uint8_t)(clockticks6502 - old_clockticks6502);
+		bool    new_frame    = vera_video_step(MHZ, clocks);
+		bool    via1_irq_old = via1_irq();
 		via1_step(clocks);
 		via2_step(clocks);
 		audio_render(clocks);
@@ -572,9 +541,9 @@ void emulator_loop()
 				break;
 #endif
 			case 0xffd2:
-				if (Options.echo_mode != ECHO_MODE_NONE && is_kernal()) {
+				if (Options.echo_mode != echo_mode_t::ECHO_MODE_NONE && is_kernal()) {
 					uint8_t c = a;
-					if (Options.echo_mode == ECHO_MODE_COOKED) {
+					if (Options.echo_mode == echo_mode_t::ECHO_MODE_COOKED) {
 						if (c == 0x0d) {
 							printf("\n");
 						} else if (c == 0x0a) {
@@ -584,7 +553,7 @@ void emulator_loop()
 						} else {
 							printf("%c", c);
 						}
-					} else if (Options.echo_mode == ECHO_MODE_ISO) {
+					} else if (Options.echo_mode == echo_mode_t::ECHO_MODE_ISO) {
 						if (c == 0x0d) {
 							printf("\n");
 						} else if (c == 0x0a) {
@@ -603,35 +572,56 @@ void emulator_loop()
 
 			case 0xffcf:
 				if (is_kernal()) {
-					// as soon as BASIC starts reading a line...
-					if (prg_file) {
-						// ...inject the app into RAM
-						uint8_t  start_lo = SDL_ReadU8(prg_file);
-						uint8_t  start_hi = SDL_ReadU8(prg_file);
-						uint16_t start;
-						if (prg_override_start >= 0) {
-							start = prg_override_start;
-						} else {
-							start = start_hi << 8 | start_lo;
-						}
-						uint16_t end = start + (uint16_t)SDL_RWread(prg_file, RAM + start, 1, 65536 - start);
-						SDL_RWclose(prg_file);
-						prg_file = NULL;
-						if (start == 0x0801) {
-							// set start of variables
-							RAM[VARTAB]     = end & 0xff;
-							RAM[VARTAB + 1] = end >> 8;
-						}
-
-						if (Options.run_after_load) {
-							if (start == 0x0801) {
-								keyboard_add_text("RUN\r");
+					if (has_boot_tasks) {
+						// as soon as BASIC starts reading a line...
+						if (prg_file) {
+							// ...inject the app into RAM
+							uint8_t  start_lo = SDL_ReadU8(prg_file);
+							uint8_t  start_hi = SDL_ReadU8(prg_file);
+							uint16_t start;
+							if (Options.prg_override_start > 0) {
+								start = Options.prg_override_start;
 							} else {
-								char sys_text[10];
-								sprintf(sys_text, "SYS$%04X\r", start);
-								keyboard_add_text(sys_text);
+								start = start_hi << 8 | start_lo;
+							}
+							uint16_t end = start + (uint16_t)SDL_RWread(prg_file, RAM + start, 1, 65536 - start);
+							SDL_RWclose(prg_file);
+							prg_file = nullptr;
+							if (start == 0x0801) {
+								// set start of variables
+								RAM[VARTAB]     = end & 0xff;
+								RAM[VARTAB + 1] = end >> 8;
+							}
+
+							if (Options.run_after_load) {
+								if (start == 0x0801) {
+									keyboard_add_text("RUN\r");
+								} else {
+									char sys_text[10];
+									sprintf(sys_text, "SYS$%04X\r", start);
+									keyboard_add_text(sys_text);
+								}
 							}
 						}
+
+						if (!Options.bas_path.empty()) {
+							keyboard_add_file(Options.bas_path.generic_string().c_str());
+							if (Options.run_after_load) {
+								keyboard_add_text("RUN\r");
+							}
+						}
+
+						if (Options.run_geos) {
+							keyboard_add_text("GEOS\r");
+						}
+
+						if (Options.run_test) {
+							char test_text[256];
+							sprintf(test_text, "TEST %d\r", Options.test_number);
+							keyboard_add_text(test_text);
+						}
+
+						has_boot_tasks = false;
 					}
 				}
 				break;
@@ -642,7 +632,6 @@ void emulator_loop()
 				}
 				return;
 		}
-
 		keyboard_process();
 	}
 }

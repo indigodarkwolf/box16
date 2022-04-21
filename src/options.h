@@ -2,7 +2,9 @@
 #if !defined(OPTIONS_H)
 #	define OPTIONS_H
 
-enum echo_mode_t {
+#	include <filesystem>
+
+enum class echo_mode_t {
 	ECHO_MODE_NONE = 0,
 	ECHO_MODE_RAW,
 	ECHO_MODE_COOKED,
@@ -21,27 +23,43 @@ enum class option_source {
 	CMDLINE
 };
 
-enum vsync_mode_t {
+enum class vsync_mode_t {
 	VSYNC_MODE_NONE = 0,
 	VSYNC_MODE_GET_SYNC,
 	VSYNC_MODE_WAIT_SYNC,
 	VSYNC_MODE_DEBUG,
 };
 
-struct options {
-	char hyper_path[PATH_MAX]   = ".";
-	char rom_path[PATH_MAX]     = "rom.bin";
-	char patch_path[PATH_MAX]   = "";
-	char patch_target[PATH_MAX] = "";
-	char prg_path[PATH_MAX]     = "";
-	char bas_path[PATH_MAX]     = "";
-	char sdcard_path[PATH_MAX]  = "";
-	char nvram_path[PATH_MAX]   = "";
-	char gif_path[PATH_MAX]     = "";
-	char wav_path[PATH_MAX]     = "";
+enum class gif_recorder_start_t {
+	GIF_RECORDER_START_WAIT = 0,
+	GIF_RECORDER_START_NOW
+};
 
-	bool ignore_patch = true;
+enum class wav_recorder_start_t {
+	WAV_RECORDER_START_WAIT = 0,
+	WAV_RECORDER_START_AUTO,
+	WAV_RECORDER_START_NOW
+};
+
+struct options {
+	std::filesystem::path rom_path     = "rom.bin";
+	std::filesystem::path patch_path   = "";
+	std::filesystem::path patch_target = "";
+	std::filesystem::path nvram_path   = "";
+	std::filesystem::path hyper_path   = ".";
+	std::filesystem::path prg_path     = "";
+	std::filesystem::path bas_path     = "";
+	std::filesystem::path sdcard_path  = "";
+	std::filesystem::path gif_path     = "";
+	std::filesystem::path wav_path     = "";
+
 	bool create_patch = false;
+	bool apply_patch  = false;
+
+	int  prg_override_start = 0;
+
+	gif_recorder_start_t gif_start = gif_recorder_start_t::GIF_RECORDER_START_NOW;
+	wav_recorder_start_t wav_start = wav_recorder_start_t::WAV_RECORDER_START_NOW;
 
 	bool run_after_load = false;
 	bool run_geos       = false;
@@ -49,14 +67,16 @@ struct options {
 
 	bool load_standard_symbols = false;
 
-	bool        log_keyboard = false;
-	bool        log_speed    = false;
-	bool        log_video    = false;
-	bool        dump_cpu     = false;
-	bool        dump_ram     = false;
-	bool        dump_bank    = false;
-	bool        dump_vram    = false;
-	echo_mode_t echo_mode    = ECHO_MODE_NONE;
+	bool log_verbose  = false;
+	bool log_keyboard = false;
+	bool log_speed    = false;
+	bool log_video    = false;
+	bool dump_cpu     = false;
+	bool dump_ram     = false;
+	bool dump_bank    = false;
+	bool dump_vram    = false;
+
+	echo_mode_t echo_mode = echo_mode_t::ECHO_MODE_NONE;
 
 	int             num_ram_banks = 64; // 512 KB default
 	uint8_t         keymap        = 0;  // KERNAL's default
@@ -66,9 +86,9 @@ struct options {
 	scale_quality_t scale_quality = scale_quality_t::NEAREST;
 	vsync_mode_t    vsync_mode    = vsync_mode_t::VSYNC_MODE_GET_SYNC;
 
-	char audio_dev_name[PATH_MAX] = "";
-	bool no_sound                 = false;
-	int  audio_buffers            = 8;
+	std::string audio_dev_name = "";
+	bool        no_sound       = false;
+	int         audio_buffers  = 8;
 
 	bool set_system_time = false;
 	bool no_keybinds     = false;
@@ -78,19 +98,22 @@ struct options {
 
 extern options Options;
 
-void load_options(const char *base_dir, const char *prefs_dir, int argc, char **argv);
+void options_init(const char *base_dir, const char *prefs_dir, int argc, char **argv);
 void load_options();
 void save_options(bool all);
 
-int options_get_base_path(char *real_path, const char *path);
-int options_get_prefs_path(char *real_path, const char *path);
-int options_get_relative_path(char *real_path, const char *path);
-int options_get_hyper_path(char *hyper_path, const char *path);
+size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path);
+size_t options_get_prefs_path(std::filesystem::path &real_path, const std::filesystem::path &path);
+size_t options_get_hyper_path(std::filesystem::path &real_path, const std::filesystem::path &path);
 
 bool option_cmdline_option_was_set(char const *cmdline_option);
 bool option_inifile_option_was_set(char const *cmdline_option);
 
 option_source option_get_source(char const *cmdline_option);
-char const *  option_get_source_name(option_source source);
+char const   *option_get_source_name(option_source source);
+
+bool options_find_file(std::filesystem::path &real_path, const std::filesystem::path &search_path);
+
+int options_log_verbose(const char *format, ...);
 
 #endif

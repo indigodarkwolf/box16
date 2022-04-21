@@ -210,9 +210,6 @@
     <ClInclude Include="..\..\src\compat\compat.h">
       <Filter>Source Files\compat</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\compat\dirent.h">
-      <Filter>Source Files\compat</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\src\compat\getopt.h">
       <Filter>Source Files\compat</Filter>
     </ClInclude>

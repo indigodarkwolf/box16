@@ -3,6 +3,6 @@
 // Portions Copyright (c) 2021 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
-#define VER_NUM "39.2"
-#define VER_NAME "Hokkaido Jingu"
+#define VER_NUM "39.3"
+#define VER_NAME "Fushimi Inari"
 #define VER_TITLE "box16"

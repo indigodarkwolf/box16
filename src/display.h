@@ -4,6 +4,7 @@
 
 #include <SDL.h>
 #include <tuple>
+#include <filesystem>
 
 #if SDL_MAJOR_VERSION <= 2 && SDL_MINOR_VERSION <= 0 && SDL_PATCHLEVEL <= 9
 struct SDL_FRect {
@@ -98,4 +99,6 @@ namespace ImGui
 	void TileDisabled(display_icons icon);
 	bool InputLog2(char const *label, uint8_t *value, const char *format, ImGuiInputTextFlags flags = 0);
 	bool InputPow2(char const *label, int *value, const char *format, ImGuiInputTextFlags flags = 0);
+	bool InputText(const char *label, std::filesystem::path &path, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr);
+	bool InputText(const char *label, std::string &str, ImGuiInputTextFlags flags = 0, ImGuiInputTextCallback callback = nullptr, void *user_data = nullptr);
 } // namespace ImGui

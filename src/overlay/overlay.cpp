@@ -2222,7 +2222,7 @@ static void draw_menu_bar()
 			if (ImGui::MenuItem("Change CWD")) {
 				char *open_path = nullptr;
 				if (NFD_PickFolder("", &open_path) == NFD_OKAY && open_path != nullptr) {
-					strcpy(Options.hyper_path, open_path);
+					Options.hyper_path = open_path;
 				}
 			}
 
@@ -2241,7 +2241,7 @@ static void draw_menu_bar()
 			bool audio_enabled = !Options.no_sound;
 			if (ImGui::Checkbox("Enable Audio", &audio_enabled)) {
 				if (audio_enabled) {
-					audio_init(strlen(Options.audio_dev_name) > 0 ? Options.audio_dev_name : nullptr, Options.audio_buffers);
+					audio_init(Options.audio_dev_name.size() > 0 ? Options.audio_dev_name.c_str() : nullptr, Options.audio_buffers);
 				} else {
 					audio_close();
 				}

@@ -173,7 +173,7 @@ uint8_t debug_emu_read(uint8_t reg)
 		case 0: return 1; // debugger enabled?
 		case 1: return vera_video_get_log_video() ? 1 : 0;
 		case 2: return Options.log_keyboard ? 1 : 0;
-		case 3: return Options.echo_mode;
+		case 3: return (int)Options.echo_mode;
 		case 4: return save_on_exit ? 1 : 0;
 		case 5: return gif_recorder_get_state();
 		case 6: return wav_recorder_get_state();
@@ -196,11 +196,11 @@ uint8_t real_emu_read(uint8_t reg)
 		case 0: return 1; // debugger enabled?
 		case 1: return vera_video_get_log_video() ? 1 : 0;
 		case 2: return Options.log_keyboard ? 1 : 0;
-		case 3: return Options.echo_mode;
+		case 3: return (int)Options.echo_mode;
 		case 4: return save_on_exit ? 1 : 0;
 		case 5: return gif_recorder_get_state();
 		case 6: return wav_recorder_get_state();
-		//case 7: return -1;
+		//case 7: return -1; // Reserved for toggling key chords.
 		case 8: return (clockticks6502 >> 0) & 0xff;
 		case 9: return (clockticks6502 >> 8) & 0xff;
 		case 10: return (clockticks6502 >> 16) & 0xff;

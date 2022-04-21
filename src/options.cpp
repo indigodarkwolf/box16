@@ -5,24 +5,46 @@
 
 #include "audio.h"
 #include "debugger.h"
+#include "rom_patch.h"
 #include "symbols.h"
 #include "version.h"
-#include "rom_patch.h"
 
-options       Options;
-const options Default_options;
-char          Options_base_path[PATH_MAX];
-char          Options_prefs_path[PATH_MAX];
-char          Options_ini_path[PATH_MAX];
+options               Options;
+const options         Default_options;
+std::filesystem::path Options_base_path;
+std::filesystem::path Options_prefs_path;
+std::filesystem::path Options_ini_path;
 
 mINI::INIStructure Cmdline_ini;
 mINI::INIStructure Inifile_ini;
+
+static const char *token_or_empty(const std::string &str, const char *token)
+{
+	static char *str_buffer = nullptr;
+
+	if (str_buffer != nullptr) {
+		delete[] str_buffer;
+	}
+
+	str_buffer = new char[str.size() + 1];
+	str.copy(str_buffer, str.size());
+	str_buffer[str.size()] = '\0';
+
+	char *result = strtok(str_buffer, token);
+	return result != nullptr ? result : "";
+}
+
+static const char *token_or_empty(char *str, const char *token)
+{
+	char *result = strtok(str, token);
+	return result != nullptr ? result : "";
+}
 
 static void usage()
 {
 	printf("%s %s (%s)\n", VER_TITLE, VER_NUM, VER_NAME);
 	printf("Portions (C)2019,2020 Michael Steil et al.\n");
-	printf("Portions (C)2021 Stephen Horn et al.\n");
+	printf("Portions (C)2021,2022 Stephen Horn et al.\n");
 	printf("All rights reserved. License: 2-clause BSD\n\n");
 
 	printf("Usage: x16emu [option] ...\n\n");
@@ -35,8 +57,8 @@ static void usage()
 	printf("\tInject a BASIC program in ASCII encoding through the\n");
 	printf("\tkeyboard.\n");
 
-	printf("-create_patch <from.bin>\n");
-	printf("\tCreate a patch from one ROM image to the ROM being used.\n");
+	printf("-create_patch <target.bin>\n");
+	printf("\tCreate a patch from the current ROM image (specified by -rom) to this target ROM image.\n");
 
 	printf("-debug <address>\n");
 	printf("\tSet a breakpoint in the debugger\n");
@@ -67,6 +89,17 @@ static void usage()
 	printf("-help\n");
 	printf("\tPrint this message and exit.\n");
 
+	printf("-ignore_ini\n");
+	printf("\tDo not attempt to apply Box16 options from any ini file.\n");
+
+	printf("-ignore_patch\n");
+	printf("\tWhen loading ROM data, ignore the current patch file.\n");
+
+	printf("-ini <inifile.ini>\n");
+	printf("\tUse this ini file for emulator settings and options.\n");
+	printf("\tIf -ignore_ini is also specified, this will set the location of the ini file, but not actually load settings from it.\n");
+	printf("\tIf -save_ini is also specified, the emulator settings for this run will be saved to this ini file.\n");
+
 	printf("-keymap <keymap>\n");
 	printf("\tEnable a specific keyboard layout decode table.\n");
 
@@ -78,7 +111,7 @@ static void usage()
 	printf("\tDisable most emulator keyboard shortcuts.\n");
 
 	printf("-nopatch\n");
-	printf("\tDisables patching, overriding patch settings in ini file.\n");
+	printf("\tThis is an alias for -ignore_patch.\n");
 
 	printf("-nosound\n");
 	printf("\tDisables audio. Incompatible with -sound.\n");
@@ -89,6 +122,8 @@ static void usage()
 
 	printf("-patch <patch.bpf>\n");
 	printf("\tApply the following patch file to rom.\n");
+	printf("\tIf -create_patch has also been specified, this patch file is overwritten with the newly created patch data.\n");
+	printf("\tIf -ignore_patch has also specified, this patch file will not be applied during system boot.\n");
 
 	printf("-prg <app.prg>[,<load_addr>]\n");
 	printf("\tLoad application from the local disk into RAM\n");
@@ -112,12 +147,16 @@ static void usage()
 	printf("\tStart the -prg/-bas program using RUN or SYS, depending\n");
 	printf("\ton the load address.\n");
 
+	printf("-save_ini\n");
+	printf("\tSave current emulator settings to ini file. This includes the other command-line options specified with this run.\n");
+	printf("\tIf -ini has not been specified, this uses the default ini location under %%APPDATA%%\\Box16\\Box16 or ~/.local/Box16.\n");
+
 	printf("-scale {1|2|3|4}\n");
 	printf("\tScale output to an integer multiple of 640x480\n");
 
 	printf("-sdcard <sdcard.img>\n");
 	printf("\tSpecify SD card image (partition map + FAT32)\n");
-	
+
 	printf("-sound <output device>\n");
 	printf("\tSet the output device used for audio emulation. Incompatible with -nosound.\n");
 
@@ -136,6 +175,9 @@ static void usage()
 	printf("-test {0, 1, 2, 3}\n");
 	printf("\tImmediately invoke the TEST command with the provided test number.\n");
 
+	printf("-verbose\n");
+	printf("\tPrint additional debug output from the emulator.\n");
+
 	printf("-version\n");
 	printf("\tPrint additional version information the emulator and ROM.\n");
 
@@ -145,18 +187,15 @@ static void usage()
 
 	printf("-warp\n");
 	printf("\tEnable warp mode, run emulator as fast as possible.\n");
-	
+
 	printf("-wav <file.wav>[{,wait|,auto}]\n");
 	printf("\tRecord a wav for the audio output.\n");
 	printf("\tUse ,wait to start paused.\n");
 	printf("\tUse ,auto to start paused, but begin recording once a non-zero audio signal is detected.\n");
-	printf("\tPOKE $9FB5,2 to start recording.\n");
-	printf("\tPOKE $9FB5,1 to capture a single frame.\n");
-	printf("\tPOKE $9FB5,0 to pause.\n");
-	
+
 	printf("-ymirq\n");
 	printf("\tEnable the YM2151's IRQ generation.\n");
-	
+
 	printf("-ymstrict\n");
 	printf("\tEnable strict enforcement of YM behaviors.\n");
 	printf("\n");
@@ -198,7 +237,7 @@ void usage_keymap()
 	exit(1);
 }
 
-static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
+static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 {
 	argc--;
 	argv++;
@@ -215,8 +254,7 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["abufs"] = argv[0];
-
+			ini["abufs"] = argv[0];
 			argc--;
 			argv++;
 
@@ -227,8 +265,7 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["bas"] = argv[0];
-
+			ini["bas"] = argv[0];
 			argc--;
 			argv++;
 
@@ -239,9 +276,8 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["create_patch"] = "true";
-			ini["main"]["patch_target"] = argv[0];
-
+			ini["create_patch"] = "true";
+			ini["patch_target"] = argv[0];
 			argc--;
 			argv++;
 
@@ -254,10 +290,10 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 
 			// Add a breakpoint
 			uint32_t bp = strtol(argv[0], NULL, 16);
-			debugger_add_breakpoint((uint16_t)(bp & 0xfffF), (uint8_t)(bp >> 16));
-
+			debugger_add_breakpoint((uint16_t)(bp & 0xffff), (uint8_t)(bp >> 16));
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-dump")) {
 			argc--;
 			argv++;
@@ -265,22 +301,22 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["dump"] = argv[0];
-
+			ini["dump"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-echo")) {
 			argc--;
 			argv++;
 			if (argc && argv[0][0] != '-') {
 
-				ini["main"]["echo"] = argv[0];
-
+				ini["echo"] = argv[0];
 				argc--;
 				argv++;
 			} else {
-				ini["main"]["echo"] = "cooked";
+				ini["echo"] = "cooked";
 			}
+
 		} else if (!strcmp(argv[0], "-hypercall_path")) {
 			argc--;
 			argv++;
@@ -288,15 +324,14 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["hypercall_path"] = argv[0];
-
+			ini["hypercall_path"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-geos")) {
 			argc--;
 			argv++;
-
-			ini["main"]["geos"] = "true";
+			ini["geos"] = "true";
 
 		} else if (!strcmp(argv[0], "-gif")) {
 			argc--;
@@ -305,15 +340,38 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["gif"] = argv[0];
-
+			ini["gif"] = argv[0];
 			argv++;
 			argc--;
+
 		} else if (!strcmp(argv[0], "-help")) {
 			argc--;
 			argv++;
 
 			usage();
+
+		} else if (!strcmp(argv[0], "-ignore_ini")) {
+			argc--;
+			argv++;
+			ini["ignore_ini"] = "true";
+
+		} else if (!strcmp(argv[0], "-ignore_patch")) {
+			argc--;
+			argv++;
+			ini["ignore_patch"] = "true";
+
+		} else if (!strcmp(argv[0], "-ini")) {
+			argc--;
+			argv++;
+
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["ini"] = argv[0];
+			argv++;
+			argc--;
+
 		} else if (!strcmp(argv[0], "-keymap")) {
 			argc--;
 			argv++;
@@ -321,10 +379,10 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage_keymap();
 			}
 
-			ini["main"]["keymap"] = argv[0];
-
+			ini["keymap"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-log")) {
 			argc--;
 			argv++;
@@ -332,26 +390,24 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["log"] = argv[0];
-
+			ini["log"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-nobinds")) {
 			argc--;
 			argv++;
-			ini["main"]["nobinds"] = "true";
+			ini["nobinds"] = "true";
 
 		} else if (!strcmp(argv[0], "-nopatch")) {
 			argc--;
 			argv++;
-
-			ini["main"]["ignore_patch"] = "true";
+			ini["ignore_patch"] = "true";
 
 		} else if (!strcmp(argv[0], "-nosound")) {
 			argc--;
 			argv++;
-
-			ini["main"]["nosound"] = "true";
+			ini["nosound"] = "true";
 
 		} else if (!strcmp(argv[0], "-nvram")) {
 			argc--;
@@ -359,7 +415,8 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			if (!argc || argv[0][0] == '-') {
 				usage();
 			}
-			ini["main"]["nvram"] = argv[0];
+
+			ini["nvram"] = argv[0];
 			argc--;
 			argv++;
 
@@ -369,8 +426,8 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 			if (!argc || argv[0][0] == '-') {
 				usage();
 			}
-			ini["main"]["patch"] = argv[0];
-			ini["main"]["ignore_patch"] = "false";
+
+			ini["patch"] = argv[0];
 			argc--;
 			argv++;
 
@@ -381,10 +438,10 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["prg"] = argv[0];
-
+			ini["prg"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-quality")) {
 			argc--;
 			argv++;
@@ -392,32 +449,21 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["quality"] = argv[0];
-
+			ini["quality"] = argv[0];
 			argc--;
 			argv++;
-		} else if (!strcmp(argv[0], "-vsync")) {
-			argc--;
-			argv++;
-			if (!argc || argv[0][0] == '-') {
-				usage();
-			}
 
-			ini["main"]["vsync"] = argv[0];
-
-			argc--;
-			argv++;
 		} else if (!strcmp(argv[0], "-ram")) {
 			argc--;
 			argv++;
 			if (!argc || argv[0][0] == '-') {
-				usage();
+				usage_ram();
 			}
 
-			ini["main"]["ram"] = argv[0];
-
+			ini["ram"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-rom")) {
 			argc--;
 			argv++;
@@ -425,20 +471,24 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["rom"] = argv[0];
-
+			ini["rom"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-rtc")) {
 			argc--;
 			argv++;
-			ini["main"]["rtc"] = "true";
+			ini["rtc"] = "true";
 
 		} else if (!strcmp(argv[0], "-run")) {
 			argc--;
 			argv++;
+			ini["run"] = "true";
 
-			ini["main"]["run"] = "true";
+		} else if (!strcmp(argv[0], "-save_ini")) {
+			argc--;
+			argv++;
+			ini["save_ini"] = "true";
 
 		} else if (!strcmp(argv[0], "-scale")) {
 			argc--;
@@ -447,10 +497,10 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["scale"] = argv[0];
-
+			ini["scale"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-sdcard")) {
 			argc--;
 			argv++;
@@ -458,18 +508,18 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["sdcard"] = argv[0];
-
+			ini["sdcard"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-sound")) {
 			argc--;
 			argv++;
 
-			ini["main"]["sound"] = argv[0];
-
+			ini["sound"] = argv[0];
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-stds")) {
 			argc--;
 			argv++;
@@ -477,7 +527,7 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["stds"] = "true";
+			ini["stds"] = "true";
 
 		} else if (!strcmp(argv[0], "-sym")) {
 			argc--;
@@ -488,9 +538,9 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 
 			// Add a symbols file
 			symbols_load_file(argv[0]);
-
 			argc--;
 			argv++;
+
 		} else if (!strcmp(argv[0], "-test")) {
 			argc--;
 			argv++;
@@ -498,21 +548,37 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["test"] = argv[0];
+			ini["test"] = argv[0];
+			argc--;
+			argv++;
 
+		} else if (!strcmp(argv[0], "-verbose")) {
 			argc--;
 			argv++;
+			ini["verbose"] = "true";
+
 		} else if (!strcmp(argv[0], "-version")) {
-			printf("%s %s", VER_NUM, VER_NAME);
 			argc--;
 			argv++;
+			printf("%s %s\n", VER_NUM, VER_NAME);
 			exit(0);
+
+		} else if (!strcmp(argv[0], "-vsync")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			ini["vsync"] = argv[0];
+			argc--;
+			argv++;
 
 		} else if (!strcmp(argv[0], "-warp")) {
 			argc--;
 			argv++;
 
-			ini["main"]["warp"] = "true";
+			ini["warp"] = "true";
 
 		} else if (!strcmp(argv[0], "-wav")) {
 			argc--;
@@ -521,19 +587,19 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["main"]["wav"] = argv[0];
-
+			ini["wav"] = argv[0];
 			argv++;
 			argc--;
+
 		} else if (!strcmp(argv[0], "-ymirq")) {
 			argc--;
 			argv++;
-			ini["main"]["ymirq"] = "true";
+			ini["ymirq"] = "true";
 
 		} else if (!strcmp(argv[0], "-ymstrict")) {
 			argc--;
 			argv++;
-			ini["main"]["ymstrict"] = "true";
+			ini["ymstrict"] = "true";
 
 		} else {
 			usage();
@@ -541,63 +607,25 @@ static void parse_cmdline(mINI::INIStructure &ini, int argc, char **argv)
 	}
 }
 
-static void fixup_directory(char *directory, size_t len)
+static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 {
-	// If the path specified ended in a directory separator, remove it.
-	if (len > 0) {
-		const size_t last_char = len - 1;
-		const char   term      = directory[last_char];
-#if defined(WIN32)
-		if (term == '\\' || term == '/') {
-			directory[last_char] = '\0';
-		}
-#else
-		if (term == '/') {
-			directory[last_char] = '\0';
-		}
-#endif
-	}
-}
-
-static void fixup_directory(char *directory)
-{
-	fixup_directory(directory, strlen(directory));
-}
-
-static void apply_directory(char *directory, const std::string &src)
-{
-	strcpy(directory, src.c_str());
-	fixup_directory(directory, src.length());
-}
-
-static void set_options(mINI::INIStructure &ini)
-{
-	if (ini["main"].has("rom")) {
-		strcpy(Options.rom_path, ini["main"]["rom"].c_str());
+	if (ini.has("rom")) {
+		opts.rom_path = ini["rom"];
 	}
 
-	if (ini["main"].has("patch")) {
-		strcpy(Options.patch_path, ini["main"]["patch"].c_str());
-		if (Options.patch_path[0] != '\0') {
-			Options.ignore_patch = false;
+	if (ini.has("patch")) {
+		opts.patch_path = ini["patch"];
+		if (!ini.has("ignore_patch") || ini["ignore_patch"] != "true") {
+			opts.apply_patch = true;
 		}
 	}
 
-	if (ini["main"].has("create_patch")) {
-		if (!strcmp(ini["main"]["create_patch"].c_str(), "true")) {
-			strcpy(Options.patch_target, ini["main"]["patch_target"].c_str());
-			Options.create_patch = true;
-		}
+	if (ini.has("ignore_patch") && ini["ignore_patch"] == "true") {
+		opts.apply_patch = false;
 	}
 
-	if (ini["main"].has("ignore_patch")) {
-		if (!strcmp(ini["main"]["ignore_patch"].c_str(), "true")) {
-			Options.ignore_patch = true;
-		}
-	}
-
-	if (ini["main"].has("ram")) {
-		int  kb    = atoi(ini["main"]["ram"].c_str());
+	if (ini.has("ram")) {
+		int  kb    = atoi(ini["ram"].c_str());
 		bool found = false;
 		for (int cmp = 8; cmp <= 2048; cmp *= 2) {
 			if (kb == cmp) {
@@ -606,252 +634,317 @@ static void set_options(mINI::INIStructure &ini)
 			}
 		}
 		if (!found) {
-			usage_ram();
+			return "ram";
 		}
-		Options.num_ram_banks = kb / 8;
+		opts.num_ram_banks = kb / 8;
 	}
 
-	if (ini["main"].has("hypercall_path")) {
-		apply_directory(Options.hyper_path, ini["main"]["hypercall_path"]);
+	if (ini.has("hypercall_path")) {
+		opts.hyper_path = ini["hypercall_path"];
 	}
 
-	if (ini["main"].has("keymap")) {
+	if (ini.has("keymap")) {
 		bool found = false;
 		for (uint8_t i = 0; i < sizeof(keymaps) / sizeof(*keymaps); i++) {
-			if (!strcmp(ini["main"]["keymap"].c_str(), keymaps[i])) {
-				found          = true;
-				Options.keymap = i;
+			if (!strcmp(ini["keymap"].c_str(), keymaps[i])) {
+				found       = true;
+				opts.keymap = i;
 				break;
 			}
 		}
 		if (!found) {
-			usage_keymap();
+			return "keymap";
 		}
 	}
 
-	if (ini["main"].has("prg")) {
-		strcpy(Options.prg_path, ini["main"]["prg"].c_str());
+	if (ini.has("prg")) {
+		opts.prg_path                    = token_or_empty(ini["prg"], ",");
+		const char *prg_override_address = token_or_empty(nullptr, ",");
+		opts.prg_override_start          = (uint16_t)strtol(prg_override_address, nullptr, 16);
 	}
 
-	if (ini["main"].has("run")) {
-		if (!strcmp(ini["main"]["run"].c_str(), "true")) {
-			Options.run_after_load = true;
-		}
+	if (ini.has("run") && ini["run"] == "true") {
+		opts.run_after_load = true;
 	}
 
-	if (ini["main"].has("bas")) {
-		strcpy(Options.bas_path, ini["main"]["bas"].c_str());
+	if (ini.has("bas")) {
+		opts.bas_path = ini["bas"];
 	}
 
-	if (ini["main"].has("geos")) {
-		if (!strcmp(ini["main"]["geos"].c_str(), "true")) {
-			Options.run_geos = true;
-		}
+	if (ini.has("geos") && ini["geos"] == "true") {
+		opts.run_geos = true;
 	}
 
-	if (ini["main"].has("test")) {
-		Options.test_number = atoi(ini["main"]["test"].c_str());
-		Options.run_test    = Options.test_number >= 0;
+	if (ini.has("test")) {
+		opts.test_number = atoi(ini["test"].c_str());
+		opts.run_test    = opts.test_number >= 0;
 	}
 
-	if (ini["main"].has("nvram")) {
-		strcpy(Options.nvram_path, ini["main"]["nvram"].c_str());
+	if (ini.has("nvram")) {
+		opts.nvram_path = ini["nvram"];
 	}
 
-	if (ini["main"].has("sdcard")) {
-		strcpy(Options.sdcard_path, ini["main"]["sdcard"].c_str());
+	if (ini.has("sdcard")) {
+		opts.sdcard_path = ini["sdcard"];
 	}
 
-	if (ini["main"].has("warp")) {
-		if (!strcmp(ini["main"]["warp"].c_str(), "true")) {
-			Options.warp_factor = 1;
-		}
+	if (ini.has("warp") && ini["warp"] == "true") {
+		opts.warp_factor = 1;
 	}
 
-	if (ini["main"].has("echo")) {
-		char const *echo_mode = ini["main"]["echo"].c_str();
+	if (ini.has("echo")) {
+		char const *echo_mode = ini["echo"].c_str();
 		if (!strcmp(echo_mode, "raw")) {
-			Options.echo_mode = ECHO_MODE_RAW;
+			opts.echo_mode = echo_mode_t::ECHO_MODE_RAW;
 		} else if (!strcmp(echo_mode, "iso")) {
-			Options.echo_mode = ECHO_MODE_ISO;
+			opts.echo_mode = echo_mode_t::ECHO_MODE_ISO;
 		} else if (!strcmp(echo_mode, "cooked")) {
-			Options.echo_mode = ECHO_MODE_COOKED;
+			opts.echo_mode = echo_mode_t::ECHO_MODE_COOKED;
 		} else if (!strcmp(echo_mode, "none")) {
-			Options.echo_mode = ECHO_MODE_NONE;
+			opts.echo_mode = echo_mode_t::ECHO_MODE_NONE;
 		} else {
-			usage();
+			return "echo";
 		}
 	}
 
-	if (ini["main"].has("log")) {
-		for (const char *p = ini["main"]["log"].c_str(); *p; p++) {
+	if (ini.has("log")) {
+		for (const char *p = ini["log"].c_str(); *p; p++) {
 			switch (tolower(*p)) {
 				case 'k':
-					Options.log_keyboard = true;
+					opts.log_keyboard = true;
 					break;
 				case 's':
-					Options.log_speed = true;
+					opts.log_speed = true;
 					break;
 				case 'v':
-					Options.log_video = true;
+					opts.log_video = true;
 					break;
 				default:
-					usage();
+					return "log";
 			}
 		}
 	}
 
-	if (ini["main"].has("dump")) {
-		for (const char *p = ini["main"]["dump"].c_str(); *p; p++) {
+	if (ini.has("dump")) {
+		for (const char *p = ini["dump"].c_str(); *p; p++) {
 			switch (tolower(*p)) {
 				case 'c':
-					Options.dump_cpu = true;
+					opts.dump_cpu = true;
 					break;
 				case 'r':
-					Options.dump_ram = true;
+					opts.dump_ram = true;
 					break;
 				case 'b':
-					Options.dump_bank = true;
+					opts.dump_bank = true;
 					break;
 				case 'v':
-					Options.dump_vram = true;
+					opts.dump_vram = true;
 					break;
 				default:
-					usage();
+					return "dump";
 			}
 		}
 	}
 
-	if (ini["main"].has("gif")) {
-		strcpy(Options.gif_path, ini["main"]["gif"].c_str());
-	}
-
-	if (ini["main"].has("wav")) {
-		strcpy(Options.wav_path, ini["main"]["wav"].c_str());
-	}
-
-	if (ini["main"].has("stds")) {
-		if (!strcmp(ini["main"]["stds"].c_str(), "true")) {
-			symbols_load_file("kernal.sym", 0);
-			symbols_load_file("keymap.sym", 1);
-			symbols_load_file("dos.sym", 2);
-			symbols_load_file("geos.sym", 3);
-			symbols_load_file("basic.sym", 4);
-			symbols_load_file("monitor.sym", 5);
-			symbols_load_file("charset.sym");
+	if (ini.has("gif")) {
+		opts.gif_path     = token_or_empty(ini["gif"], ",");
+		char const *start = token_or_empty(nullptr, ",");
+		if (start[0] == '\0') {
+			opts.gif_start = gif_recorder_start_t::GIF_RECORDER_START_NOW;
+		} else if (strcmp(start, "wait") == 0) {
+			opts.gif_start = gif_recorder_start_t::GIF_RECORDER_START_WAIT;
+		} else {
+			return "gif";
 		}
 	}
 
-	if (ini["main"].has("scale")) {
-		for (const char *p = ini["main"]["scale"].c_str(); *p; p++) {
+	if (ini.has("wav")) {
+		opts.wav_path     = token_or_empty(ini["wav"], ",");
+		char const *start = token_or_empty(nullptr, ",");
+		if (start[0] == '\0') {
+			opts.wav_start = wav_recorder_start_t::WAV_RECORDER_START_NOW;
+		} else if (strcmp(start, "wait") == 0) {
+			opts.wav_start = wav_recorder_start_t::WAV_RECORDER_START_WAIT;
+		} else if (strcmp(start, "auto")) {
+			opts.wav_start = wav_recorder_start_t::WAV_RECORDER_START_AUTO;
+		} else {
+			return "wav";
+		}
+	}
+
+	if (ini.has("stds")) {
+		symbols_load_file("kernal.sym", 0);
+		symbols_load_file("keymap.sym", 1);
+		symbols_load_file("dos.sym", 2);
+		symbols_load_file("geos.sym", 3);
+		symbols_load_file("basic.sym", 4);
+		symbols_load_file("monitor.sym", 5);
+		symbols_load_file("charset.sym");
+	}
+
+	if (ini.has("scale")) {
+		for (const char *p = ini["scale"].c_str(); *p; p++) {
 			switch (tolower(*p)) {
 				case '1':
 				case '2':
 				case '3':
 				case '4':
-					Options.window_scale = *p - '0';
+					opts.window_scale = *p - '0';
 					break;
 				default:
-					usage();
+					return "scale";
 			}
 		}
 	}
 
-	if (ini["main"].has("quality")) {
-		char const *q = ini["main"]["quality"].c_str();
+	if (ini.has("quality")) {
+		char const *q = ini["quality"].c_str();
 		if (!strcmp(q, "nearest")) {
-			Options.scale_quality = scale_quality_t::NEAREST;
+			opts.scale_quality = scale_quality_t::NEAREST;
 		} else if (!strcmp(q, "linear")) {
-			Options.scale_quality = scale_quality_t::LINEAR;
+			opts.scale_quality = scale_quality_t::LINEAR;
 		} else if (!strcmp(q, "best")) {
-			Options.scale_quality = scale_quality_t::BEST;
+			opts.scale_quality = scale_quality_t::BEST;
 		} else {
-			usage();
+			return "quality";
 		}
 	}
 
-	if (ini["main"].has("vsync")) {
-		char const *q = ini["main"]["vsync"].c_str();
+	if (ini.has("vsync")) {
+		char const *q = ini["vsync"].c_str();
 		if (!strcmp(q, "none")) {
-			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_NONE;
+			opts.vsync_mode = vsync_mode_t::VSYNC_MODE_NONE;
 		} else if (!strcmp(q, "get")) {
-			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_GET_SYNC;
+			opts.vsync_mode = vsync_mode_t::VSYNC_MODE_GET_SYNC;
 		} else if (!strcmp(q, "wait")) {
-			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_WAIT_SYNC;
+			opts.vsync_mode = vsync_mode_t::VSYNC_MODE_WAIT_SYNC;
 		} else if (!strcmp(q, "debug")) {
-			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_DEBUG;
+			opts.vsync_mode = vsync_mode_t::VSYNC_MODE_DEBUG;
 		} else {
-			usage();
+			return "vsync";
 		}
 	}
 
-	if (ini["main"].has("nosound")) {
-		if (!strcmp(ini["main"]["nosound"].c_str(), "true")) {
-			if (strlen(Options.audio_dev_name) > 0) {
-				usage();
-			}
-
-			Options.no_sound = true;
+	if (ini.has("nosound") && ini["nosound"] == "true") {
+		if (ini.has("sound")) {
+			return "nosound";
 		}
+		opts.no_sound = true;
 	}
 
-	if (ini["main"].has("sound")) {
-		if (Options.no_sound) {
-			usage();
+	if (ini.has("sound")) {
+		if (ini.has("nosound") && ini["nosound"] == "true") {
+			return "sound";
 		}
-		strcpy(Options.audio_dev_name, ini["main"]["sound"].c_str());
+		opts.no_sound       = false;
+		opts.audio_dev_name = ini["sound"];
 	}
 
-	if (ini["main"].has("abufs")) {
-		Options.audio_buffers = (int)strtol(ini["main"]["abufs"].c_str(), NULL, 10);
+	if (ini.has("abufs")) {
+		opts.audio_buffers = (int)strtol(ini["abufs"].c_str(), NULL, 10);
 	}
 
-	if (ini["main"].has("rtc")) {
-		if (!strcmp(ini["main"]["rtc"].c_str(), "true")) {
-			Options.set_system_time = true;
-		}
+	if (ini.has("rtc") && ini["rtc"] == "true") {
+		opts.set_system_time = true;
 	}
 
-	if (ini["main"].has("nobinds")) {
-		if (!strcmp(ini["main"]["nobinds"].c_str(), "true")) {
-			Options.no_keybinds = true;
-		}
+	if (ini.has("nobinds") && ini["nobinds"] == "true") {
+		opts.no_keybinds = true;
 	}
 
-	if (ini["main"].has("ymirq")) {
-		if (!strcmp(ini["main"]["ymirq"].c_str(), "true")) {
-			Options.ym_irq = true;
-		}
+	if (ini.has("ymirq") && ini["ymirq"] == "true") {
+		opts.ym_irq = true;
 	}
 
-	if (ini["main"].has("ymstrict")) {
-		if (!strcmp(ini["main"]["ymstrict"].c_str(), "true")) {
-			Options.ym_strict = true;
-		}
+	if (ini.has("ymstrict") && ini["ymstrict"] == "true") {
+		opts.ym_strict = true;
 	}
+
+	return nullptr;
 }
 
 static void set_ini(mINI::INIStructure &ini, bool all)
 {
+	auto &ini_main = ini["main"];
+
 	std::stringstream value;
 
 	auto set_option = [&](const char *name, auto option_value, auto default_value) {
 		if constexpr (std::is_same<decltype(option_value), char *>::value) {
 			if (all || strcmp(option_value, default_value)) {
-				ini["main"][name] = option_value;
+				ini_main[name] = option_value;
 			}
 		} else if constexpr (std::is_same<decltype(option_value), const char *>::value) {
 			if (all || strcmp(option_value, default_value)) {
-				ini["main"][name] = option_value;
+				ini_main[name] = option_value;
 			}
 		} else if constexpr (std::is_same<decltype(option_value), bool>::value) {
 			if (all || option_value != default_value) {
-				ini["main"][name] = option_value ? "true" : "false";
+				ini_main[name] = option_value ? "true" : "false";
+			}
+		} else if constexpr (std::is_same<decltype(option_value), std::filesystem::path>::value) {
+			if (all || option_value != default_value) {
+				ini_main[name] = option_value.generic_string();
 			}
 		} else {
 			if (all || option_value != default_value) {
 				value << option_value;
-				ini["main"][name] = value.str();
+				ini_main[name] = value.str();
+				value.str(std::string());
+			}
+		}
+	};
+
+	auto set_comma_option = [&](const char *name, auto option_value1, auto default_value1, auto option_value2, auto default_value2) {
+		if constexpr (std::is_same<decltype(option_value1), char *>::value) {
+			if (all || strcmp(option_value1, default_value1)) {
+				ini_main[name] = option_value1;
+			}
+		} else if constexpr (std::is_same<decltype(option_value1), const char *>::value) {
+			if (all || strcmp(option_value1, default_value1)) {
+				ini_main[name] = option_value1;
+			}
+		} else if constexpr (std::is_same<decltype(option_value1), bool>::value) {
+			if (all || option_value1 != default_value1) {
+				ini_main[name] = option_value1 ? "true" : "false";
+			}
+		} else if constexpr (std::is_same<decltype(option_value1), std::filesystem::path>::value) {
+			if (all || option_value1 != default_value1) {
+				ini_main[name] = option_value1.generic_string();
+			}
+		} else {
+			if (all || option_value1 != default_value1) {
+				value << option_value1;
+				ini_main[name] = value.str();
+				value.str(std::string());
+			}
+		}
+
+		if constexpr (std::is_same<decltype(option_value2), char *>::value) {
+			if (all || strcmp(option_value2, default_value2)) {
+				ini_main[name].append(",");
+				ini_main[name].append(option_value2);
+			}
+		} else if constexpr (std::is_same<decltype(option_value2), const char *>::value) {
+			if (all || strcmp(option_value2, default_value2)) {
+				ini_main[name].append(",");
+				ini_main[name].append(option_value2);
+			}
+		} else if constexpr (std::is_same<decltype(option_value2), bool>::value) {
+			if (all || option_value2 != default_value2) {
+				ini_main[name].append(",");
+				ini_main[name].append(option_value2 ? "true" : "false");
+			}
+		} else if constexpr (std::is_same<decltype(option_value2), std::filesystem::path>::value) {
+			if (all || option_value2 != default_value2) {
+				ini_main[name].append(",");
+				ini_main[name].append(option_value2.generic_string());
+			}
+		} else {
+			if (all || option_value2 != default_value2) {
+				ini_main[name].append(",");
+				value << option_value2;
+				ini_main[name].append(value.str());
 				value.str(std::string());
 			}
 		}
@@ -859,10 +952,10 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 
 	auto echo_mode_str = [](echo_mode_t mode) -> const char * {
 		switch (mode) {
-			case ECHO_MODE_NONE: return "none";
-			case ECHO_MODE_RAW: return "raw";
-			case ECHO_MODE_ISO: return "iso";
-			case ECHO_MODE_COOKED: return "cooked";
+			case echo_mode_t::ECHO_MODE_NONE: return "none";
+			case echo_mode_t::ECHO_MODE_RAW: return "raw";
+			case echo_mode_t::ECHO_MODE_ISO: return "iso";
+			case echo_mode_t::ECHO_MODE_COOKED: return "cooked";
 		}
 		return "none";
 	};
@@ -878,12 +971,29 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 
 	auto vsync_mode_str = [](vsync_mode_t mode) -> const char * {
 		switch (mode) {
-			case VSYNC_MODE_NONE: return "none";
-			case VSYNC_MODE_GET_SYNC: return "get";
-			case VSYNC_MODE_WAIT_SYNC: return "wait";
-			case VSYNC_MODE_DEBUG: return "debug";
+			case vsync_mode_t::VSYNC_MODE_NONE: return "none";
+			case vsync_mode_t::VSYNC_MODE_GET_SYNC: return "get";
+			case vsync_mode_t::VSYNC_MODE_WAIT_SYNC: return "wait";
+			case vsync_mode_t::VSYNC_MODE_DEBUG: return "debug";
 		}
 		return "none";
+	};
+
+	auto gif_recorder_start_str = [](gif_recorder_start_t mode) -> const char * {
+		switch (mode) {
+			case gif_recorder_start_t::GIF_RECORDER_START_NOW: return "now";
+			case gif_recorder_start_t::GIF_RECORDER_START_WAIT: return "wait";
+		}
+		return "now";
+	};
+
+	auto wav_recorder_start_str = [](wav_recorder_start_t mode) -> const char * {
+		switch (mode) {
+			case wav_recorder_start_t::WAV_RECORDER_START_NOW: return "now";
+			case wav_recorder_start_t::WAV_RECORDER_START_WAIT: return "wait";
+			case wav_recorder_start_t::WAV_RECORDER_START_AUTO: return "auto";
+		}
+		return "now";
 	};
 
 	set_option("rom", Options.rom_path, Default_options.rom_path);
@@ -891,7 +1001,7 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 	set_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
 	set_option("keymap", keymaps[Options.keymap], keymaps[Default_options.keymap]);
 	set_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
-	set_option("prg", Options.prg_path, Default_options.prg_path);
+	set_comma_option("prg", Options.prg_path, Default_options.prg_path, Options.prg_override_start, Default_options.prg_override_start);
 	set_option("run", Options.run_after_load, Default_options.run_after_load);
 	set_option("bas", Options.bas_path, Default_options.bas_path);
 	set_option("geos", Options.run_geos, Default_options.run_geos);
@@ -911,7 +1021,7 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 		if (Options.log_video) {
 			value << "v";
 		}
-		ini["main"]["log"] = value.str();
+		ini_main["log"] = value.str();
 		value.str(std::string());
 	}
 
@@ -928,12 +1038,12 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 		if (Options.dump_vram) {
 			value << "v";
 		}
-		ini["main"]["dump"] = value.str();
+		ini_main["dump"] = value.str();
 		value.str(std::string());
 	}
 
-	set_option("gif", Options.gif_path, Default_options.gif_path);
-	set_option("wav", Options.wav_path, Default_options.wav_path);
+	set_comma_option("gif", Options.gif_path, Default_options.gif_path, gif_recorder_start_str(Options.gif_start), gif_recorder_start_str(Default_options.gif_start));
+	set_comma_option("wav", Options.wav_path, Default_options.wav_path, wav_recorder_start_str(Options.wav_start), wav_recorder_start_str(Default_options.wav_start));
 	set_option("stds", Options.load_standard_symbols, Default_options.load_standard_symbols);
 	set_option("scale", Options.window_scale, Default_options.window_scale);
 	set_option("quality", quality_str(Options.scale_quality), quality_str(Default_options.scale_quality));
@@ -949,60 +1059,90 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 
 void apply_ini(mINI::INIStructure &dst, const mINI::INIStructure &src)
 {
-	for (const auto& i : src) {
+	for (const auto &i : src) {
 		dst.set(i.first, i.second);
 	}
 }
 
-
-void load_options(const char *base_path, const char *prefs_path, int argc, char **argv)
+void options_init(const char *base_path, const char *prefs_path, int argc, char **argv)
 {
 	if (base_path != nullptr) {
-		strncpy(Options_base_path, base_path, PATH_MAX);
-		fixup_directory(Options_base_path);
+		Options_base_path = base_path;
 	} else {
-		Options_base_path[0] = 0;
+		Options_base_path = ".";
 	}
 
 	if (prefs_path != nullptr) {
-		strncpy(Options_prefs_path, prefs_path, PATH_MAX);
-		fixup_directory(Options_prefs_path);
-
-		snprintf(Options_ini_path, PATH_MAX, "%.*s/box16.ini", PATH_MAX - 11, Options_prefs_path);
-		Options_ini_path[PATH_MAX - 1] = 0;
+		Options_prefs_path = prefs_path;
 	} else {
-		snprintf(Options_ini_path, PATH_MAX, "box16.ini");
-		Options_ini_path[PATH_MAX - 1] = 0;
+		Options_prefs_path = ".";
 	}
 
-	mINI::INIFile      file(Options_ini_path);
-	bool force_write = !file.read(Inifile_ini);
+	auto &cmdline_main = Cmdline_ini["main"];
+	parse_cmdline(cmdline_main, argc, argv);
 
-	parse_cmdline(Cmdline_ini, argc, argv);
+	if (cmdline_main.has("verbose")) {
+		Options.log_verbose = true;
+	}
 
-	mINI::INIStructure options_ini = Inifile_ini;
-	for (const auto &section : Cmdline_ini) {
-		for (const auto &key : section.second) {
-			options_ini[section.first][key.first] = key.second;
+	if (cmdline_main.has("create_patch")) {
+		if (cmdline_main["create_patch"] == "true") {
+			Options.create_patch = true;
+			Options.patch_target = cmdline_main["patch_target"];
 		}
 	}
 
-	set_options(options_ini);
+	bool have_ini = false;
+	if (cmdline_main.has("ini")) {
+		have_ini = options_find_file(Options_ini_path, std::filesystem::absolute(cmdline_main["ini"]));
+	} else {
+		have_ini = options_find_file(Options_ini_path, "box16.ini");
+	}
 
-	if (force_write) {
-		save_options(true);
+	if (!cmdline_main.has("ignore_ini") || cmdline_main["ignore_ini"] != "true") {
+		if (have_ini) {
+			mINI::INIFile file(Options_ini_path.generic_string());
+			file.read(Inifile_ini);
+		} else {
+			options_get_prefs_path(Options_ini_path, "box16.ini");
+		}
+	}
+
+	auto &inifile_main = Inifile_ini["main"];
+
+	auto apply_ini = [&](mINI::INIMap<std::string> &ini) {
+		const char *fail = set_options(Options, ini);
+		if (fail != nullptr) {
+			printf("Error applying ini file option \"%s\"\n", fail);
+
+			if (!strcmp(fail, "ram")) {
+				usage_ram();
+			} else if (!strcmp(fail, "keymap")) {
+				usage_keymap();
+			} else {
+				usage();
+			}
+			exit(1);
+		}
+	};
+
+	apply_ini(inifile_main);
+	apply_ini(cmdline_main);
+
+	if (cmdline_main.has("save_ini")) {
+		save_options(false);
 	}
 }
 
 void load_options()
 {
-	mINI::INIFile      file(Options_ini_path);
+	mINI::INIFile      file(Options_ini_path.generic_string());
 	mINI::INIStructure ini;
 
 	bool force_write = !file.read(ini);
 
 	if (!force_write) {
-		set_options(ini);
+		set_options(Options, ini["main"]);
 	} else {
 		save_options(true);
 	}
@@ -1010,7 +1150,7 @@ void load_options()
 
 void save_options(bool all)
 {
-	mINI::INIFile      file(Options_ini_path);
+	mINI::INIFile      file(Options_ini_path.generic_string());
 	mINI::INIStructure ini;
 
 	set_ini(ini, all);
@@ -1018,51 +1158,22 @@ void save_options(bool all)
 	file.generate(ini);
 }
 
-#if defined(WIN32)
-static bool is_absolute_path(const char *path)
+size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path)
 {
-	return (isalpha(path[0]) && path[1] == ':' && (path[2] == '\\' || path[2] == '/')) || (path[0] == '\\' && path[1] == '\\');
-}
-#else
-static bool is_absolute_path(const char *path)
-{
-	return path[0] == '/';
-}
-#endif
-
-static int options_get_derived_path(char *derived_path, const char *path, const char *base_path)
-{
-	int path_len = 0;
-
-	if (is_absolute_path(path) || strlen(base_path) == 0 || strcmp(base_path, ".") == 0) {
-		path_len = sprintf(derived_path, "%s", path);
-	} else {
-		path_len = snprintf(derived_path, PATH_MAX, "%s/%s", base_path, path);
-		path_len = path_len < (PATH_MAX - 1) ? path_len : (PATH_MAX - 1);
-
-		derived_path[path_len] = '\0';
-	}
-	return path_len;
+	real_path = Options_base_path / path;
+	return real_path.generic_string().length();
 }
 
-int options_get_base_path(char *real_path, const char *path)
+size_t options_get_prefs_path(std::filesystem::path &real_path, const std::filesystem::path &path)
 {
-	return options_get_derived_path(real_path, path, Options_base_path);
+	real_path = Options_prefs_path / path;
+	return real_path.generic_string().length();
 }
 
-int options_get_prefs_path(char *real_path, const char *path)
+size_t options_get_hyper_path(std::filesystem::path &real_path, const std::filesystem::path &path)
 {
-	return options_get_derived_path(real_path, path, Options_prefs_path);
-}
-
-int options_get_relative_path(char *real_path, const char *path)
-{
-	return options_get_derived_path(real_path, path, "./");
-}
-
-int options_get_hyper_path(char *hyper_path, const char *path)
-{
-	return options_get_derived_path(hyper_path, path, Options.hyper_path);
+	real_path = Options.hyper_path / path;
+	return real_path.generic_string().length();
 }
 
 bool option_cmdline_option_was_set(char const *cmdline_option)
@@ -1094,4 +1205,52 @@ char const *option_get_source_name(option_source source)
 		case option_source::INIFILE: return "Ini file";
 	}
 	return "Unknown";
+}
+
+bool options_find_file(std::filesystem::path &real_path, const std::filesystem::path &search_path)
+{
+	options_log_verbose("Finding file: %s\n", search_path.generic_string().c_str());
+
+	// 1. Local CWD or absolute path
+	real_path = search_path;
+	if (std::filesystem::exists(real_path)) {
+		options_log_verbose("Found file: %s (%s)\n", real_path.generic_string().c_str(), std::filesystem::absolute(real_path).generic_string().c_str());
+		return true;
+	}
+
+	if (!search_path.is_absolute()) {
+		// 2. Relative to the location of box16.exe
+		real_path = Options_base_path / search_path;
+		if (std::filesystem::exists(real_path)) {
+			options_log_verbose("Found file: %s (%s)\n", real_path.generic_string().c_str(), std::filesystem::absolute(real_path).generic_string().c_str());
+			return true;
+		}
+
+		// 3. Relative to the prefs directory
+		real_path = Options_prefs_path / search_path;
+		if (std::filesystem::exists(real_path)) {
+			options_log_verbose("Found file: %s (%s)\n", real_path.generic_string().c_str(), std::filesystem::absolute(real_path).generic_string().c_str());
+			return true;
+		}
+	}
+
+	printf("Could not find %s in the following locations:\n", search_path.generic_string().c_str());
+	printf("\t%s\n", search_path.generic_string().c_str());
+	if (!search_path.is_absolute()) {
+		printf("\t%s\n", (Options_base_path / search_path).generic_string().c_str());
+		printf("\t%s\n", (Options_prefs_path / search_path).generic_string().c_str());
+	}
+	return false;
+}
+
+int options_log_verbose(const char *format, ...)
+{
+	if (Options.log_verbose) {
+		va_list ap;
+		va_start(ap, format);
+		int result = vprintf(format, ap);
+		va_end(ap);
+		return result;
+	}
+	return 0;
 }
