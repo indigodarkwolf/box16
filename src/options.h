@@ -56,7 +56,7 @@ struct options {
 	bool create_patch = false;
 	bool apply_patch  = false;
 
-	int  prg_override_start = 0;
+	uint16_t  prg_override_start = 0;
 
 	gif_recorder_start_t gif_start = gif_recorder_start_t::GIF_RECORDER_START_NOW;
 	wav_recorder_start_t wav_start = wav_recorder_start_t::WAV_RECORDER_START_NOW;
