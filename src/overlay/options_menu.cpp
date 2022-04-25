@@ -72,7 +72,7 @@ void draw_options_menu()
 			}
 		}
 		ImGui::SameLine();
-		ImGui::InputText("Hypercall Path", Options.hyper_path, PATH_MAX);
+		ImGui::InputText("Hypercall Path", Options.hyper_path);
 	}
 	ImGui::EndGroup();
 	if (ImGui::IsItemHovered()) {
