@@ -4,6 +4,7 @@
 #include "imgui/imgui.h"
 #include "nfd.h"
 #include "options.h"
+#include "util.h"
 #include "ym2151/ym2151.h"
 
 void draw_options_menu()
@@ -95,6 +96,10 @@ void draw_options_menu()
 	bool_option(Options.apply_patch, "Ignore patch", "Ignore the patch file, if any.\nCommand line: -nopatch");
 
 	file_option("prg", Options.prg_path, "PRG path", "PRG file to LOAD after boot, if any.\nCommand line: -prg <path>");
+	ImGui::InputHexLabel("Load address override", Options.prg_override_start);
+	if (ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Address to load the PRG to. Leave as 0000 if not overriding the file.");
+	}
 	file_option("bas", Options.bas_path, "BAS path", "Text BAS file to automatically type into the console after boot, if any.\nCommand line: -bas <path>");
 
 	bool_option(Options.run_after_load, "Run after load", "If a PRG or BAS file is set to be loaded, run it immediately.\nCommand line: -run");
@@ -261,7 +266,7 @@ void draw_options_menu()
 	};
 
 	if (ImGui::BeginCombo("Vsync Mode", vsync_name(Options.vsync_mode))) {
-		auto selection = [](vsync_mode_t vsync_mode) {
+		static auto selection = [](vsync_mode_t vsync_mode) {
 			if (ImGui::Selectable(vsync_name(vsync_mode), Options.vsync_mode == vsync_mode)) {
 				Options.vsync_mode = vsync_mode;
 			}
@@ -278,7 +283,53 @@ void draw_options_menu()
 	}
 
 	file_option("gif", Options.gif_path, "GIF path", "Location to save gifs\nCommand line: -gif <path>[,wait]");
+
+	static auto gif_recorder_start_name = [](gif_recorder_start_t start) {
+		switch (start) {
+			case gif_recorder_start_t::GIF_RECORDER_START_WAIT: return "Wait";
+			case gif_recorder_start_t::GIF_RECORDER_START_NOW: return "Immediate";
+			default: return "Immediate";
+		}
+	};
+
+	if (ImGui::BeginCombo("GIF Record Start", gif_recorder_start_name(Options.gif_start))) {
+		static auto selection = [](gif_recorder_start_t start) {
+			if (ImGui::Selectable(gif_recorder_start_name(start), Options.gif_start == start)) {
+				Options.gif_start = start;
+			}
+		};
+
+		selection(gif_recorder_start_t::GIF_RECORDER_START_NOW);
+		selection(gif_recorder_start_t::GIF_RECORDER_START_WAIT);
+
+		ImGui::EndCombo();
+	}
+
 	file_option("wav", Options.wav_path, "WAV path", "Location to save wavs\nCommand line: -wav <path>[{,wait|,auto}]");
+
+	static auto wav_recorder_start_name = [](wav_recorder_start_t start) {
+		switch (start) {
+			case wav_recorder_start_t::WAV_RECORDER_START_WAIT: return "Wait";
+			case wav_recorder_start_t::WAV_RECORDER_START_AUTO: return "Auto";
+			case wav_recorder_start_t::WAV_RECORDER_START_NOW: return "Immediate";
+			default: return "Immediate";
+		}
+	};
+
+	if (ImGui::BeginCombo("WAV Record Start", wav_recorder_start_name(Options.wav_start))) {
+		static auto selection = [](wav_recorder_start_t start) {
+			if (ImGui::Selectable(wav_recorder_start_name(start), Options.wav_start == start)) {
+				Options.wav_start = start;
+			}
+		};
+
+		selection(wav_recorder_start_t::WAV_RECORDER_START_NOW);
+		selection(wav_recorder_start_t::WAV_RECORDER_START_WAIT);
+		selection(wav_recorder_start_t::WAV_RECORDER_START_AUTO);
+
+		ImGui::EndCombo();
+	}
+
 	bool_option(Options.load_standard_symbols, "Load Standard Symbols", "Load all symbols files typically included with ROM distributions.\nCommand line: -stds");
 
 	bool_option(Options.no_keybinds, "No Keybinds", "Disable all emulator keyboard bindings.\nDoes not affect F12 (emulator debug break) or key shortcuts when the ASM Monitor is open.\nCommand line: -nobinds");
