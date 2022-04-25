@@ -872,7 +872,7 @@ public:
 		avail.x -= 256;
 		ImGui::BeginChild("tiles", avail, false, ImGuiWindowFlags_HorizontalScrollbar);
 		{
-			if (!active_exist) {
+			if (!active_exist || active.tile_height == 0 || active.view_size == 0) {
 				ImGui::EndChild();
 				ImGui::EndGroup();
 				return;
@@ -1105,7 +1105,7 @@ public:
 		bpp        = 1 << active.color_depth;
 		tile_width = row_sizes[active.tile_w_sel] * 8;
 		tile_size  = row_sizes[active.tile_w_sel] * active.tile_height * bpp;
-		num_tiles  = ceil_div_int(active.view_size, tile_size);
+		num_tiles  = (tile_size > 0) ? ceil_div_int(active.view_size, tile_size) : 1;
 
 		// save settings
 		if (save_clicked) {
@@ -1341,7 +1341,9 @@ public:
 				}
 			}
 		}
-		tiles_preview.load_memory(pixels.data(), total_width, total_height, total_width, total_height);
+		if (pixels.data() != nullptr) {
+			tiles_preview.load_memory(pixels.data(), total_width, total_height, total_width, total_height);
+		}
 	}
 
 	void set_params(const vera_video_layer_properties &props, int palette_offset_)
@@ -1360,8 +1362,8 @@ public:
 		map_height     = 1 << props.maph_log2;
 		total_width    = bitmap_mode ? tile_width : tile_width * map_width;
 		total_height   = bitmap_mode ? 480 : tile_height * map_height;
-		scroll_x       = props.hscroll % total_width;
-		scroll_y       = props.vscroll % total_height;
+		scroll_x       = total_width > 0 ? (props.hscroll % total_width) : 0;
+		scroll_y       = total_height > 0 ? (props.vscroll % total_height) : 0;
 		palette_offset = palette_offset_;
 
 		if (!bitmap_mode && cur_tile >= map_width * map_height)
