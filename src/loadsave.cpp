@@ -124,14 +124,14 @@ static int create_directory_listing(uint8_t *data)
 
 void LOAD()
 {
-	char const *kernal_filename = (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8];
-	uint16_t    override_start  = (x | (y << 8));
+	char const    *kernal_filename = (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8];
+	const uint16_t override_start  = (x | (y << 8));
 
 	if (kernal_filename[0] == '$') {
-		uint16_t dir_len = create_directory_listing(RAM + override_start);
-		uint16_t end     = override_start + dir_len;
-		x                = end & 0xff;
-		y                = end >> 8;
+		const uint16_t dir_len = create_directory_listing(RAM + override_start);
+		const uint16_t end     = override_start + dir_len;
+		x                      = end & 0xff;
+		y                      = end >> 8;
 		status &= 0xfe;
 		RAM[STATUS] = 0;
 		a           = 0;
@@ -150,14 +150,19 @@ void LOAD()
 			status |= 1;
 			return;
 		}
-		uint8_t start_lo = SDL_ReadU8(f);
-		uint8_t start_hi = SDL_ReadU8(f);
+		const uint8_t sa       = RAM[SA];
+		const uint8_t start_lo = SDL_ReadU8(f);
+		const uint8_t start_hi = SDL_ReadU8(f);
+		uint16_t      start    = [override_start, sa, start_lo, start_hi]() -> uint16_t {
+            if (sa & 1) {
+                return start_hi << 8 | start_lo;
+            } else {
+                return override_start;
+            }
+		}();
 
-		uint16_t start;
-		if (!RAM[SA]) {
-			start = override_start;
-		} else {
-			start = start_hi << 8 | start_lo;
+		if (sa & 0x2) {
+			SDL_RWseek(f, -2, RW_SEEK_CUR);
 		}
 
 		uint16_t bytes_read = 0;
@@ -169,8 +174,9 @@ void LOAD()
 			uint8_t buf[2048];
 			while (1) {
 				uint16_t n = (uint16_t)SDL_RWread(f, buf, 1, sizeof buf);
-				if (n == 0)
+				if (n == 0) {
 					break;
+				}
 				for (size_t i = 0; i < n; i++) {
 					vera_video_write(3, buf[i]);
 				}
