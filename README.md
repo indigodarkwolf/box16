@@ -56,8 +56,8 @@ Read `resources/r39/README` and build or acquire the necessary files.
 
 The needed development packages are available as a distribution package with most major versions of Linux:
 - Debian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
-- Raspbian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
 - Fedora 33: `sudo dnf install glew-devel SDL2-devel SDL2_image-devel`
+- Raspbian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
 
 Type `make` to build the source. The output will be `box16` in the output directory. Remember you will also need a `rom.bin` as described above.
 
@@ -72,6 +72,28 @@ Open build\vs2019\box16.sln with Visual Studio Community 2022.
 Select `Build All` from the `Build` menu.
 
 The built .exe and associated files should be located in `build\vs2019\out`, plus a few more subdirectories based on the exact build generated.
+
+
+Releases
+--------
+
+As of 3 May 2022, the only release process is to package up the Windows builds. Creating these packages are meant as a convenience for Windows users
+who may not be willing to build Box16 for themselves.
+
+### Building release zips
+
+Follow the instructions for making a Windows build, above.
+
+Install the Windows Subsystem for Linux (WSL2). See the instructions at https://docs.microsoft.com/en-us/windows/wsl/install.
+As of 27 April 2022, most of this should be as simple as running "wsl --install" from a PowerShell or Windows Command Prompt with *administrator* permissions.
+
+The needed development packages are available as a distribution package with most major versions of Linux, even for WSL2.
+- Debian: `sudo apt-get install p7zip-full`
+- Raspbian: `sudo apt-get install p7zip-full`
+
+In the Linux shell, go to the `build` directory from your Box16 repository directory.
+
+Type `make release` to create all the zip files.
 
 Starting
 --------

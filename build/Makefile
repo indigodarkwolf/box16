@@ -5,16 +5,23 @@
 #-------------------------
 
 PROJECT := box16
+RELEASE := nr39.3
 
 REPODIR := ..
 OBJDIR := obj
 SRCDIR := $(REPODIR)/src
 OUTDIR := box16
 
+RELDIR := $(REPODIR)/release
+RELNAME := box16-$(RELEASE)-$(VSBUILD)
+ZIPSDIR := $(RELDIR)/$(RELNAME)
+VSDIR := vs2019/out/$(VSBUILD)/Release
+
 VENDORSRC := $(REPODIR)/vendor
 VENDOROBJ := $(OBJDIR)/vendor
 
 PKGCONFIG := pkg-config
+MKDIR := mkdir -p
 
 CFLAGS := --std=c++17 $(DFLAGS)
 CWARNS := -Wformat -Wformat-security -Wpedantic
@@ -109,7 +116,26 @@ profiling:
 all: $(OUTDIR)/box16
 
 clean:
-	rm -rf obj
+	rm -rf $(OBJDIR)
+	rm -rf $(RELDIR)
+
+release:
+	$(MAKE) zips VSBUILD="Win32"
+	$(MAKE) zips VSBUILD="x64"
+
+zips:
+	if [ ! -d $(ZIPSDIR) ]; then $(MKDIR) $(ZIPSDIR); fi
+	cp $(VSDIR)/Box16.exe $(ZIPSDIR)/
+	cp $(VSDIR)/glew32.dll $(ZIPSDIR)/
+	cp $(VSDIR)/SDL2.dll $(ZIPSDIR)/
+	cp $(VSDIR)/box16-icon56-24.png $(ZIPSDIR)/
+	cp $(VSDIR)/icons.png $(ZIPSDIR)/
+	cp $(VSDIR)/README.box16 $(ZIPSDIR)/
+	cd $(RELDIR) && tar -cvf $(RELNAME).tar $(RELNAME)/*
+	cd $(RELDIR) && 7z a -t7z $(RELNAME).7z $(RELNAME)/*
+	cd $(RELDIR) && 7z a -tzip $(RELNAME).zip $(RELNAME)/*
+	cd $(RELDIR) && 7z a -tgzip $(RELNAME).tar.gz $(RELNAME).tar
+	cd $(RELDIR) && 7z a -tbzip2 $(RELNAME).tar.bz2 $(RELNAME).tar
 
 #=========================
 #
