@@ -6,7 +6,7 @@
 //
 // YM2151 wrapper around ymfm's API
 //
-// Copyright (c) 2021, Stephen Horn
+// Copyright (c) 2021-2022 Stephen Horn, et al.
 // All Rights Reserved. License: 2-clause BSD
 //
 //---------------------------------------------

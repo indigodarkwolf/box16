@@ -1,5 +1,6 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
+// Copyright (c) 2021-2022 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #include "loadsave.h"
@@ -20,7 +21,7 @@
 #define MIN(a, b) (((a) < (b)) ? (a) : (b))
 #define MAX(a, b) (((a) > (b)) ? (a) : (b))
 
-static int create_directory_listing(uint8_t *data)
+int create_directory_listing(uint8_t *data)
 {
 	uint8_t *data_start = data;
 	int      file_size;

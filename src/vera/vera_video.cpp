@@ -1,6 +1,7 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
 // Copyright (c) 2020 Frank van den Hoef
+// Copyright (c) 2021-2022 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #include "vera_video.h"

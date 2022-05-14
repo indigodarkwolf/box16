@@ -43,11 +43,12 @@ static const char *token_or_empty(char *str, const char *token)
 static void usage()
 {
 	printf("%s %s (%s)\n", VER_TITLE, VER_NUM, VER_NAME);
-	printf("Portions (C)2019,2020 Michael Steil et al.\n");
-	printf("Portions (C)2021,2022 Stephen Horn et al.\n");
+	printf("Copyright (c) 2019-2022 Michael Steil,\n");
+	printf("              2020 Frank van den Hoen,\n");
+	printf("              2021-2022 Stephen Horn, et al.\n");
 	printf("All rights reserved. License: 2-clause BSD\n\n");
 
-	printf("Usage: x16emu [option] ...\n\n");
+	printf("Usage: box16 [option] ...\n\n");
 
 	printf("-abufs <number of audio buffers>\n");
 	printf("\tIs provided for backward-compatibility with x16emu toolchains,\n");
@@ -110,6 +111,9 @@ static void usage()
 	printf("-nobinds\n");
 	printf("\tDisable most emulator keyboard shortcuts.\n");
 
+	printf("-nohostieee\n");
+	printf("\tDisable IEEE-488 hypercalls. These are normally enabled unless an SD card is attached or -serial is specified.\n");
+
 	printf("-nopatch\n");
 	printf("\tThis is an alias for -ignore_patch.\n");
 
@@ -156,6 +160,9 @@ static void usage()
 
 	printf("-sdcard <sdcard.img>\n");
 	printf("\tSpecify SD card image (partition map + FAT32)\n");
+
+	printf("-serial\n");
+	printf("\tEnable the serial bus (experimental)\n");
 
 	printf("-sound <output device>\n");
 	printf("\tSet the output device used for audio emulation. Incompatible with -nosound.\n");
@@ -398,6 +405,11 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			ini["nobinds"] = "true";
+		
+		} else if (!strcmp(argv[0], "-nohostieee")) {
+			argc--;
+			argv++;
+			ini["nohostieee"] = "true";
 
 		} else if (!strcmp(argv[0], "-nopatch")) {
 			argc--;
@@ -511,6 +523,11 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			ini["sdcard"] = argv[0];
 			argc--;
 			argv++;
+
+		} else if (!strcmp(argv[0], "-serial")) {
+			argc--;
+			argv++;
+			ini["serial"] = true;
 
 		} else if (!strcmp(argv[0], "-sound")) {
 			argc--;
@@ -825,6 +842,10 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		}
 	}
 
+	if (ini.has("serial") && ini["serial"] == "true") {
+		opts.enable_serial = true;
+	}
+
 	if (ini.has("nosound") && ini["nosound"] == "true") {
 		if (ini.has("sound")) {
 			return "nosound";
@@ -850,6 +871,10 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 
 	if (ini.has("nobinds") && ini["nobinds"] == "true") {
 		opts.no_keybinds = true;
+	}
+
+	if (ini.has("nohostieee") && ini["nohostieee"] == "true") {
+		opts.no_ieee_hypercalls = true;
 	}
 
 	if (ini.has("ymirq") && ini["ymirq"] == "true") {
@@ -1053,6 +1078,8 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 	set_option("abufs", Options.audio_buffers, Default_options.audio_buffers);
 	set_option("rtc", Options.set_system_time, Default_options.set_system_time);
 	set_option("nobinds", Options.no_keybinds, Default_options.no_keybinds);
+	set_option("nohostieee", Options.no_ieee_hypercalls, Default_options.no_ieee_hypercalls);
+	set_option("serial", Options.enable_serial, Default_options.enable_serial);
 	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
 	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
 }

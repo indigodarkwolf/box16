@@ -1,5 +1,6 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
+// Copyright (c) 2021-2022 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #include "memory.h"
@@ -177,7 +178,7 @@ uint8_t debug_emu_read(uint8_t reg)
 		case 4: return save_on_exit ? 1 : 0;
 		case 5: return gif_recorder_get_state();
 		case 6: return wav_recorder_get_state();
-		//case 7: return -1;
+		case 7: return Options.no_keybinds ? 1 : 0;
 		case 8: return (clockticks6502 >> 0) & 0xff;
 		case 9: return (clockticks6502 >> 8) & 0xff;
 		case 10: return (clockticks6502 >> 16) & 0xff;
@@ -200,7 +201,7 @@ uint8_t real_emu_read(uint8_t reg)
 		case 4: return save_on_exit ? 1 : 0;
 		case 5: return gif_recorder_get_state();
 		case 6: return wav_recorder_get_state();
-		//case 7: return -1; // Reserved for toggling key chords.
+		case 7: return Options.no_keybinds ? 1 : 0;
 		case 8: return (clockticks6502 >> 0) & 0xff;
 		case 9: return (clockticks6502 >> 8) & 0xff;
 		case 10: return (clockticks6502 >> 16) & 0xff;
@@ -217,7 +218,7 @@ uint8_t real_emu_read(uint8_t reg)
 
 void emu_write(uint8_t reg, uint8_t value)
 {
-	bool v = value != 0;
+	const bool v = (value != 0);
 	switch (reg) {
 		case 0: break; // debugger_enabled = v; break;
 		case 1: vera_video_set_log_video(v); break;
@@ -226,6 +227,7 @@ void emu_write(uint8_t reg, uint8_t value)
 		case 4: save_on_exit = v; break;
 		case 5: gif_recorder_set((gif_recorder_command_t)value); break;
 		case 6: wav_recorder_set((wav_recorder_command_t)value); break;
+		case 7: Options.no_keybinds = v;
 		default: break; // printf("WARN: Invalid register %x\n", DEVICE_EMULATOR + reg);
 	}
 }

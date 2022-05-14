@@ -1,6 +1,16 @@
 Release Notes
 -------------
 
+## Non-Release 39.3 ("Fushimi Inari")
+* Added support for VIA timers. (akumanatt)
+* Can now change v-sync settings. (jburks)
+* First pass at supporting patch files for ROM images.
+* Command line and ini file options overhaul.
+* Fix to resetting during WAI instruction.
+* Added hypercall support for r39 rom's headerless LOAD command.
+* Fixing BRA and BBxn cycles count. (akumanatt)
+* Adjusting video timings to match actual VERA. (akumanatt)
+
 ## Non-Release 39.2 ("Hokkaido Jingu")
 
 * Internals

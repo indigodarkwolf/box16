@@ -1,5 +1,6 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
+// Copyright (c) 2021-2022 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #include <limits.h>
@@ -19,10 +20,11 @@
 #include "display.h"
 #include "gif_recorder.h"
 #include "glue.h"
+#include "hypercalls.h"
+#include "ieee.h"
 #include "i2c.h"
 #include "joystick.h"
 #include "keyboard.h"
-#include "loadsave.h"
 #include "memory.h"
 #include "midi.h"
 #include "options.h"
@@ -31,12 +33,11 @@
 #include "ps2.h"
 #include "ring_buffer.h"
 #include "rom_patch.h"
-#include "rom_symbols.h"
 #include "rtc.h"
 #include "sdl_events.h"
+#include "serial.h"
 #include "symbols.h"
 #include "timing.h"
-#include "unicode.h"
 #include "utf8.h"
 #include "utf8_encode.h"
 #include "vera/sdcard.h"
@@ -142,6 +143,8 @@ int main(int argc, char **argv)
 		vera_video_set_cheat_mask((1 << (Options.warp_factor - 1)) - 1);
 	}
 
+	memory_init();
+
 	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
 		SDL_RWops *f = nullptr;
 
@@ -236,31 +239,9 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!Options.prg_path.empty()) {
-		std::filesystem::path prg_path;
-		options_get_hyper_path(prg_path, Options.prg_path);
-
-		prg_file = SDL_RWFromFile(prg_path.generic_string().c_str(), "rb");
-		if (!prg_file) {
-			printf("Cannot open PRG file %s (%s)!\n", prg_path.generic_string().c_str(), std::filesystem::absolute(prg_path).generic_string().c_str());
-			exit(1);
-		}
-
-		has_boot_tasks = true;
+	if (!hypercalls_init()) {
+		error("Boot error", "Could not initialize hypercalls. Disable hypercalls to boot with this ROM.");
 	}
-
-	if (!Options.bas_path.empty()) {
-		has_boot_tasks = true;
-	}
-
-	if (Options.run_geos) {
-		has_boot_tasks = true;
-	}
-
-	if (Options.run_test) {
-		has_boot_tasks = true;
-	}
-
 
 #ifdef SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR
 	// Don't disable compositing (on KDE for example)
@@ -276,8 +257,6 @@ int main(int argc, char **argv)
 		YM_set_irq_enabled(Options.ym_irq);
 		YM_set_strict_busy(Options.ym_strict);
 	}
-
-	memory_init();
 
 	{
 		display_settings init_settings;
@@ -491,6 +470,9 @@ void emulator_loop()
 		bool    via1_irq_old = via1_irq();
 		via1_step(clocks);
 		via2_step(clocks);
+		if (Options.enable_serial) {
+			serial_step(clocks);
+		}
 		audio_render(clocks);
 
 		if (new_frame) {
@@ -524,114 +506,15 @@ void emulator_loop()
 			}
 		}
 
-		switch (pc) {
-#ifdef LOAD_HYPERCALLS
-			case 0xffd5:
-			case 0xffd8:
-				if (is_kernal() && RAM[FA] == 8 && !sdcard_is_attached()) {
-					if (pc == 0xffd5) {
-						LOAD();
-					} else {
-						SAVE();
-					}
-					pc = (RAM[0x100 + sp + 1] | (RAM[0x100 + sp + 2] << 8)) + 1;
-					sp += 2;
-					continue;
-				}
-				break;
-#endif
-			case 0xffd2:
-				if (Options.echo_mode != echo_mode_t::ECHO_MODE_NONE && is_kernal()) {
-					uint8_t c = a;
-					if (Options.echo_mode == echo_mode_t::ECHO_MODE_COOKED) {
-						if (c == 0x0d) {
-							printf("\n");
-						} else if (c == 0x0a) {
-							// skip
-						} else if (c < 0x20 || c >= 0x80) {
-							printf("\\X%02X", c);
-						} else {
-							printf("%c", c);
-						}
-					} else if (Options.echo_mode == echo_mode_t::ECHO_MODE_ISO) {
-						if (c == 0x0d) {
-							printf("\n");
-						} else if (c == 0x0a) {
-							// skip
-						} else if (c < 0x20 || (c >= 0x80 && c < 0xa0)) {
-							printf("\\X%02X", c);
-						} else {
-							print_iso8859_15_char(c);
-						}
-					} else {
-						printf("%c", c);
-					}
-					fflush(stdout);
-				}
-				break;
+		hypercalls_process();
 
-			case 0xffcf:
-				if (is_kernal()) {
-					if (has_boot_tasks) {
-						// as soon as BASIC starts reading a line...
-						if (prg_file) {
-							// ...inject the app into RAM
-							uint8_t  start_lo = SDL_ReadU8(prg_file);
-							uint8_t  start_hi = SDL_ReadU8(prg_file);
-							uint16_t start;
-							if (Options.prg_override_start > 0) {
-								start = Options.prg_override_start;
-							} else {
-								start = start_hi << 8 | start_lo;
-							}
-							uint16_t end = start + (uint16_t)SDL_RWread(prg_file, RAM + start, 1, 65536 - start);
-							SDL_RWclose(prg_file);
-							prg_file = nullptr;
-							if (start == 0x0801) {
-								// set start of variables
-								RAM[VARTAB]     = end & 0xff;
-								RAM[VARTAB + 1] = end >> 8;
-							}
-
-							if (Options.run_after_load) {
-								if (start == 0x0801) {
-									keyboard_add_text("RUN\r");
-								} else {
-									char sys_text[10];
-									sprintf(sys_text, "SYS$%04X\r", start);
-									keyboard_add_text(sys_text);
-								}
-							}
-						}
-
-						if (!Options.bas_path.empty()) {
-							keyboard_add_file(Options.bas_path.generic_string().c_str());
-							if (Options.run_after_load) {
-								keyboard_add_text("RUN\r");
-							}
-						}
-
-						if (Options.run_geos) {
-							keyboard_add_text("GEOS\r");
-						}
-
-						if (Options.run_test) {
-							char test_text[256];
-							sprintf(test_text, "TEST %d\r", Options.test_number);
-							keyboard_add_text(test_text);
-						}
-
-						has_boot_tasks = false;
-					}
-				}
-				break;
-
-			case 0xffff:
-				if (save_on_exit) {
-					machine_dump();
-				}
-				return;
+		if (pc == 0xffff) {
+			if (save_on_exit) {
+				machine_dump();
+			}
+			return;
 		}
+
 		keyboard_process();
 	}
 }

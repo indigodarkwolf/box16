@@ -56,7 +56,7 @@ struct options {
 	bool create_patch = false;
 	bool apply_patch  = false;
 
-	uint16_t  prg_override_start = 0;
+	uint16_t prg_override_start = 0;
 
 	gif_recorder_start_t gif_start = gif_recorder_start_t::GIF_RECORDER_START_NOW;
 	wav_recorder_start_t wav_start = wav_recorder_start_t::WAV_RECORDER_START_NOW;
@@ -90,10 +90,12 @@ struct options {
 	bool        no_sound       = false;
 	int         audio_buffers  = 8;
 
-	bool set_system_time = false;
-	bool no_keybinds     = false;
-	bool ym_irq          = false;
-	bool ym_strict       = false;
+	bool set_system_time    = false;
+	bool no_keybinds        = false;
+	bool no_ieee_hypercalls = false;
+	bool enable_serial      = false;
+	bool ym_irq             = false;
+	bool ym_strict          = false;
 };
 
 extern options Options;

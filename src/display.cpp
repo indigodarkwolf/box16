@@ -2,7 +2,7 @@
 
 MIT License
 
-Copyright (c) 2021 Stephen Horn
+Copyright (c) 2021-2022 Stephen Horn, et al.
 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy

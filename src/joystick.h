@@ -1,3 +1,7 @@
+// Commander X16 Emulator
+// Copyright (c) 2021-2022 Stephen Horn, et al.
+// All rights reserved. License: 2-clause BSD
+
 #pragma once
 #ifndef JOYSTICK_H
 #	define JOYSTICK_H

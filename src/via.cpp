@@ -1,5 +1,6 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
+// Copyright (c) 2021-2022 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #include "via.h"
@@ -14,6 +15,7 @@
 #include "joystick.h"
 #include "memory.h"
 #include "ps2.h"
+#include "serial.h"
 
 static struct via_t {
 	unsigned timer_count[2];
@@ -212,19 +214,12 @@ static void via_step(via_t *via, unsigned clocks)
 // VIA#1
 //
 // PA0: PS2KDAT   PS/2 DATA keyboard
-// PB0-2 ROM bank
 // PA1: PS2KCLK   PS/2 CLK  keyboard
-// PB3   IECATT0
 // PA2: NESLATCH  NES LATCH (for all controllers)
-// PB4   IECCLK0
 // PA3: NESCLK    NES CLK   (for all controllers)
-// PB5   IECDAT0
 // PA4: NESDAT3   NES DATA  (controller 3)
-// PB6   IECCLK
 // PA5: NESDAT2   NES DATA  (controller 2)
-// PB7   IECDAT
 // PA6: NESDAT1   NES DATA  (controller 1)
-// CB1   IECSRQ
 // PA7: NESDAT0   NES DATA  (controller 0)
 // PB0: PS2MDAT   PS/2 DATA mouse
 // PB1: PS2MCLK   PS/2 CLK  mouse
@@ -234,6 +229,9 @@ static void via_step(via_t *via, unsigned clocks)
 // PB5: IECDATAO  Serial DATA out
 // PB6: IECCLKI   Serial CLK  in
 // PB7: IECDATAI  Serial DATA in
+// CA1: PS2MCLK   PS/2 CLK  mouse
+// CA2: PS2KCLK   PS/2 CLK  keyboard
+// CB1: IECSRQ
 // CB2: I2CCLK    I2C CLK
 
 void via1_init()
@@ -260,8 +258,8 @@ uint8_t via1_read(uint8_t reg, bool debug)
 				// TODO latching mechanism (requires IEC implementation)
 				return 0;
 			} else {
-				return (~via[0].registers[2] & (ps2_port[1].out | i2c_port.data_out)) |
-					(via[0].registers[2] & (ps2_port[1].in | i2c_port.data_in));
+				return (~via[0].registers[2] & (ps2_port[1].out | i2c_port.data_out | serial_port_read_clk() | serial_port_read_data())) |
+				       (via[0].registers[2] & (ps2_port[1].in | i2c_port.data_in | (serial_port.in.atn << 3) | ((!serial_port.in.clk) << 4) | ((!serial_port.in.data) << 5)));
 			}
 			
 		case 1: // PA
