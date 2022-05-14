@@ -29,6 +29,7 @@ Features
 	* keyboard
 	* mouse
 	* gamepad
+	* Counters/timers/IRQs
 
 Missing Features
 ----------------
@@ -36,9 +37,6 @@ Missing Features
 * VERA
 	* Does not support the "CURRENT_FIELD" bit
 	* Interlaced modes (NTSC/RGB) don't render at the full horizontal fidelity
-* VIA
-	* Does not support counters/timers/IRQs
-
 
 Binaries & Compiling
 --------------------
@@ -132,6 +130,7 @@ You can start `box16`/`box16.exe` either by double-clicking it, or from the comm
 	* `S`: speed (CPU load, frame misses)
 	* `V`: video I/O reads and writes
 * `-nobinds` will disable most emulator keyboard bindings, allowing the X16 to see most keys and key chords.
+* `-nohostieee` will disable IEEE-488 hypercalls. These are normally enabled unless an SD card is attached or -serial is specified.
 * `-nopatch` is an alias for `-ignore_patch`.
 * `-nosound` can be used to specify that the audio subsystem should not be enabled in the first place. This is incompatible with `-sound`.
 * `-nvram` lets you specify a 64 byte file for the system's non-volatile RAM. If it does not exist, it will be created once the NVRAM is modified.
@@ -145,6 +144,7 @@ You can start `box16`/`box16.exe` either by double-clicking it, or from the comm
 * `-save_ini` will save Box16's settings to an ini file (at a default location, unless otherwise specified with `-ini`)
 * `-scale {1|2|3|4}` sizes the Box16 window to scale video output to an integer multiple of 640x480. (e.g. `-scale 2`)
 * `-sdcard <sdcard.img>` lets you specify an SD card image (partition table + FAT32).
+* `-serial` Enables serial bus emulation (experimental).
 * `-sound <device>` lets you specify a specific sound device to use. If given an improper device or no device, will list all audio devices and exit. Incompatible with `-nosound`.
 * `-stds` will automatically load all kernal and BASIC labels, if available.
 * `-sym <filename>` will load a VICE label file. Note that not all VICE debug commands are available. (e.g. `-sym myprg.lbl`)
