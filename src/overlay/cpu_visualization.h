@@ -10,7 +10,9 @@ enum cpu_visualization_highlight {
 enum cpu_visualization_coloring {
 	ADDRESS,
 	INSTRUCTION,
-	TEST
+#if defined(_DEBUG)
+	TEST,
+#endif
 };
 
 void            cpu_visualization_enable(bool enable);

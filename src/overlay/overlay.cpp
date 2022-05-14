@@ -2230,14 +2230,13 @@ static void draw_menu_bar()
 
 			ImGui::Separator();
 
-			bool warp_mode = Options.warp_factor > 0;
-			if (ImGui::Checkbox("Enable Warp Mode", &warp_mode)) {
-				if (Options.warp_factor > 0) {
-					Options.warp_factor = 0;
+			ImGui::SetNextItemWidth(69.0f);
+			if (ImGui::InputInt("Set Warp Factor", &Options.warp_factor)) {
+				Options.warp_factor = std::clamp(Options.warp_factor, 0, 16);
+				if (Options.warp_factor == 0) {
 					vera_video_set_cheat_mask(0);
 				} else {
-					Options.warp_factor = 1;
-					vera_video_set_cheat_mask(0x3f);
+					vera_video_set_cheat_mask((1 << (Options.warp_factor - 1)) - 1);
 				}
 			}
 			bool audio_enabled = !Options.no_sound;

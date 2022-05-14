@@ -91,11 +91,13 @@ void cpu_visualization_step()
 					return { hsv_to_rgb((float)instruction / 256.0f, sv, sv) };
 				}
 			}
+#if defined(_DEBUG)
 			case cpu_visualization_coloring::TEST: {
 				static int count = 0;
 				count            = (count + 1) % (256 << 4);
 				return { hsv_to_rgb((float)count / (float)(256 << 4), sv, sv) };
 			}
+#endif
 			default:
 				return { 0, 0, 0, 0 };
 		}

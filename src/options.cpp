@@ -689,7 +689,7 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	}
 
 	if (ini.has("warp") && ini["warp"] == "true") {
-		opts.warp_factor = 1;
+		opts.warp_factor = 9;
 	}
 
 	if (ini.has("echo")) {

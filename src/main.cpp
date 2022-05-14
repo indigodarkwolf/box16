@@ -139,7 +139,7 @@ int main(int argc, char **argv)
 	}
 
 	if (Options.warp_factor > 0) {
-		vera_video_set_cheat_mask(0x3f);
+		vera_video_set_cheat_mask((1 << (Options.warp_factor - 1)) - 1);
 	}
 
 	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
