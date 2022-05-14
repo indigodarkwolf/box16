@@ -5,7 +5,7 @@
 #-------------------------
 
 PROJECT := box16
-RELEASE := nr39.3
+RELEASE := nr40.0
 
 REPODIR := ..
 OBJDIR := obj
@@ -207,4 +207,4 @@ $(OUTDIR)/box16: $(BOX16_OBJS) $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(YMFM_OB
 	mkdir -p $(OUTDIR)
 	g++ $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS) $(R8BRAIN_LDFLAGS)
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
-	cp -r $(REPODIR)/resources/r39/* $(OUTDIR)/
+	cp -r $(REPODIR)/resources/r40/* $(OUTDIR)/

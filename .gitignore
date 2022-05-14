@@ -9,6 +9,14 @@ resources/r39/*.exe
 resources/r39/*.sym
 resources/r39/*.zip
 
+resources/r40/docs
+resources/r40/x16emu
+resources/r40/*.bin
+resources/r40/*.dll
+resources/r40/*.exe
+resources/r40/*.sym
+resources/r40/*.zip
+
 bugs
 
 build/box16

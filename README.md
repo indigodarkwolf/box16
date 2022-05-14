@@ -48,11 +48,11 @@ loaded from the directory containing the emulator binary, or you can use the `-r
 
 > __WARNING:__ Older versions of the ROM might not work in newer versions of the emulator, and vice versa.
 
-You can build a ROM image yourself using the [build instructions](https://github.com/commanderx16/x16-rom/x16rom-build) in the [x16-rom](https://github.com/commanderx16/x16-rom) repo. The `rom.bin` included in the [_latest_ release](https://github.com/commanderx16/x16-emulator/releases) of the emulator may also work with the HEAD of this repo, but this is not guaranteed.
+You can build a ROM image yourself using the [build instructions](https://github.com/commanderx16/x16-rom#releases-and-building) in the [x16-rom](https://github.com/commanderx16/x16-rom) repo. The `rom.bin` included in the [_latest_ release](https://github.com/commanderx16/x16-emulator/releases) of the emulator may also work with the HEAD of this repo, but this is not guaranteed.
 
 ### Linux Build
 
-Read `resources/r39/README` and build or acquire the necessary files.
+Read `resources/r40/README.box16` and build or acquire the necessary files.
 
 The needed development packages are available as a distribution package with most major versions of Linux:
 - Debian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
@@ -63,7 +63,7 @@ Type `make` to build the source. The output will be `box16` in the output direct
 
 ### Windows Build
 
-Read `resources/r39/README` and build or acquire the necessary files.
+Read `resources/r40/README.box16` and build or acquire the necessary files.
 
 Install Microsoft Visual Studio Community 2022, make sure to include the following modules:
 - `Desktop development with C++`
