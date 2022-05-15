@@ -69,7 +69,7 @@ Install Microsoft Visual Studio Community 2022, make sure to include the followi
 Open build\vs2019\box16.sln with Visual Studio Community 2022.
 Select `Build All` from the `Build` menu.
 
-The built .exe and associated files should be located in `build\vs2019\out`, plus a few more subdirectories based on the exact build generated.
+The built .exe and associated files should be located in `build\vs2022\out`, plus a few more subdirectories based on the exact build generated.
 
 
 Releases

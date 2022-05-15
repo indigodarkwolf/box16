@@ -15,7 +15,7 @@ OUTDIR := box16
 RELDIR := $(REPODIR)/release
 RELNAME := box16-$(RELEASE)-$(VSBUILD)
 ZIPSDIR := $(RELDIR)/$(RELNAME)
-VSDIR := vs2019/out/$(VSBUILD)/Release
+VSDIR := vs2022/out/$(VSBUILD)/Release
 
 VENDORSRC := $(REPODIR)/vendor
 VENDOROBJ := $(OBJDIR)/vendor

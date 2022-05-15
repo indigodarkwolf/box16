@@ -29,6 +29,12 @@ build/vs2019/nativefiledialog/intermediates
 build/vs2019/nativefiledialog/output
 build/vs2019/intermediates
 build/vs2019/out
+build/vs2022/box16.args.json
+build/vs2022/box16.vcxproj.user
+build/vs2022/nativefiledialog/intermediates
+build/vs2022/nativefiledialog/output
+build/vs2022/intermediates
+build/vs2022/out
 
 release
 
