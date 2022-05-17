@@ -50,7 +50,7 @@ You can build a ROM image yourself using the [build instructions](https://github
 
 ### Linux Build
 
-Read `resources/r40/README.box16` and build or acquire the necessary files.
+Read `resources/r41/README.box16` and build or acquire the necessary files.
 
 The needed development packages are available as a distribution package with most major versions of Linux:
 - Debian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
@@ -61,7 +61,7 @@ Type `make` to build the source. The output will be `box16` in the output direct
 
 ### Windows Build
 
-Read `resources/r40/README.box16` and build or acquire the necessary files.
+Read `resources/r41/README.box16` and build or acquire the necessary files.
 
 Install Microsoft Visual Studio Community 2022, make sure to include the following modules:
 - `Desktop development with C++`

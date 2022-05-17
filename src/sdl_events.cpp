@@ -6,12 +6,12 @@
 #include "display.h"
 #include "glue.h"
 #include "imgui/imgui_impl_sdl.h"
-#include "overlay/overlay.h"
 #include "joystick.h"
 #include "keyboard.h"
+#include "options.h"
+#include "overlay/overlay.h"
 #include "ps2.h"
 #include "vera/sdcard.h"
-#include "options.h"
 
 #ifdef __APPLE__
 #	define LSHORTCUT_KEY SDL_SCANCODE_LGUI
@@ -24,6 +24,7 @@
 bool sdl_events_update()
 {
 	static bool cmd_down = false;
+	static bool alt_down = false;
 
 	bool mouse_state_change = false;
 
@@ -107,8 +108,35 @@ bool sdl_events_update()
 								break;
 						}
 					}
+					if (cmd_down && alt_down) {
+						switch (event.key.keysym.sym) {
+							case SDLK_b:
+								Show_breakpoints = true;
+								consumed         = true;
+								break;
+							case SDLK_c:
+								Show_cpu_monitor = true;
+								consumed         = true;
+								break;
+							case SDLK_d:
+								Show_disassembler = true;
+								consumed          = true;
+								break;
+							case SDLK_s:
+								Show_symbols_list = true;
+								consumed          = true;
+								break;
+							case SDLK_w:
+								Show_watch_list = true;
+								consumed        = true;
+								break;
+						}
+					}
 					if (event.key.keysym.scancode == LSHORTCUT_KEY || event.key.keysym.scancode == RSHORTCUT_KEY) {
 						cmd_down = true;
+					}
+					if (event.key.keysym.scancode == SDL_SCANCODE_LALT || event.key.keysym.scancode == SDL_SCANCODE_RALT) {
+						alt_down = true;
 					}
 				}
 				if (!consumed) {
@@ -120,6 +148,9 @@ bool sdl_events_update()
 			case SDL_KEYUP:
 				if (event.key.keysym.scancode == LSHORTCUT_KEY || event.key.keysym.scancode == RSHORTCUT_KEY) {
 					cmd_down = false;
+				}
+				if (event.key.keysym.scancode == SDL_SCANCODE_LALT || event.key.keysym.scancode == SDL_SCANCODE_RALT) {
+					alt_down = false;
 				}
 				keyboard_add_event(false, event.key.keysym.scancode);
 				break;
@@ -153,18 +184,16 @@ bool sdl_events_update()
 						break;
 				}
 				break;
-			
+
 			// Stub for mouse wheel support on emu side.
 			// does nothing just yet
 			case SDL_MOUSEWHEEL:
-				//mouse_state_change = true; // uncomment when code activated
-				if(event.wheel.y != 0)
-				{
-					 // mouse Z axis change
+				// mouse_state_change = true; // uncomment when code activated
+				if (event.wheel.y != 0) {
+					// mouse Z axis change
 				}
-				if(event.wheel.x != 0)
-				{
-					 // mouse W axis change
+				if (event.wheel.x != 0) {
+					// mouse W axis change
 				}
 				break;
 

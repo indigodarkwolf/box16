@@ -129,7 +129,7 @@ namespace ImGui
 	template <size_t ARRAY_SIZE, typename INDEX_TYPE>
 	bool InputCombo(char const *name, char const *(&elements)[ARRAY_SIZE], INDEX_TYPE &selected) 
 	{
-		ImGui::Text(name);
+		ImGui::Text("%s", name);
 		ImGui::SameLine();
 
 		ImGui::PushID(name);

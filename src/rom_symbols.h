@@ -1,5 +1,5 @@
-#define NDX 0x00A00A
-#define KEYD 0x00A000
+#define NDX 0x00A80A
+#define KEYD 0x00A800 
 #define FA 0x000294
 #define VARTAB 0x0003E2
 #define FNLEN 0x000291

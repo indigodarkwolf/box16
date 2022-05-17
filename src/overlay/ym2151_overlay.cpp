@@ -39,18 +39,15 @@ void draw_debugger_ym2151()
 	}
 	if (ImGui::TreeNodeEx("Raw Bytes", ImGuiTreeNodeFlags_Framed)) {
 		if (ImGui::BeginTable("ym raw bytes", 17, ImGuiTableFlags_SizingFixedFit)) {
-			static const char *row_txts[16] = {
-				"0x", "1x", "2x", "3x", "4x", "5x", "6x", "7x", "8x", "9x", "Ax", "Bx", "Cx", "Dx", "Ex", "Fx"
-			};
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
-			ImGui::Text(row_txts[0]);
+			ImGui::Text("%Xx", 0);
 			ym2151_reg_input(regs, 0x01); // TEST
 			ym2151_reg_input(regs, 0x08); // KEYON
 			ym2151_reg_input(regs, 0x0F); // NOISE
 			ImGui::TableNextRow();
 			ImGui::TableSetColumnIndex(0);
-			ImGui::Text(row_txts[1]);
+			ImGui::Text("%Xx", 1);
 			ym2151_reg_input(regs, 0x10); // CLKA1
 			ym2151_reg_input(regs, 0x11); // CLKA2
 			ym2151_reg_input(regs, 0x12); // CLKB
@@ -62,7 +59,7 @@ void draw_debugger_ym2151()
 			for (int i = 2; i < 16; i++) {
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text(row_txts[i]);
+				ImGui::Text("%Xx", i);
 				for (int j = 0; j < 16; j++) {
 					ym2151_reg_input(regs, i * 16 + j);
 				}

@@ -409,6 +409,7 @@ bool display_init(const display_settings &settings)
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
 		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
 		ImGui::StyleColorsDark();
 		//ImGui::StyleColorsClassic();
@@ -589,6 +590,7 @@ void display_process()
 
 	overlay_draw();
 
+    ImGui::EndFrame();
 	ImGui::Render();
 
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());

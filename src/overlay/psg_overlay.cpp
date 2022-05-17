@@ -49,7 +49,6 @@ void draw_debugger_vera_psg()
 		ImGui::TableSetupColumn("Vol", ImGuiTableColumnFlags_WidthStretch);
 		ImGui::TableHeadersRow();
 
-		static char chtxt[3];
 		for (unsigned int i = 0; i < 16; ++i) {
 			ImGui::TableNextRow();
 			if (i == 0) {
@@ -67,11 +66,10 @@ void draw_debugger_vera_psg()
 				ImGui::TableNextColumn();
 			}
 
-			snprintf(chtxt, 3, "%d", i);
 			ImGui::PushID(i);
 			const psg_channel* channel = psg_get_channel(i);
 
-			ImGui::Text(chtxt);
+			ImGui::Text("%d", i);
 
 			ImGui::TableNextColumn();
 			ImGui::PushID("raw");

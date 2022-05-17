@@ -27,19 +27,26 @@
 #include "keyboard.h"
 #include "midi_overlay.h"
 #include "options_menu.h"
+#include "psg_overlay.h"
 #include "smc.h"
 #include "symbols.h"
 #include "timing.h"
 #include "vera/sdcard.h"
 #include "vera/vera_video.h"
-#include "psg_overlay.h"
 #include "ym2151_overlay.h"
 
-bool Show_options          = false;
-bool Show_imgui_demo       = false;
+bool Show_options = false;
+#if defined(_DEBUG)
+bool Show_imgui_demo = false;
+#endif
 bool Show_memory_dump_1    = false;
 bool Show_memory_dump_2    = false;
 bool Show_cpu_monitor      = false;
+bool Show_disassembler     = false;
+bool Show_breakpoints      = false;
+bool Show_watch_list       = false;
+bool Show_symbols_list     = false;
+bool Show_symbols_files    = false;
 bool Show_cpu_visualizer   = false;
 bool Show_VRAM_visualizer  = false;
 bool Show_VERA_monitor     = false;
@@ -384,7 +391,7 @@ static void draw_debugger_vera_palette()
 					c = backup_color;
 				}
 
-				float *  f = (float *)(&c);
+				float   *f = (float *)(&c);
 				uint32_t nc;
 				uint8_t *np = reinterpret_cast<uint8_t *>(&nc);
 				np[0]       = (uint8_t)(f[3] * 15.0f);
@@ -555,7 +562,7 @@ static void draw_debugger_vera_sprite()
 		ImGui::BeginChild("sprite overview", avail, false, ImGuiWindowFlags_HorizontalScrollbar);
 		{
 			const ImVec2 scrsize   = show_entire ? ImVec2(1024, 1024) : ImVec2(screen_width, screen_height);
-			ImDrawList * draw_list = ImGui::GetWindowDrawList();
+			ImDrawList  *draw_list = ImGui::GetWindowDrawList();
 			const ImVec2 topleft   = ImGui::GetCursorScreenPos();
 			ImGui::Dummy(scrsize);
 			const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
@@ -698,7 +705,7 @@ static void draw_debugger_vera_sprite()
 					ImGui::TableNextRow();
 					// Thumbnail
 					ImGui::TableNextColumn();
-					void *       tex    = (void *)(intptr_t)sprite_preview.get_texture_id();
+					void        *tex    = (void *)(intptr_t)sprite_preview.get_texture_id();
 					const float  flt_w  = (float)width;
 					const float  flt_h  = (float)height;
 					const ImVec2 th_pos = ImGui::GetCursorScreenPos();
@@ -885,7 +892,7 @@ public:
 			const int    view_rows          = ceil_div_int((int)num_tiles, view_columns);
 			const int    total_width        = tile_width * view_columns * scale;
 			const int    total_height       = view_rows * active.tile_height * scale;
-			ImDrawList * draw_list          = ImGui::GetWindowDrawList();
+			ImDrawList  *draw_list          = ImGui::GetWindowDrawList();
 			const ImVec2 topleft            = ImGui::GetCursorScreenPos();
 			// since the view range can be very large, the dummy square is drawn first to provide a scroll range
 			// then the preview is partially rendered later
@@ -910,11 +917,11 @@ public:
 
 			// capture ram
 			uint32_t              palette[256];
-			const uint32_t *      palette_argb = vera_video_get_palette_argb32();
+			const uint32_t       *palette_argb = vera_video_get_palette_argb32();
 			std::vector<uint8_t>  data((size_t)view_columns * view_rows * tile_size, 0);
 			std::vector<uint32_t> pixels((size_t)tiles_count_x * tiles_count_y * tile_width * tile_height, 0);
-			uint8_t *             data_   = data.data();
-			uint32_t *            pixels_ = pixels.data();
+			uint8_t              *data_   = data.data();
+			uint32_t             *pixels_ = pixels.data();
 			for (int i = 0; i < 256; i++) {
 				// convert argb to rgba
 				palette[i] = (palette_argb[i] << 8) | 0xFF;
@@ -941,7 +948,7 @@ public:
 			};
 			const uint32_t fg_col     = palette[active.view_fg_col];
 			const uint32_t bg_col     = palette[active.view_bg_col];
-			const int *    shift      = shifts[active.color_depth];
+			const int     *shift      = shifts[active.color_depth];
 			const int      bpp_mod    = (8 >> active.color_depth) - 1;
 			const uint8_t  bpp_mask   = (1 << bpp) - 1;
 			const uint8_t  pal_offset = active.view_pal * 16;
@@ -1197,7 +1204,7 @@ public:
 			ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), ImVec2(total_width, total_height));
 			if (!bitmap_mode) {
 				const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
-				ImDrawList * draw_list = ImGui::GetWindowDrawList();
+				ImDrawList  *draw_list = ImGui::GetWindowDrawList();
 				ImVec2       winsize   = ImGui::GetWindowSize();
 				winsize.x              = std::min((float)total_width, winsize.x);
 				winsize.y              = std::min((float)total_height, winsize.y);
@@ -1261,7 +1268,7 @@ public:
 		uint8_t               tile_data[640 * 480]; // 640*480 > 16*16*1024
 		std::vector<uint32_t> pixels;
 		uint32_t              palette[256];
-		const uint32_t *      palette_argb = vera_video_get_palette_argb32();
+		const uint32_t       *palette_argb = vera_video_get_palette_argb32();
 
 		for (int i = 0; i < 256; i++) {
 			// convert argb to rgba
@@ -1770,7 +1777,7 @@ static void draw_watch_list()
 					uint8_t new_size = size;
 					if (ImGui::InputCombo(0, Debugger_size_types, new_size)) {
 						const uint16_t new_address = address;
-						const uint8_t new_bank = bank;
+						const uint8_t  new_bank    = bank;
 						debugger_remove_watch(address, bank, size);
 						debugger_add_watch(new_address, new_bank, new_size);
 						ImGui::PopID();
@@ -1792,7 +1799,7 @@ static void draw_watch_list()
 						for (; i < type_size; ++i) {
 							value.b[i] = debug_read6502(address + i, bank);
 						}
-						if (is_signed && (value.b[i-1] & 0x80)) {
+						if (is_signed && (value.b[i - 1] & 0x80)) {
 							for (; i < 4; ++i) {
 								value.b[i] = 0xff;
 							}
@@ -2256,10 +2263,15 @@ static void draw_menu_bar()
 			if (ImGui::BeginMenu("CPU Debugging")) {
 				ImGui::Checkbox("Memory Dump 1", &Show_memory_dump_1);
 				ImGui::Checkbox("Memory Dump 2", &Show_memory_dump_2);
-				ImGui::Checkbox("ASM Monitor", &Show_cpu_monitor);
+				ImGui::Checkbox("CPU Monitor (Ctrl-Alt-C)", &Show_cpu_monitor);
+				ImGui::Checkbox("Disassembler (Ctrl-Alt-D)", &Show_disassembler);
 				if (ImGui::Checkbox("CPU Visualizer", &Show_cpu_visualizer)) {
 					cpu_visualization_enable(Show_cpu_visualizer);
 				}
+				ImGui::Checkbox("Breakpoints (Ctrl-Alt-B)", &Show_breakpoints);
+				ImGui::Checkbox("Watch List (Ctrl-Alt-W)", &Show_watch_list);
+				ImGui::Checkbox("Symbols List (Ctrl-Alt-S)", &Show_symbols_list);
+				ImGui::Checkbox("Symbols Files", &Show_symbols_files);
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("VERA Debugging")) {
@@ -2313,6 +2325,8 @@ static void draw_menu_bar()
 void overlay_draw()
 {
 	draw_menu_bar();
+	ImGui::SetNextWindowBgAlpha(0.0f);
+	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
 	if (Show_options) {
 		if (ImGui::Begin("Options", &Show_options)) {
@@ -2336,14 +2350,43 @@ void overlay_draw()
 	}
 
 	if (Show_cpu_monitor) {
-		if (ImGui::Begin("ASM Monitor", &Show_cpu_monitor)) {
+		if (ImGui::Begin("CPU Monitor", &Show_cpu_monitor)) {
+			draw_debugger_cpu_status();
+		}
+		ImGui::End();
+	}
+
+	if (Show_disassembler) {
+		if (ImGui::Begin("Disassembler", &Show_disassembler)) {
 			draw_debugger_controls();
 			disasm.draw();
-			ImGui::SameLine();
-			draw_debugger_cpu_status();
+		}
+		ImGui::End();
+	}
+
+	if (Show_breakpoints) {
+		if (ImGui::Begin("Breakpoints", &Show_breakpoints)) {
 			draw_breakpoints();
+		}
+		ImGui::End();
+	}
+
+	if (Show_watch_list) {
+		if (ImGui::Begin("Watch list", &Show_watch_list)) {
 			draw_watch_list();
+		}
+		ImGui::End();
+	}
+
+	if (Show_symbols_list) {
+		if (ImGui::Begin("Symbols list", &Show_symbols_list)) {
 			draw_symbols_list();
+		}
+		ImGui::End();
+	}
+
+	if (Show_symbols_files) {
+		if (ImGui::Begin("Symbols files", &Show_symbols_files)) {
 			draw_symbols_files();
 		}
 		ImGui::End();
@@ -2396,9 +2439,11 @@ void overlay_draw()
 		ImGui::End();
 	}
 
+#if defined(_DEBUG)
 	if (Show_imgui_demo) {
 		ImGui::ShowDemoWindow();
 	}
+#endif
 
 	if (Show_VERA_PSG_monitor) {
 		if (ImGui::Begin("VERA PSG", &Show_VERA_PSG_monitor)) {
