@@ -123,8 +123,8 @@ bool hypercalls_init()
 
 	memset(Hypercall_table, 0, sizeof(Hypercall_table));
 
-	Hypercall_table[KERNAL_MACPTR & 0xff] = []() -> bool {
-		if (ieee_hypercalls_allowed()) {
+	if (ieee_hypercalls_allowed()) {
+		Hypercall_table[KERNAL_MACPTR & 0xff] = []() -> bool {
 			uint16_t count = a;
 
 			const uint8_t s = MACPTR(y << 8 | x, &count);
@@ -135,9 +135,8 @@ bool hypercalls_init()
 
 			set_kernal_status(s);
 			return true;
-		}
-		return false;
-	};
+		};
+	}
 
 	Hypercall_table[KERNAL_SECOND & 0xff] = []() -> bool {
 		if (ieee_hypercalls_allowed()) {
@@ -339,6 +338,11 @@ bool hypercalls_init()
 	}
 
 	return true;
+}
+
+void hypercalls_update()
+{
+
 }
 
 void hypercalls_process()

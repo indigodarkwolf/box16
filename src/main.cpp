@@ -114,9 +114,15 @@ void machine_reset()
 
 void machine_toggle_warp()
 {
-	Options.warp_factor = 1;
-	vera_video_set_cheat_mask(0x3f);
-	timing_init();
+	if (Options.warp_factor == 0) {
+		Options.warp_factor = 9;
+		vera_video_set_cheat_mask(0x3f);
+		timing_init();
+	} else {
+		Options.warp_factor = 0;
+		vera_video_set_cheat_mask(0);
+		timing_init();
+	}
 }
 
 static bool is_kernal()
