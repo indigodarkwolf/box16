@@ -2,6 +2,7 @@
 
 #include "display.h"
 #include "imgui/imgui.h"
+#include "hypercalls.h"
 #include "nfd.h"
 #include "options.h"
 #include "util.h"
@@ -163,7 +164,9 @@ void draw_options_menu()
 	};
 	if (ImGui::BeginCombo("Echo Mode", echo_mode_labels[(int)Options.echo_mode])) {
 		for (int i = 0; i < 4; ++i) {
-			ImGui::Selectable(echo_mode_labels[i], (int)Options.echo_mode == i);
+			if (ImGui::Selectable(echo_mode_labels[i], (int)Options.echo_mode == i)) {
+				hypercalls_update();
+			}
 		}
 		ImGui::EndCombo();
 	}

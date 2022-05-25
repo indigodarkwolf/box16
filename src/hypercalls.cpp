@@ -6,13 +6,13 @@
 
 #include "glue.h"
 #include "ieee.h"
-#include "loadsave.h"
 #include "keyboard.h"
+#include "loadsave.h"
 #include "memory.h"
 #include "options.h"
 #include "rom_symbols.h"
-#include "vera/sdcard.h"
 #include "unicode.h"
+#include "vera/sdcard.h"
 
 #define KERNAL_MACPTR (0xff44)
 #define KERNAL_SECOND (0xff93)
@@ -29,7 +29,7 @@
 #define KERNAL_SAVE (0xffd8)
 #define KERNAL_CRASH (0xffff)
 
-static uint16_t Kernal_status = 0;
+static uint16_t Kernal_status  = 0;
 static bool     Has_boot_tasks = false;
 
 static bool (*Hypercall_table[0x100])(void);
@@ -121,6 +121,30 @@ bool hypercalls_init()
 		return false;
 	}
 
+	// Setup whether we have boot tasks
+	if (!Options.prg_path.empty()) {
+		Has_boot_tasks = true;
+	}
+
+	if (!Options.bas_path.empty()) {
+		Has_boot_tasks = true;
+	}
+
+	if (Options.run_geos) {
+		Has_boot_tasks = true;
+	}
+
+	if (Options.run_test) {
+		Has_boot_tasks = true;
+	}
+
+	hypercalls_update();
+
+	return true;
+}
+
+void hypercalls_update()
+{
 	memset(Hypercall_table, 0, sizeof(Hypercall_table));
 
 	if (ieee_hypercalls_allowed()) {
@@ -136,98 +160,76 @@ bool hypercalls_init()
 			set_kernal_status(s);
 			return true;
 		};
-	}
 
-	Hypercall_table[KERNAL_SECOND & 0xff] = []() -> bool {
-		if (ieee_hypercalls_allowed()) {
+		Hypercall_table[KERNAL_SECOND & 0xff] = []() -> bool {
 			SECOND(a);
 			return true;
-		}
-		return false;
-	};
+		};
 
-	Hypercall_table[KERNAL_TKSA & 0xff] = []() -> bool {
-		if (ieee_hypercalls_allowed()) {
+		Hypercall_table[KERNAL_TKSA & 0xff] = []() -> bool {
 			TKSA(a);
 			return true;
-		}
-		return false;
-	};
+		};
 
-	Hypercall_table[KERNAL_ACPTR & 0xff] = []() -> bool {
-		if (ieee_hypercalls_allowed()) {
+		Hypercall_table[KERNAL_ACPTR & 0xff] = []() -> bool {
 			const uint8_t s = ACPTR(&a);
 
 			status = (status & ~2) | (!a << 1);
 
 			set_kernal_status(s);
 			return true;
-		}
-		return false;
-	};
+		};
 
-	Hypercall_table[KERNAL_CIOUT & 0xff] = []() -> bool {
-		if (ieee_hypercalls_allowed()) {
+		Hypercall_table[KERNAL_CIOUT & 0xff] = []() -> bool {
 			const uint8_t s = CIOUT(a);
 
 			set_kernal_status(s);
 			return true;
-		}
-		return false;
-	};
+		};
 
-	Hypercall_table[KERNAL_UNTLK & 0xff] = []() -> bool {
-		if (ieee_hypercalls_allowed()) {
+		Hypercall_table[KERNAL_UNTLK & 0xff] = []() -> bool {
 			UNTLK();
 			return true;
-		}
-		return false;
-	};
+		};
 
-	Hypercall_table[KERNAL_UNLSN & 0xff] = []() -> bool {
-		if (ieee_hypercalls_allowed()) {
+		Hypercall_table[KERNAL_UNLSN & 0xff] = []() -> bool {
 			const uint8_t s = UNLSN();
 
 			set_kernal_status(s);
 			return true;
-		}
-		return false;
-	};
+		};
 
-	Hypercall_table[KERNAL_LISTEN & 0xff] = []() -> bool {
-		if (ieee_hypercalls_allowed()) {
+		Hypercall_table[KERNAL_LISTEN & 0xff] = []() -> bool {
 			LISTEN(a);
 			return true;
-		}
-		return false;
-	};
+		};
 
-	Hypercall_table[KERNAL_TALK & 0xff] = []() -> bool {
-		if (ieee_hypercalls_allowed()) {
+		Hypercall_table[KERNAL_TALK & 0xff] = []() -> bool {
 			TALK(a);
 			return true;
-		}
-		return false;
-	};
+		};
+	}
 
-	Hypercall_table[KERNAL_LOAD & 0xff] = []() -> bool {
-		if (!sdcard_is_attached() && RAM[FA] == 8) {
-			LOAD();
-			return true;
-		}
-		return false;
-	};
+	if (!sdcard_is_attached()) {
+		Hypercall_table[KERNAL_LOAD & 0xff] = []() -> bool {
+			if (RAM[FA] == 8) {
+				LOAD();
+				return true;
+			}
+			return false;
+		};
 
-	Hypercall_table[KERNAL_SAVE & 0xff] = []() -> bool {
-		if (!sdcard_is_attached() && RAM[FA] == 8) {
-			SAVE();
-			return true;
-		}
-		return false;
-	};
+		Hypercall_table[KERNAL_SAVE & 0xff] = []() -> bool {
+			if (RAM[FA] == 8) {
+				SAVE();
+				return true;
+			}
+			return false;
+		};
+	}
 
-	Hypercall_table[KERNAL_CHRIN & 0xff] = []() -> bool {
-		if (Has_boot_tasks) {
+	if (Has_boot_tasks) {
+		Hypercall_table[KERNAL_CHRIN & 0xff] = []() -> bool {
 			// as soon as BASIC starts reading a line...
 			if (!Options.prg_path.empty()) {
 				std::filesystem::path prg_path;
@@ -286,11 +288,13 @@ bool hypercalls_init()
 			}
 
 			Has_boot_tasks = false;
-		} return false;
-	};
+			hypercalls_update();
+			return false;
+		};
+	}
 
-	Hypercall_table[KERNAL_CHROUT & 0xff] = []() -> bool {
-		if (Options.echo_mode != echo_mode_t::ECHO_MODE_NONE) {
+	if (Options.echo_mode != echo_mode_t::ECHO_MODE_NONE) {
+		Hypercall_table[KERNAL_CHROUT & 0xff] = []() -> bool {
 			uint8_t c = a;
 			if (Options.echo_mode == echo_mode_t::ECHO_MODE_COOKED) {
 				if (c == 0x0d) {
@@ -316,33 +320,9 @@ bool hypercalls_init()
 				printf("%c", c);
 			}
 			fflush(stdout);
-		}
-		return false;
-	};
-
-	// Setup whether we have boot tasks
-	if (!Options.prg_path.empty()) {
-		Has_boot_tasks = true;
+			return false;
+		};
 	}
-
-	if (!Options.bas_path.empty()) {
-		Has_boot_tasks = true;
-	}
-
-	if (Options.run_geos) {
-		Has_boot_tasks = true;
-	}
-
-	if (Options.run_test) {
-		Has_boot_tasks = true;
-	}
-
-	return true;
-}
-
-void hypercalls_update()
-{
-
 }
 
 void hypercalls_process()

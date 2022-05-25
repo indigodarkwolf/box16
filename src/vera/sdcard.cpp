@@ -9,6 +9,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "hypercalls.h"
+
 //#define VERBOSE 1
 
 // MMC/SD command (SPI mode)
@@ -69,6 +71,8 @@ void sdcard_attach()
 		printf("SD card attached.\n");
 		sdcard_attached = true;
 		is_initialized  = false;
+
+		hypercalls_update();
 	}
 }
 
@@ -77,6 +81,8 @@ void sdcard_detach()
 	if (sdcard_attached) {
 		printf("SD card detached.\n");
 		sdcard_attached = false;
+
+		hypercalls_update();
 	}
 }
 

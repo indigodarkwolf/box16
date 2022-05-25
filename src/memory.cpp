@@ -8,6 +8,7 @@
 #include "gif_recorder.h"
 #include "wav_recorder.h"
 #include "glue.h"
+#include "hypercalls.h"
 #include "ps2.h"
 #include "vera/vera_video.h"
 #include "via.h"
@@ -223,7 +224,10 @@ void emu_write(uint8_t reg, uint8_t value)
 		case 0: break; // debugger_enabled = v; break;
 		case 1: vera_video_set_log_video(v); break;
 		case 2: Options.log_keyboard = v; break;
-		case 3: Options.echo_mode = static_cast<echo_mode_t>(value); break;
+		case 3:
+			Options.echo_mode = static_cast<echo_mode_t>(value);
+			hypercalls_update();
+			break;
 		case 4: save_on_exit = v; break;
 		case 5: gif_recorder_set((gif_recorder_command_t)value); break;
 		case 6: wav_recorder_set((wav_recorder_command_t)value); break;
