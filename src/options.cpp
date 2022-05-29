@@ -217,17 +217,64 @@ static void usage()
 // This must match the KERNAL's set!
 static constexpr const char *keymaps[] = {
 	"en-us",
+	"en-us-int",
 	"en-gb",
+	"sv",
 	"de",
-	"nordic",
+	"da",
 	"it",
 	"pl",
+	"nb",
 	"hu",
 	"es",
+	"fi",
+	"pt-br",
+	"cz",
+	"jp",
 	"fr",
 	"de-ch",
+	"en-us-dvo",
+	"et",
 	"fr-be",
+	"fr-ca",
+	"is",
+	"pt",
+	"hr",
+	"sk",
+	"sl",
+	"lv",
+	"lt",
+};
+
+static constexpr const char *keymaps_strict[] = {
+	"abc/x16",
+	"en-us/int",
+	"en-gb",
+	"sv-se",
+	"de-de",
+	"da-dk",
+	"it-it",
+	"pl-pl",
+	"nb-no",
+	"hu-hu",
+	"es-es",
+	"fi-fi",
 	"pt-br",
+	"cs-cz",
+	"ja-jp",
+	"fr-fr",
+	"de-ch",
+	"en-us/dvo",
+	"et-ee",
+	"fr-be",
+	"en-ca",
+	"is-is",
+	"pt-pt",
+	"hr-hr",
+	"sk-sk",
+	"sl-si",
+	"lv-lv",
+	"lt-lt"
 };
 
 void usage_ram()
@@ -242,6 +289,10 @@ void usage_ram()
 void usage_keymap()
 {
 	printf("The following keymaps are supported:\n");
+	for (size_t i = 0; i < sizeof(keymaps) / sizeof(*keymaps); i++) {
+		printf("\t%s\n", keymaps_strict[i]);
+	}
+	printf("\nAlternatively, the following labels may also be used:\n");
 	for (size_t i = 0; i < sizeof(keymaps) / sizeof(*keymaps); i++) {
 		printf("\t%s\n", keymaps[i]);
 	}
@@ -679,6 +730,15 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 			}
 		}
 		if (!found) {
+			for (uint8_t i = 0; i < sizeof(keymaps_strict) / sizeof(*keymaps_strict); i++) {
+				if (!strcmp(ini["keymap"].c_str(), keymaps_strict[i])) {
+					found       = true;
+					opts.keymap = i;
+					break;
+				}
+			}
+		}
+		if (!found) {
 			return "keymap";
 		}
 	}
@@ -1059,7 +1119,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	set_option("patch", Options.patch_path, Default_options.patch_path);
 	set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());
 	set_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
-	set_option("keymap", keymaps[Options.keymap], keymaps[Default_options.keymap]);
+	set_option("keymap", keymaps_strict[Options.keymap], keymaps_strict[Default_options.keymap]);
 	set_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
 	set_comma_option("prg", Options.prg_path, Default_options.prg_path, Options.prg_override_start, Default_options.prg_override_start);
 	set_option("run", Options.run_after_load, Default_options.run_after_load);
