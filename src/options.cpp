@@ -1023,6 +1023,7 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 
 	set_option("rom", Options.rom_path, Default_options.rom_path);
 	set_option("patch", Options.patch_path, Default_options.patch_path);
+	set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());
 	set_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
 	set_option("keymap", keymaps[Options.keymap], keymaps[Default_options.keymap]);
 	set_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
@@ -1177,6 +1178,8 @@ void load_options()
 
 void save_options(bool all)
 {
+	options_log_verbose("Saving ini to: %s\n", std::filesystem::absolute(Options_ini_path).generic_string().c_str());
+
 	mINI::INIFile      file(Options_ini_path.generic_string());
 	mINI::INIStructure ini;
 
