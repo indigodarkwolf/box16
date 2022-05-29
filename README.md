@@ -121,7 +121,7 @@ You can start `box16`/`box16.exe` either by double-clicking it, or from the comm
 	* POKE $9FB5,2 will unpause GIF recording
 * `-help` lists all command line options and then exits.
 * `-hypercall_path <path>` sets the default path for all LOAD and SAVE calls to BASIC and the kernal.
-* `-ignore_ini` will ignore the contents of any ini file that Box16 might be aware of.
+* `-ignore_ini` will ignore the contents of any ini file that Box16 might be aware of. This option is not saved to the ini file.
 * `-ignore_patch` will ignore the contents of any patch file that Box16 might be aware of.
 * `-ini <custom.ini>` will allow manually specifying an ini file for Box16 to use.
 * `-keymap` tells the KERNAL to switch to a specific keyboard layout. Use it without an argument to view the supported layouts.
@@ -131,6 +131,7 @@ You can start `box16`/`box16.exe` either by double-clicking it, or from the comm
 	* `V`: video I/O reads and writes
 * `-nobinds` will disable most emulator keyboard bindings, allowing the X16 to see most keys and key chords.
 * `-nohostieee` will disable IEEE-488 hypercalls. These are normally enabled unless an SD card is attached or -serial is specified.
+* `-nopanels` will disable loading panel settings from the ini file. This option is not saved to the ini file.
 * `-nopatch` is an alias for `-ignore_patch`.
 * `-nosound` can be used to specify that the audio subsystem should not be enabled in the first place. This is incompatible with `-sound`.
 * `-nvram` lets you specify a 64 byte file for the system's non-volatile RAM. If it does not exist, it will be created once the NVRAM is modified.

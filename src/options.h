@@ -103,6 +103,7 @@ extern options Options;
 void options_init(const char *base_dir, const char *prefs_dir, int argc, char **argv);
 void load_options();
 void save_options(bool all);
+void save_options_on_close(bool all);
 
 size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path);
 size_t options_get_prefs_path(std::filesystem::path &real_path, const std::filesystem::path &path);

@@ -325,6 +325,8 @@ int main(int argc, char **argv)
 	emulator_loop();
 #endif
 
+	save_options_on_close(false);
+
 	if (nvram_dirty && !Options.nvram_path.empty()) {
 		SDL_RWops *f = SDL_RWFromFile(Options.nvram_path.generic_string().c_str(), "wb");
 		if (f) {

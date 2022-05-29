@@ -5,6 +5,7 @@
 
 #include "audio.h"
 #include "debugger.h"
+#include "overlay/overlay.h"
 #include "rom_patch.h"
 #include "symbols.h"
 #include "version.h"
@@ -113,6 +114,9 @@ static void usage()
 
 	printf("-nohostieee\n");
 	printf("\tDisable IEEE-488 hypercalls. These are normally enabled unless an SD card is attached or -serial is specified.\n");
+
+	printf("-nopanels\n");
+	printf("\tDo not automatically re-open any panels from the previous session.\n");
 
 	printf("-nopatch\n");
 	printf("\tThis is an alias for -ignore_patch.\n");
@@ -405,11 +409,16 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			ini["nobinds"] = "true";
-		
+
 		} else if (!strcmp(argv[0], "-nohostieee")) {
 			argc--;
 			argv++;
 			ini["nohostieee"] = "true";
+
+		} else if (!strcmp(argv[0], "-nopanels")) {
+			argc--;
+			argv++;
+			ini["nopanels"] = "true";
 
 		} else if (!strcmp(argv[0], "-nopatch")) {
 			argc--;
@@ -888,10 +897,35 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	return nullptr;
 }
 
-static void set_ini(mINI::INIStructure &ini, bool all)
+static void set_panels(mINI::INIMap<std::string> &ini)
 {
-	auto &ini_main = ini["main"];
+	auto get_option = [&](const char *name, auto &option_value) {
+		if (ini.has(name) && ini[name] == "true") {
+			option_value = true;
+		}
+	};
 
+	get_option("memory_dump_1", Show_memory_dump_1);
+	get_option("memory_dump_2", Show_memory_dump_2);
+	get_option("cpu_monitor", Show_cpu_monitor);
+	get_option("disassembler", Show_disassembler);
+	get_option("breakpoints", Show_breakpoints);
+	get_option("watch_list", Show_watch_list);
+	get_option("symbols_list", Show_symbols_list);
+	get_option("symbols_files", Show_symbols_files);
+	get_option("cpu_visualizer", Show_cpu_visualizer);
+	get_option("vram_visualizer", Show_VRAM_visualizer);
+	get_option("vera_monitor", Show_VERA_monitor);
+	get_option("vera_palette", Show_VERA_palette);
+	get_option("vera_layers", Show_VERA_layers);
+	get_option("vera_sprites", Show_VERA_sprites);
+	get_option("vera_psg_monitor", Show_VERA_PSG_monitor);
+	get_option("ym2151_monitor", Show_YM2151_monitor);
+	get_option("midi_overlay", Show_midi_overlay);
+}
+
+static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
+{
 	std::stringstream value;
 
 	auto set_option = [&](const char *name, auto option_value, auto default_value) {
@@ -1085,6 +1119,65 @@ static void set_ini(mINI::INIStructure &ini, bool all)
 	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
 }
 
+void set_ini_panels(mINI::INIMap<std::string> &ini, bool all)
+{
+	std::stringstream value;
+
+	auto set_option = [&](const char *name, auto option_value, auto default_value) {
+		if constexpr (std::is_same<decltype(option_value), char *>::value) {
+			if (all || strcmp(option_value, default_value)) {
+				ini[name] = option_value;
+			} else {
+				ini.remove(name);
+			}
+		} else if constexpr (std::is_same<decltype(option_value), const char *>::value) {
+			if (all || strcmp(option_value, default_value)) {
+				ini[name] = option_value;
+			} else {
+				ini.remove(name);
+			}
+		} else if constexpr (std::is_same<decltype(option_value), bool>::value) {
+			if (all || option_value != default_value) {
+				ini[name] = option_value ? "true" : "false";
+			} else {
+				ini.remove(name);
+			}
+		} else if constexpr (std::is_same<decltype(option_value), std::filesystem::path>::value) {
+			if (all || option_value != default_value) {
+				ini[name] = option_value.generic_string();
+			} else {
+				ini.remove(name);
+			}
+		} else {
+			if (all || option_value != default_value) {
+				value << option_value;
+				ini[name] = value.str();
+				value.str(std::string());
+			} else {
+				ini.remove(name);
+			}
+		}
+	};
+
+	set_option("memory_dump_1", Show_memory_dump_1, false);
+	set_option("memory_dump_2", Show_memory_dump_2, false);
+	set_option("cpu_monitor", Show_cpu_monitor, false);
+	set_option("disassembler", Show_disassembler, false);
+	set_option("breakpoints", Show_breakpoints, false);
+	set_option("watch_list", Show_watch_list, false);
+	set_option("symbols_list", Show_symbols_list, false);
+	set_option("symbols_files", Show_symbols_files, false);
+	set_option("cpu_visualizer", Show_cpu_visualizer, false);
+	set_option("vram_visualizer", Show_VRAM_visualizer, false);
+	set_option("vera_monitor", Show_VERA_monitor, false);
+	set_option("vera_palette", Show_VERA_palette, false);
+	set_option("vera_layers", Show_VERA_layers, false);
+	set_option("vera_sprites", Show_VERA_sprites, false);
+	set_option("vera_psg_monitor", Show_VERA_PSG_monitor, false);
+	set_option("ym2151_monitor", Show_YM2151_monitor, false);
+	set_option("midi_overlay", Show_midi_overlay, false);
+}
+
 void apply_ini(mINI::INIStructure &dst, const mINI::INIStructure &src)
 {
 	for (const auto &i : src) {
@@ -1157,6 +1250,10 @@ void options_init(const char *base_path, const char *prefs_path, int argc, char 
 	apply_ini(inifile_main);
 	apply_ini(cmdline_main);
 
+	if (!cmdline_main.has("nopanels") || cmdline_main["nopanels"] != "true") {
+		set_panels(Inifile_ini["panels"]);
+	}
+
 	if (cmdline_main.has("save_ini")) {
 		save_options(false);
 	}
@@ -1171,6 +1268,7 @@ void load_options()
 
 	if (!force_write) {
 		set_options(Options, ini["main"]);
+		set_panels(ini["panels"]);
 	} else {
 		save_options(true);
 	}
@@ -1183,9 +1281,23 @@ void save_options(bool all)
 	mINI::INIFile      file(Options_ini_path.generic_string());
 	mINI::INIStructure ini;
 
-	set_ini(ini, all);
+	set_ini_main(ini["main"], all);
+	set_ini_panels(ini["panels"], all);
 
 	file.generate(ini);
+
+	Inifile_ini = ini;
+}
+
+void save_options_on_close(bool all)
+{
+	options_log_verbose("Saving ini (on close) to: %s\n", std::filesystem::absolute(Options_ini_path).generic_string().c_str());
+
+	mINI::INIFile file(Options_ini_path.generic_string());
+
+	set_ini_panels(Inifile_ini["panels"], all);
+
+	file.generate(Inifile_ini);
 }
 
 size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path)
