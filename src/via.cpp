@@ -18,12 +18,12 @@
 #include "serial.h"
 
 static struct via_t {
-	unsigned timer_count[2];
-	unsigned pb6_pulse_counts;
-	uint8_t registers[15];
-	bool timer1_m1;
-	bool timer_running[2];
-	bool pb7_output;
+	int32_t  timer_count[2]; // signed int to distinguish between 0xffffffff (final clock before reset, counter reads "0xffff") and 0x0000ffff (maximum possible count value)
+	uint32_t pb6_pulse_counts;
+	uint8_t  registers[15];
+	bool     timer1_m1;
+	bool     timer_running[2];
+	bool     pb7_output;
 } via[2];
 
 // only internal logic is handled here, see via1/2 calls for external
@@ -32,12 +32,16 @@ static struct via_t {
 static void via_init(via_t *via)
 {
 	// timer latches, timer counters and SR are not cleared
-	for (int i = 0; i < 4; i++) via->registers[i] = 0;
-	for (int i = 11; i < 15; i++) via->registers[i] = 0;
+	for (int i = 0; i < 4; i++) {
+		via->registers[i] = 0;
+	}
+	for (int i = 11; i < 15; i++) {
+		via->registers[i] = 0;
+	}
 	via->timer_running[0] = false;
 	via->timer_running[1] = false;
-	via->timer1_m1 = false;
-	via->pb7_output = true;
+	via->timer1_m1        = false;
+	via->pb7_output       = true;
 }
 
 static void via_clear_pra_irqs(via_t *via)
@@ -62,24 +66,34 @@ static uint8_t via_read(via_t *via, uint8_t reg, bool debug)
 	bool    irq;
 	switch (reg) {
 		case 0: // IRB
-			if (!debug) via_clear_prb_irqs(via);
+			if (!debug) {
+				via_clear_prb_irqs(via);
+			}
 			return via->registers[0];
 		case 1: // IRA
 		case 15:
-			if (!debug) via_clear_pra_irqs(via);
+			if (!debug) {
+				via_clear_pra_irqs(via);
+			}
 			return via->registers[1];
 		case 4: // T1L
-			if (!debug) via->registers[13] &= ~0x40;
+			if (!debug) {
+				via->registers[13] &= ~0x40;
+			}
 			return (uint8_t)(via->timer_count[0] & 0xff);
 		case 5: // T1H
 			return (uint8_t)(via->timer_count[0] >> 8);
 		case 8: // T2L
-			if (!debug) via->registers[13] &= ~0x20;
+			if (!debug) {
+				via->registers[13] &= ~0x20;
+			}
 			return (uint8_t)(via->timer_count[1] & 0xff);
 		case 9: // T2H
 			return (uint8_t)(via->timer_count[1] >> 8);
 		case 10: // SR
-			if (!debug) via->registers[13] &= ~0x04;
+			if (!debug) {
+				via->registers[13] &= ~0x04;
+			}
 			return via->registers[10];
 		case 13: // IFR
 			ifr = via->registers[13];
@@ -113,14 +127,14 @@ static void via_write(via_t *via, uint8_t reg, uint8_t value)
 			via->registers[13] &= ~0x40;
 			via->registers[7] = value;
 			if (reg == 5) {
-				via->timer_count[0] = ((unsigned)value << 8) | via->registers[6];
+				via->timer_count[0]   = ((uint32_t)value << 8) | via->registers[6];
 				via->timer_running[0] = true;
-				via->pb7_output = false;
+				via->pb7_output       = false;
 			}
 			break;
 		case 9: // T2H
 			via->registers[13] &= ~0x20;
-			via->timer_count[1] = ((unsigned)value << 8) | via->registers[8];
+			via->timer_count[1]   = ((uint32_t)value << 8) | via->registers[8];
 			via->timer_running[1] = true;
 			break;
 		case 10: // SR
@@ -148,66 +162,49 @@ static void via_write(via_t *via, uint8_t reg, uint8_t value)
 	}
 }
 
-static void via_step(via_t *via, unsigned clocks)
+static void via_step(via_t &via, uint32_t clocks)
 {
 	// TODO there's currently no timestamp mechanism to mark exact transition
 	// times, since there's currently no peripherals that require those
-	uint8_t acr = via->registers[11];
-	uint8_t ifr = via->registers[13];
-	// handle timers
-	unsigned cnt;
-	uint32_t tclk, tclk_s, reload;
-	// counter always update even if it's not "running"
-	cnt = via->timer_count[0];
-	tclk = clocks;
-	while (tclk > 0) {
-		if (via->timer1_m1) {
-			reload = (((uint32_t)via->registers[7] << 8) | via->registers[6]);
-			tclk_s = reload + 1;
-			if (tclk < tclk_s) tclk_s = tclk;
-			cnt = reload - tclk_s + 1;
-			via->timer1_m1 = false;
-		} else if (cnt < tclk) {
-			if (via->timer_running[0]) {
-				ifr |= 0x40;
-				via->pb7_output ^= true;
-				if (!(acr & 0x40)) via->timer_running[0] = false;
-			}
-			if (tclk - cnt == 1) {
-				// special, -1 state
-				cnt = 0xffff;
-				via->timer1_m1 = true;
-				tclk_s = 1;
-			} else {
-				reload = (((uint32_t)via->registers[7] << 8) | via->registers[6]);
-				tclk_s = cnt + reload + 2;
-				if (tclk < tclk_s) tclk_s = tclk;
-				cnt += reload - tclk_s + 2;
-			}
-		} else {
-			cnt -= tclk;
-			break;
-		}
-		tclk -= tclk_s;
-	}
-	via->timer_count[0] = (unsigned)cnt;
+	const uint8_t acr = via.registers[11];
+	uint8_t      &ifr = via.registers[13];
 
-	cnt = via->timer_count[1];
-	tclk = (acr & 0x20) ? via->pb6_pulse_counts : clocks;
-	via->pb6_pulse_counts = 0;
-	if (cnt < tclk) {
-		if (via->timer_running[1]) {
-			ifr |= 0x20;
-			via->timer_running[1] = false;
+	// Note that counters always update even if they're not "running"
+
+	// Timer 1 - always ticks on phi2
+	{
+		const int32_t count        = via.timer_count[0] + 1;
+		const int32_t timer_clocks = (int32_t)clocks;
+		if (timer_clocks > count) {
+			if (via.timer_running[0]) {
+				ifr |= 0x40;
+				via.pb7_output ^= true;
+				via.timer_running[0] ^= ((acr & 0x40) != 0);
+			}
+			const int32_t reload = (uint16_t)(((uint32_t)via.registers[7] << 8) | via.registers[6]);
+			via.timer_count[0]   = 1 + reload + count - timer_clocks;
+		} else {
+			via.timer_count[0] -= timer_clocks;
 		}
-		via->timer_count[1] = 0x10000 + cnt - tclk;
-	} else {
-		via->timer_count[1] -= tclk;
+	}
+
+	// Timer 2 - ticks on phi2 or pb6 pulses depending on acr value.
+	{
+		const uint32_t count                = via.timer_count[1];
+		const uint32_t timer_clocks         = (acr & 0x20) ? via.pb6_pulse_counts : clocks;
+		via.pb6_pulse_counts = 0;
+		if (timer_clocks > count) {
+			if (via.timer_running[1]) {
+				ifr |= 0x20;
+				via.timer_running[1] = false;
+			}
+			via.timer_count[1] = 0x10000 + count - timer_clocks;
+		} else {
+			via.timer_count[1] -= timer_clocks;
+		}
 	}
 
 	// TODO Cxx pin and shift register handling
-	
-	via->registers[13] = ifr;
 }
 
 //
@@ -253,7 +250,9 @@ uint8_t via1_read(uint8_t reg, bool debug)
 		case 0: // PB
 			ps2_autostep(1);
 			i2c_step();
-			if (!debug) via_clear_prb_irqs(&via[0]);
+			if (!debug) {
+				via_clear_prb_irqs(&via[0]);
+			}
 			if (via[0].registers[11] & 2) {
 				// TODO latching mechanism (requires IEC implementation)
 				return 0;
@@ -261,17 +260,19 @@ uint8_t via1_read(uint8_t reg, bool debug)
 				return (~via[0].registers[2] & (ps2_port[1].out | i2c_port.data_out | serial_port_read_clk() | serial_port_read_data())) |
 				       (via[0].registers[2] & (ps2_port[1].in | i2c_port.data_in | (serial_port.in.atn << 3) | ((!serial_port.in.clk) << 4) | ((!serial_port.in.data) << 5)));
 			}
-			
+
 		case 1: // PA
 		case 15:
 			ps2_autostep(0);
-			if (!debug) via_clear_pra_irqs(&via[0]);
+			if (!debug) {
+				via_clear_pra_irqs(&via[0]);
+			}
 			if (via[0].registers[11] & 1) {
 				// CA1 is currently not connected to anything (?)
 				return 0;
 			} else {
 				return (~via[0].registers[3] & ps2_port[0].out) |
-					(via[0].registers[3] & ps2_port[0].in) | Joystick_data;
+				       (via[0].registers[3] & ps2_port[0].in) | Joystick_data;
 			}
 
 		default:
@@ -309,9 +310,9 @@ void via1_write(uint8_t reg, uint8_t value)
 	}
 }
 
-void via1_step(unsigned clocks)
+void via1_step(uint32_t clocks)
 {
-	via_step(&via[0], clocks);
+	via_step(via[0], clocks);
 }
 
 bool via1_irq()
@@ -341,9 +342,9 @@ void via2_write(uint8_t reg, uint8_t value)
 	via_write(&via[1], reg, value);
 }
 
-void via2_step(unsigned clocks)
+void via2_step(uint32_t clocks)
 {
-	via_step(&via[1], clocks);
+	via_step(via[1], clocks);
 }
 
 bool via2_irq()
