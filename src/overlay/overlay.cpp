@@ -1092,10 +1092,12 @@ public:
 		ImGui::SameLine();
 		const uint8_t _1  = 1;
 		const uint8_t _16 = 16;
+		ImGui::PushID(0);
 		if (ImGui::InputScalar("", ImGuiDataType_U8, &sprite_to_import, &_1, &_16, "%d")) {
 			if (sprite_to_import > 127)
 				sprite_to_import = 127;
 		}
+		ImGui::PopID();
 
 		// validate settings
 		const uint32_t   max_mem_sizes[]{ 0x20000, 0x10000, (uint32_t)Options.num_ram_banks * 8192 };
