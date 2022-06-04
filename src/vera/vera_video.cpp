@@ -11,6 +11,7 @@
 #include "vera_spi.h"
 
 #include <limits.h>
+#include <algorithm>
 
 #ifdef __EMSCRIPTEN__
 #	include "emscripten.h"
@@ -388,7 +389,7 @@ static void render_sprite_line(const uint16_t y)
 		sprite_budget--;
 		if (sprite_budget == 0)
 			break;
-		const struct vera_video_sprite_properties *props = &sprite_properties[i];
+		const vera_video_sprite_properties *props = &sprite_properties[i];
 
 		if (props->sprite_zdepth == 0) {
 			continue;
@@ -403,7 +404,7 @@ static void render_sprite_line(const uint16_t y)
 
 		const uint8_t *bitmap_data = video_ram + props->sprite_address + (eff_sy << (props->sprite_width_log2 - (1 - props->color_mode)));
 
-		const uint16_t width = props->sprite_width;
+		const uint16_t width = std::min((uint32_t)props->sprite_width, 64U);
 		uint8_t        unpacked_sprite_line[64];
 		if (props->color_mode == 0) {
 			// 4bpp
