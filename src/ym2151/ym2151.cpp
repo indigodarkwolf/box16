@@ -315,6 +315,11 @@ public:
 		}
 	}
 
+	void clear_backbuffer()
+	{
+		m_backbuffer_used = 0;
+	}
+
 	void write(uint8_t addr, uint8_t value)
 	{
 		if (ymfm_is_busy()) {
@@ -453,6 +458,11 @@ void YM_prerender(uint32_t clocks)
 void YM_render(int16_t *buffer, uint32_t samples, uint32_t sample_rate)
 {
 	Ym_interface.generate(buffer, samples, sample_rate);
+}
+
+void YM_clear_backbuffer()
+{
+	Ym_interface.clear_backbuffer();
 }
 
 uint32_t YM_get_sample_rate()

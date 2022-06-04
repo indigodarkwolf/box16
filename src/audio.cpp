@@ -141,11 +141,12 @@ void audio_close(void)
 
 void audio_render(int cpu_clocks)
 {
+	YM_prerender(cpu_clocks);
+
 	if (Audio_dev == 0) {
+		YM_clear_backbuffer();
 		return;
 	}
-
-	YM_prerender(cpu_clocks);
 
 	Clocks_rendered += cpu_clocks;
 	int samples_to_render = Clocks_rendered / Clocks_per_sample;

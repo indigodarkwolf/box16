@@ -404,7 +404,7 @@ static void render_sprite_line(const uint16_t y)
 
 		const uint8_t *bitmap_data = video_ram + props->sprite_address + (eff_sy << (props->sprite_width_log2 - (1 - props->color_mode)));
 
-		const uint16_t width = std::min((uint32_t)props->sprite_width, 64U);
+		const uint16_t width = std::min((uint32_t)props->sprite_width, (uint32_t)64);
 		uint8_t        unpacked_sprite_line[64];
 		if (props->color_mode == 0) {
 			// 4bpp
