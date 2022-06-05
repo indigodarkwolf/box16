@@ -67,9 +67,13 @@ int create_directory_listing(uint8_t *data)
 		size_t                       namlen   = filename.length();
 		std::filesystem::file_status st       = entry.status();
 
-		file_size = ((int)entry.file_size() + 255) / 256;
-		if (file_size > 0xFFFF) {
-			file_size = 0xFFFF;
+		if (entry.is_directory()) {
+			file_size = 0;
+		} else {
+			file_size = ((int)entry.file_size() + 255) / 256;
+			if (file_size > 0xFFFF) {
+				file_size = 0xFFFF;
+			}
 		}
 
 		// link
