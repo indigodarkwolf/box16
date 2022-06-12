@@ -690,7 +690,7 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.rom_path = ini["rom"];
 	}
 
-	if (ini.has("patch")) {
+	if (ini.has("patch") && ini["patch"] != "") {
 		opts.patch_path = ini["patch"];
 		if (!ini.has("ignore_patch") || ini["ignore_patch"] != "true") {
 			opts.apply_patch = true;
