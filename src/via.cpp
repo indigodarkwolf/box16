@@ -179,7 +179,7 @@ static void via_step(via_t &via, uint32_t clocks)
 			if (via.timer_running[0]) {
 				ifr |= 0x40;
 				via.pb7_output ^= true;
-				via.timer_running[0] ^= ((acr & 0x40) != 0);
+				via.timer_running[0] ^= ((acr & 0x40) == 0);
 			}
 			const int32_t reload = (uint16_t)(((uint32_t)via.registers[7] << 8) | via.registers[6]);
 			via.timer_count[0]   = 1 + reload + count - timer_clocks;
