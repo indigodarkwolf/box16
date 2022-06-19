@@ -43,7 +43,7 @@ SOFTWARE.
 
 static display_settings Display;
 
-static SDL_Window *  Display_window = nullptr;
+static SDL_Window   *Display_window = nullptr;
 static SDL_GLContext Display_context;
 
 static bool Fullscreen = false;
@@ -54,8 +54,11 @@ static GLuint Display_framebuffer_texture_handle;
 static GLuint Video_framebuffer_texture_handle;
 static GLuint Icon_tilemap;
 
-static GLsync Render_complete = 0;
+static GLsync   Render_complete  = 0;
 static uint32_t Last_render_time = 0;
+
+static std::filesystem::path Imgui_ini_path;
+static std::string           Imgui_ini_path_str;
 
 static bool Initd_sdl_image           = false;
 static bool Initd_sdl_gl              = false;
@@ -249,7 +252,7 @@ static void display_video()
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 #if defined(GL_EXT_texture_filter_anisotropic)
-	if(Max_anisotropy > 0) {
+	if (Max_anisotropy > 0) {
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, (Options.scale_quality == scale_quality_t::BEST) ? Max_anisotropy : 1.0f);
 	}
 #endif
@@ -351,7 +354,7 @@ bool display_init(const display_settings &settings)
 	Initd_glew = true;
 
 #if defined(GL_EXT_texture_filter_anisotropic)
-	if(glewIsSupported("EXT_texture_filter_anisotropic")) {
+	if (glewIsSupported("EXT_texture_filter_anisotropic")) {
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &Max_anisotropy);
 	} else {
 		Max_anisotropy = 0;
@@ -407,12 +410,17 @@ bool display_init(const display_settings &settings)
 
 		ImGuiIO &io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
-		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-		//io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+		// io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+		// io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
+
+		options_find_file(Imgui_ini_path, "imgui.ini");
+		Imgui_ini_path_str = Imgui_ini_path.generic_string();
+		io.IniFilename     = Imgui_ini_path_str.c_str();
+
 		ImGui::StyleColorsDark();
-		//ImGui::StyleColorsClassic();
+		// ImGui::StyleColorsClassic();
 	}
 	Initd_imgui = true;
 
@@ -590,7 +598,7 @@ void display_process()
 
 	overlay_draw();
 
-    ImGui::EndFrame();
+	ImGui::EndFrame();
 	ImGui::Render();
 
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
