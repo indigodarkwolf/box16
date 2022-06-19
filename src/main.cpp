@@ -478,6 +478,7 @@ void emulator_loop()
 		bool    via1_irq_old = via1_irq();
 		via1_step(clocks);
 		via2_step(clocks);
+		rtc_step(clocks);
 		if (Options.enable_serial) {
 			serial_step(clocks);
 		}
