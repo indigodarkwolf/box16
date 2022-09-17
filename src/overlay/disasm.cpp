@@ -111,6 +111,8 @@ void imgui_debugger_disasm::draw()
 				follow_countdown = 3;
 			} else if (follow_countdown > 0) {
 				set_dump_start(pc);
+				ram_bank = memory_get_ram_bank();
+				rom_bank = memory_get_rom_bank();
 			}
 		}
 
@@ -123,7 +125,6 @@ void imgui_debugger_disasm::draw()
 			static char hex[5] = { "0000" };
 			if (reset_input) {
 				sprintf(hex, "%04X", dump_start);
-				reset_input = false;
 			}
 			if (ImGui::InputHexLabel("Disasm Address", hex)) {
 				dump_start   = parse<16>(hex);
@@ -134,6 +135,9 @@ void imgui_debugger_disasm::draw()
 
 		{
 			static char ram_bank_hex[3] = "00";
+			if (reset_input) {
+				sprintf(ram_bank_hex, "%02X", ram_bank);
+			}
 			if (ImGui::InputHexLabel("  RAM Bank", ram_bank_hex)) {
 				ram_bank = parse<8>(ram_bank_hex);
 			}
@@ -142,10 +146,15 @@ void imgui_debugger_disasm::draw()
 
 		{
 			static char rom_bank_hex[3] = "00";
+			if (reset_input) {
+				sprintf(rom_bank_hex, "%02X", rom_bank);
+			}
 			if (ImGui::InputHexLabel("  ROM Bank", rom_bank_hex)) {
 				rom_bank = parse<8>(rom_bank_hex);
 			}
 		}
+
+		reset_input = false;
 
 		ImGui::Checkbox("Show Hex", &show_hex);
 		ImGui::SameLine();
