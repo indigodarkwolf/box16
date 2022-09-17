@@ -525,7 +525,7 @@ void display_shutdown()
 
 void display_process()
 {
-	uint32_t current_render_time = timing_total_microseconds();
+	uint32_t current_render_time = timing_total_microseconds_realtime();
 	if (Options.vsync_mode != vsync_mode_t::VSYNC_MODE_NONE && current_render_time - Last_render_time > 5000000) {
 		// Seems like vsync isn't working, let's disable it.
 		SDL_ShowSimpleMessageBox(SDL_MessageBoxFlags::SDL_MESSAGEBOX_WARNING, "V-Sync was automatically disabled", "Box16 has detected a problem with the current V-Sync settings.\nV-Sync has been disabled.", display_get_window());
@@ -611,7 +611,7 @@ void display_process()
 		}
 	}
 
-	Last_render_time = current_render_time;
+	Last_render_time = timing_total_microseconds_realtime();
 }
 
 const display_settings &display_get_settings()

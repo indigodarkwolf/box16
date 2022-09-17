@@ -77,3 +77,11 @@ uint32_t timing_total_microseconds()
 {
 	return Tick_history.get_newest().total_us;
 }
+
+uint32_t timing_total_microseconds_realtime()
+{
+	const uint64_t current_performance_time = SDL_GetPerformanceCounter();
+
+	const uint64_t     total_perf_diff = current_performance_time - Base_performance_time;
+	return perf_to_us(total_perf_diff);
+}
