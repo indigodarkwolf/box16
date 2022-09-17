@@ -132,11 +132,8 @@ bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
 				continue;
 			}
 
-			if (addr < 0xa000) {
-				bank = 0;
-			}
-
-			symbol_address_type symbol_addr = (bank << 16) + addr;
+			const symbol_bank_type sym_bank = addr < 0xa000 ? 0 : bank;
+			symbol_address_type    symbol_addr = (sym_bank << 16) + addr;
 
 			bool already_exists = false;
 			for (auto &[address, symbol] : file_symbols) {
