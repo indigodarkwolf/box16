@@ -34,6 +34,7 @@ void debugger_add_breakpoint(uint16_t address, uint8_t bank = 0);
 void debugger_remove_breakpoint(uint16_t address, uint8_t bank = 0);
 void debugger_activate_breakpoint(uint16_t address, uint8_t bank = 0);
 void debugger_deactivate_breakpoint(uint16_t address, uint8_t bank = 0);
+bool debugger_has_breakpoint(uint16_t address, uint8_t bank = 0);
 bool debugger_breakpoint_is_active(uint16_t address, uint8_t bank = 0);
 
 const breakpoint_list &debugger_get_breakpoints();

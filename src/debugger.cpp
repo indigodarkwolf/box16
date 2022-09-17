@@ -308,6 +308,16 @@ void debugger_deactivate_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
 	}
 }
 
+bool debugger_has_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
+{
+	if (address < 0xa000) {
+		bank = 0;
+	}
+
+	breakpoint_type new_bp{ address, bank };
+	return Breakpoints.find(new_bp) != Breakpoints.end();
+}
+
 bool debugger_breakpoint_is_active(uint16_t address, uint8_t bank /* = 0 */)
 {
 	breakpoint_type bp{ address, bank };

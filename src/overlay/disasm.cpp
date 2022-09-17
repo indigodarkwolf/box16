@@ -241,9 +241,9 @@ void imgui_debugger_disasm::draw()
 							set_dump_start(addr);
 						}
 						ImGui::SameLine();
-						ImGui::Text("   ");
+						ImGui::Dummy(ImVec2(8.0f, 16.0f));
 					} else {
-						ImGui::Text("        ");
+						ImGui::Dummy(ImVec2(44.0f, 16.0f));
 					}
 					ImGui::SameLine();
 
@@ -350,7 +350,39 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 	is_branch = is_branch || is_zprel;
 
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-	switch (mode) {
+
+	const ImVec2 cursor = ImGui::GetCursorPos();
+	ImGui::Tile(ICON_ADD_BREAKPOINT_DISABLED);
+	const bool has_breakpoint     = debugger_has_breakpoint(pc, memory_get_current_bank(pc));
+	const bool breakpoint_enabled = debugger_breakpoint_is_active(pc, memory_get_current_bank(pc));
+	if (breakpoint_enabled) {
+		if (ImGui::IsItemClicked()) {
+			debugger_deactivate_breakpoint(pc, memory_get_current_bank(pc));
+		} else {
+			ImGui::SetCursorPos(cursor);
+			ImGui::Tile(ICON_CHECKED);
+		}
+	} else if (has_breakpoint) {
+		if (ImGui::IsItemClicked()) {
+			debugger_remove_breakpoint(pc, memory_get_current_bank(pc));
+		} else {
+			ImGui::SetCursorPos(cursor);
+			ImGui::Tile(ICON_UNCHECKED);
+		}
+	} else {
+		if (ImGui::IsItemClicked()) {
+			debugger_add_breakpoint(pc, memory_get_current_bank(pc));
+		} else if (ImGui::IsItemHovered()) {
+			ImGui::SetCursorPos(cursor);
+			ImGui::Tile(ICON_ADD_BREAKPOINT);
+		}
+	}
+	ImGui::SameLine();
+	ImGui::Dummy(ImVec2(4.0f, 16.0f));
+	ImGui::SameLine();
+
+    switch (mode)
+	{
 		case op_mode::MODE_ZPREL: {
 			uint8_t  zp     = debug_read6502(pc + 1, bank);
 			uint16_t target = pc + 3 + (int8_t)debug_read6502(pc + 2, bank);
