@@ -2106,6 +2106,23 @@ static void draw_debugger_controls()
 	}
 	ImGui::SameLine();
 
+	static bool set_breakpoint_hovered = false;
+	const bool  breakpoint_exists      = debugger_has_breakpoint(pc, memory_get_current_bank(pc));
+	const bool  breakpoint_active      = debugger_breakpoint_is_active(pc, memory_get_current_bank(pc));
+	if (ImGui::TileButton(paused ? ICON_ADD_BREAKPOINT : ICON_UNCHECKED_DISABLED, paused, &set_breakpoint_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F9))) {
+		if (breakpoint_active) {
+			debugger_deactivate_breakpoint(pc, memory_get_current_bank(pc));
+		} else if (breakpoint_exists) {
+			debugger_remove_breakpoint(pc, memory_get_current_bank(pc));
+		} else {
+			debugger_add_breakpoint(pc, memory_get_current_bank(pc));
+		}
+	}
+	if (paused && ImGui::IsItemHovered()) {
+		ImGui::SetTooltip("Toggle Breakpoint (F9)");
+	}
+	ImGui::SameLine();
+
 	char cycles_raw[32];
 	int  digits = sprintf(cycles_raw, "%" SDL_PRIu64, debugger_step_clocks());
 
