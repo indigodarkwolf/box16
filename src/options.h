@@ -93,6 +93,7 @@ struct options {
 	bool set_system_time    = false;
 	bool no_keybinds        = false;
 	bool no_ieee_hypercalls = false;
+	bool no_hypercalls      = false;
 	bool enable_serial      = false;
 	bool ym_irq             = false;
 	bool ym_strict          = false;

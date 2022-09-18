@@ -245,8 +245,10 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (!hypercalls_init()) {
-		error("Boot error", "Could not initialize hypercalls. Disable hypercalls to boot with this ROM.");
+	if (!Options.no_hypercalls) {
+		if (!hypercalls_init()) {
+			error("Boot error", "Could not initialize hypercalls. Disable hypercalls to boot with this ROM.");
+		}
 	}
 
 #ifdef SDL_HINT_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR

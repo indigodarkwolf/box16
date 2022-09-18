@@ -1,5 +1,6 @@
 #include "symbols.h"
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -44,6 +45,223 @@ std::set<std::string> Ignore_list = {
 	".__ZP_SIZE__",
 	".__ZP_START__"
 };
+
+namespace vice_label_file
+{
+	enum class parse_result {
+		parse_ok,
+		illegal_input,
+	};
+
+	enum class parse_type {
+		device
+	};
+
+	enum class device {
+		device_cpu,
+		device_8,
+		device_9,
+		device_10,
+		device_11
+	};
+
+	void skip_whitespace(char const *&input)
+	{
+		while (!isgraph(*input)) {
+			++input;
+		}
+	}
+
+	parse_result parse_device(device &result, char const *&input)
+	{
+		char const *look = input;
+		switch (*look) {
+			case 'c':
+				result = device::device_cpu;
+				++look;
+				break;
+			case '8':
+				result = device::device_8;
+				++look;
+				break;
+			case '9':
+				result = device::device_9;
+				++look;
+				break;
+			case '1':
+				++look;
+				switch (*look) {
+					case '0':
+						result = device::device_10;
+						++look;
+						break;
+					case '1':
+						result = device::device_11;
+						++look;
+						break;
+				}
+			default:
+				return parse_result::illegal_input;
+		}
+
+		if (*input == ':') {
+			++look;
+			input = look;
+
+			skip_whitespace(input);
+			return parse_result::parse_ok;
+		}
+
+		return parse_result::illegal_input;
+	}
+
+	parse_result parse_hex_number(int &result, char const *&input)
+	{
+		result = 0;
+
+		const auto isnum = [](const char c) -> bool {
+			if (c >= '0' && c <= '9') {
+				return true;
+			}
+			if (c >= 'a' && c <= 'f') {
+				return true;
+			}
+			if (c >= 'A' && c <= 'F') {
+				return true;
+			}
+
+			return false;
+		};
+
+		const auto tonum = [](const char c) -> int {
+			if (c >= '0' && c <= '9') {
+				return c - '0';
+			}
+			if (c >= 'a' && c <= 'f') {
+				return 10 + c - 'a';
+			}
+			if (c >= 'A' && c <= 'F') {
+				return 10 + c - 'A';
+			}
+			return -1;
+		};
+
+		char const *look = input;
+		while (!isgraph(*look)) {
+			if (!isnum(*look)) {
+				return parse_result::illegal_input;
+			}
+			result <<= 4;
+			result |= tonum(*look);
+			++look;
+		}
+		input = look;
+
+		return parse_result::parse_ok;
+	}
+
+	parse_result parse_dec_number(int &result, char const *&input)
+	{
+		result = 0;
+
+		const auto isnum = [](const char c) -> bool {
+			if (c >= '0' && c <= '9') {
+				return true;
+			}
+
+			return false;
+		};
+
+		const auto tonum = [](const char c) -> int {
+			if (c >= '0' && c <= '9') {
+				return c - '0';
+			}
+
+			return -1;
+		};
+
+		char const *look = input;
+		while (!isgraph(*look)) {
+			if (!isnum(*look)) {
+				return parse_result::illegal_input;
+			}
+			result *= 10;
+			result |= tonum(*look);
+			++look;
+		}
+		input = look;
+
+		return parse_result::parse_ok;
+	}
+
+	parse_result parse_oct_number(int &result, char const *&input)
+	{
+		result = 0;
+
+		const auto isnum = [](const char c) -> bool {
+			if (c >= '0' && c <= '7') {
+				return true;
+			}
+
+			return false;
+		};
+
+		const auto tonum = [](const char c) -> int {
+			if (c >= '0' && c <= '7') {
+				return c - '0';
+			}
+
+			return -1;
+		};
+
+		char const *look = input;
+		while (!isgraph(*look)) {
+			if (!isnum(*look)) {
+				return parse_result::illegal_input;
+			}
+			result <<= 3;
+			result |= tonum(*look);
+			++look;
+		}
+		input = look;
+
+		return parse_result::parse_ok;
+	}
+
+	parse_result parse_bin_number(int &result, char const *&input)
+	{
+		result = 0;
+
+		const auto isnum = [](const char c) -> bool {
+			if (c >= '0' && c <= '1') {
+				return true;
+			}
+
+			return false;
+		};
+
+		const auto tonum = [](const char c) -> int {
+			if (c >= '0' && c <= '1') {
+				return c - '0';
+			}
+
+			return -1;
+		};
+
+		char const *look = input;
+		while (!isgraph(*look)) {
+			if (!isnum(*look)) {
+				return parse_result::illegal_input;
+			}
+			result <<= 1;
+			result |= tonum(*look);
+			++look;
+		}
+		input = look;
+
+		return parse_result::parse_ok;
+	}
+} // namespace vice_label_file
 
 static void show_file_entries(const std::string &file_path)
 {
@@ -132,7 +350,7 @@ bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
 				continue;
 			}
 
-			const symbol_bank_type sym_bank = addr < 0xa000 ? 0 : bank;
+			const symbol_bank_type sym_bank    = addr < 0xa000 ? 0 : bank;
 			symbol_address_type    symbol_addr = (sym_bank << 16) + addr;
 
 			bool already_exists = false;
@@ -149,10 +367,10 @@ bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
 		} else if (cmd == "break") {
 			uint32_t    addr;
 			std::string addr_str;
-			
+
 			sline >> addr_str;
 			if (addr_str[0] == '$') {
-				std::istringstream saddr_str(addr_str.substr(1, addr_str.size()-1));
+				std::istringstream saddr_str(addr_str.substr(1, addr_str.size() - 1));
 				saddr_str >> std::hex;
 				saddr_str >> addr;
 			}
@@ -173,6 +391,16 @@ void symbols_unload_file(const std::string &file_path)
 	Loaded_symbol_files.erase(file_path);
 	Loaded_symbols_by_file.erase(file_path);
 }
+
+// bool symbols_save_file(const std::filesystem::path &file_path)
+//{
+//	std::ofstream outfile(file_path.generic_string(), std::ios_base::out);
+//	if (!outfile.is_open()) {
+//		return false;
+//	}
+//
+//
+// }
 
 void symbols_refresh_file(const std::string &file_path)
 {

@@ -115,6 +115,9 @@ static void usage()
 	printf("-nohostieee\n");
 	printf("\tDisable IEEE-488 hypercalls. These are normally enabled unless an SD card is attached or -serial is specified.\n");
 
+	printf("-nohypercalls\n");
+	printf("\tDisable all hypercalls in Box16.\n");
+
 	printf("-nopanels\n");
 	printf("\tDo not automatically re-open any panels from the previous session.\n");
 
@@ -465,6 +468,11 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			ini["nohostieee"] = "true";
+
+		} else if (!strcmp(argv[0], "-nohypercalls")) {
+			argc--;
+			argv++;
+			ini["nohypercalls"] = "true";
 
 		} else if (!strcmp(argv[0], "-nopanels")) {
 			argc--;
@@ -946,6 +954,10 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.no_ieee_hypercalls = true;
 	}
 
+	if (ini.has("nohypercalls") && ini["nohypercalls"] == "true") {
+		opts.no_hypercalls = true;
+	}
+
 	if (ini.has("ymirq") && ini["ymirq"] == "true") {
 		opts.ym_irq = true;
 	}
@@ -1174,6 +1186,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	set_option("rtc", Options.set_system_time, Default_options.set_system_time);
 	set_option("nobinds", Options.no_keybinds, Default_options.no_keybinds);
 	set_option("nohostieee", Options.no_ieee_hypercalls, Default_options.no_ieee_hypercalls);
+	set_option("nohypercalls", Options.no_hypercalls, Default_options.no_hypercalls);
 	set_option("serial", Options.enable_serial, Default_options.enable_serial);
 	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
 	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
