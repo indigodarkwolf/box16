@@ -57,6 +57,9 @@ uint8_t pcm_read_ctrl(void)
 	if (fifo_cnt == sizeof(fifo)) {
 		result |= 0x80;
 	}
+	if (fifo_cnt == 0) {
+		result |= 0x40;
+	}
 	return result;
 }
 
