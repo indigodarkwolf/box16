@@ -369,11 +369,9 @@ bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
 			std::string addr_str;
 
 			sline >> addr_str;
-			if (addr_str[0] == '$') {
-				std::istringstream saddr_str(addr_str.substr(1, addr_str.size() - 1));
-				saddr_str >> std::hex;
-				saddr_str >> addr;
-			}
+			std::istringstream saddr_str(addr_str[0] == '$' ? addr_str.substr(1, addr_str.size() - 1) : addr_str);
+			saddr_str >> std::hex;
+			saddr_str >> addr;
 			debugger_add_breakpoint(addr);
 		}
 	}
