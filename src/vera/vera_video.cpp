@@ -457,7 +457,7 @@ static void render_layer_line_text(uint8_t layer, uint16_t y)
 {
 	const struct vera_video_layer_properties *props = &layer_properties[layer];
 
-	const uint8_t max_pixels_per_byte = (8 >> props->color_depth) - 1;
+	const uint8_t max_pixels_per_byte = 7; // (8 >> props->color_depth) - 1; // Don't need this calculation, because props->color_depth will always be 0.
 	const int     eff_y               = calc_layer_eff_y(props, y);
 	const int     yy                  = eff_y & props->tileh_max;
 
@@ -542,7 +542,7 @@ static void render_layer_line_text(uint8_t layer, uint16_t y)
 		}
 
 		// convert tile byte to indexed color
-		color_shift             = max_pixels_per_byte - (eff_x & props->tilew_max);
+		color_shift             = max_pixels_per_byte - (eff_x & 0x7);
 		const uint8_t col_index = (s >> color_shift) & 1;
 		layer_line[layer][i]    = col_index ? fg_color : bg_color;
 
