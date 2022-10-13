@@ -333,12 +333,15 @@ bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
 		sline >> cmd;
 
 		if (cmd == "al" || cmd == "add_label") {
+			std::string addr_str;
 			uint32_t    addr;
 			std::string label;
 
-			sline >> std::hex;
-
-			sline >> addr >> label;
+			sline >> addr_str;
+			std::istringstream saddr_str(addr_str[0] == 'C' && addr_str[1] == ':' ? addr_str.substr(2, addr_str.size() - 2) : addr_str);
+			saddr_str >> std::hex;
+			saddr_str >> addr;
+			sline >> label;
 
 			if (addr > 0xffff) {
 				continue;
@@ -369,11 +372,9 @@ bool symbols_load_file(const std::string &file_path, symbol_bank_type bank)
 			std::string addr_str;
 
 			sline >> addr_str;
-			if (addr_str[0] == '$') {
-				std::istringstream saddr_str(addr_str.substr(1, addr_str.size() - 1));
-				saddr_str >> std::hex;
-				saddr_str >> addr;
-			}
+			std::istringstream saddr_str(addr_str[0] == '$' ? addr_str.substr(1, addr_str.size() - 1) : addr_str);
+			saddr_str >> std::hex;
+			saddr_str >> addr;
 			debugger_add_breakpoint(addr);
 		}
 	}
