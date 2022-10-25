@@ -820,6 +820,11 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	}
 
 	if (ini.has("dump")) {
+		opts.dump_cpu = false;
+		opts.dump_ram = false;
+		opts.dump_bank = false;
+		opts.dump_vram = false;
+
 		for (const char *p = ini["dump"].c_str(); *p; p++) {
 			switch (tolower(*p)) {
 				case 'c':

@@ -71,10 +71,10 @@ struct options {
 	bool log_keyboard = false;
 	bool log_speed    = false;
 	bool log_video    = false;
-	bool dump_cpu     = false;
-	bool dump_ram     = false;
-	bool dump_bank    = false;
-	bool dump_vram    = false;
+	bool dump_cpu     = true;
+	bool dump_ram     = true;
+	bool dump_bank    = true;
+	bool dump_vram    = true;
 
 	echo_mode_t echo_mode = echo_mode_t::ECHO_MODE_NONE;
 
