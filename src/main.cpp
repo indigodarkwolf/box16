@@ -268,8 +268,12 @@ int main(int argc, char **argv)
 
 	{
 		display_settings init_settings;
+		init_settings.video_rect.x  = 0;
+		init_settings.video_rect.y  = 0;
 		init_settings.video_rect.w  = 640;
 		init_settings.video_rect.h  = 480;
+		init_settings.window_rect.x = 0;
+		init_settings.window_rect.y = 0;
 		init_settings.window_rect.w = 640 * Options.window_scale;
 		init_settings.window_rect.h = (480 * Options.window_scale) + IMGUI_OVERLAY_MENU_BAR_HEIGHT;
 		display_init(init_settings);
