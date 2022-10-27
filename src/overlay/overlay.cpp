@@ -2332,10 +2332,35 @@ static void draw_menu_bar()
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetContentRegionAvail().x - 96.0f);
 			ImGui::Tile(ICON_ACTIVITY_LED_ON, (float)activity_led / 255.0f);
 		}
-		if (Timing_perf >= 1000) {
-			ImGui::Text("Speed: %dX", Timing_perf / 100);
-		} else {
-			ImGui::Text("Speed: %d%%", Timing_perf);
+
+		enum class timing_type {
+			emulated,
+			gpu_fps
+		};
+
+		static timing_type Display_timing = timing_type::emulated;
+
+		switch (Display_timing) {
+			case timing_type::emulated:
+				if (Timing_perf >= 1000) {
+					ImGui::Text("Speed: %dX", Timing_perf / 100);
+				} else {
+					ImGui::Text("Speed: %d%%", Timing_perf);
+				}
+				break;
+			case timing_type::gpu_fps:
+				ImGui::Text("FPS: %2.2f", display_get_fps());
+				break;
+		}
+		if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
+			switch (Display_timing) {
+				case timing_type::emulated:
+					Display_timing = timing_type::gpu_fps;
+					break;
+				case timing_type::gpu_fps:
+					Display_timing = timing_type::emulated;
+					break;
+			}
 		}
 		ImGui::EndMainMenuBar();
 	}

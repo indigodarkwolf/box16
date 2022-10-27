@@ -26,6 +26,7 @@ SOFTWARE.
 */
 
 #include <GL/glew.h>
+#include <algorithm>
 #include <atomic>
 #include <thread>
 
@@ -37,6 +38,7 @@ SOFTWARE.
 #include "memory.h"
 #include "options.h"
 #include "overlay/overlay.h"
+#include "ring_buffer.h"
 #include "timing.h"
 #include "vera/vera_video.h"
 #include "version.h"
@@ -270,6 +272,8 @@ static void display_video()
 	glBindTexture(GL_TEXTURE_2D, 0);
 }
 
+static ring_buffer<uint32_t, 600> Display_timing_history;
+
 bool display_init(const display_settings &settings)
 {
 	Display = settings;
@@ -414,7 +418,6 @@ bool display_init(const display_settings &settings)
 		// io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
-
 		options_find_file(Imgui_ini_path, "imgui.ini");
 		Imgui_ini_path_str = Imgui_ini_path.generic_string();
 		io.IniFilename     = Imgui_ini_path_str.c_str();
@@ -490,8 +493,11 @@ bool display_init(const display_settings &settings)
 
 	SDL_ShowCursor(SDL_DISABLE);
 
-	if (Options.vsync_mode == vsync_mode_t::VSYNC_MODE_GET_SYNC || Options.vsync_mode == vsync_mode_t::VSYNC_MODE_WAIT_SYNC)
+	if (Options.vsync_mode == vsync_mode_t::VSYNC_MODE_GET_SYNC || Options.vsync_mode == vsync_mode_t::VSYNC_MODE_WAIT_SYNC) {
 		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+	}
+
+	Display_timing_history.add(0);
 
 	return true;
 }
@@ -541,12 +547,14 @@ void display_process()
 				break;
 
 			case vsync_mode_t::VSYNC_MODE_GET_SYNC: {
-				GLsizei num_sync_values;
-				GLint   sync_status;
-				glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
+				GLsizei num_sync_values = 1;
+				GLint   sync_status = GL_UNSIGNALED;
+				while (sync_status == GL_UNSIGNALED) {
+					glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
 
-				if (num_sync_values != 0 && sync_status == GL_UNSIGNALED) {
-					return;
+					if (num_sync_values != 1) {
+						return;
+					}
 				}
 
 				glDeleteSync(Render_complete);
@@ -554,7 +562,7 @@ void display_process()
 				break;
 			}
 			case vsync_mode_t::VSYNC_MODE_WAIT_SYNC:
-				if (glClientWaitSync(Render_complete, 0, 0) == GL_TIMEOUT_EXPIRED) {
+				if (glClientWaitSync(Render_complete, 0, 16666666666ULL) == GL_TIMEOUT_EXPIRED) {
 					return;
 				}
 
@@ -612,6 +620,8 @@ void display_process()
 	}
 
 	Last_render_time = timing_total_microseconds_realtime();
+
+	Display_timing_history.add(Last_render_time);
 }
 
 const display_settings &display_get_settings()
@@ -628,6 +638,24 @@ void display_toggle_fullscreen()
 {
 	Fullscreen = !Fullscreen;
 	SDL_SetWindowFullscreen(Display_window, Fullscreen ? SDL_WINDOW_FULLSCREEN : 0);
+}
+
+float display_get_fps()
+{
+	const uint32_t cutoff_us = std::max((uint32_t)1000000, timing_total_microseconds_realtime()) - 1000000;
+	uint32_t framecount = 0;
+	Display_timing_history.for_until_reverse([&](const uint32_t &us) -> bool {
+		if (us > cutoff_us) {
+			++framecount;
+			return true;
+		}
+		return false;
+	});
+
+	return (float)framecount;
+
+	//const uint32_t display_interval_us = Display_timing_history.get_newest() - Display_timing_history.get_oldest();
+	//return 60.0f / (((float)display_interval_us) / 1000000.0f);
 }
 
 namespace ImGui

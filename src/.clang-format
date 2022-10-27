@@ -34,6 +34,7 @@ ColumnLimit: 0
 # ContinuationIndentWidth (unsigned)
 Cpp11BracedListStyle: false
 DerivePointerAlignment: false
+DeriveLineEnding: false
 # DisableFormat (bool)
 # ExperimentalAutoDetectBinPacking (bool)
 # ForEachMacros (std::vector<std::string>)
@@ -75,5 +76,6 @@ SpacesInSquareBrackets: false
 # Standard (LanguageStandard)
 TabWidth: 4
 UseTab: ForIndentation
+UseCRLF: false
 
 IndentPPDirectives: AfterHash

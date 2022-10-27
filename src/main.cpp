@@ -21,8 +21,8 @@
 #include "gif_recorder.h"
 #include "glue.h"
 #include "hypercalls.h"
-#include "ieee.h"
 #include "i2c.h"
+#include "ieee.h"
 #include "joystick.h"
 #include "keyboard.h"
 #include "memory.h"
@@ -60,7 +60,7 @@ bool debugger_enabled = true;
 bool save_on_exit = true;
 
 bool       has_boot_tasks = false;
-SDL_RWops *prg_file = nullptr;
+SDL_RWops *prg_file       = nullptr;
 
 void machine_dump()
 {
@@ -290,7 +290,7 @@ int main(int argc, char **argv)
 			case gif_recorder_start_t::GIF_RECORDER_START_NOW:
 				gif_recorder_set(RECORD_GIF_RECORD);
 				break;
-			default: 
+			default:
 				break;
 		}
 	}
@@ -301,13 +301,13 @@ int main(int argc, char **argv)
 			case wav_recorder_start_t::WAV_RECORDER_START_WAIT:
 				wav_recorder_set(RECORD_WAV_PAUSE);
 				break;
-			case wav_recorder_start_t::WAV_RECORDER_START_AUTO: 
-				wav_recorder_set(RECORD_WAV_AUTOSTART); 
+			case wav_recorder_start_t::WAV_RECORDER_START_AUTO:
+				wav_recorder_set(RECORD_WAV_AUTOSTART);
 				break;
-			case wav_recorder_start_t::WAV_RECORDER_START_NOW: 
-				wav_recorder_set(RECORD_WAV_RECORD); 
+			case wav_recorder_start_t::WAV_RECORDER_START_NOW:
+				wav_recorder_set(RECORD_WAV_RECORD);
 				break;
-			default: 
+			default:
 				break;
 		}
 	}
@@ -493,10 +493,11 @@ void emulator_loop()
 		if (new_frame) {
 			midi_process();
 			gif_recorder_update(vera_video_get_framebuffer());
-			static uint32_t last_display_us = timing_total_microseconds();
-			if (timing_total_microseconds() - last_display_us > 16000) { // Close enough I'm willing to pay for OpenGL's sync.
+			static uint32_t last_display_us = timing_total_microseconds_realtime();
+			const uint32_t  display_us      = timing_total_microseconds_realtime();
+			if ((Options.warp_factor == 0) || (display_us - last_display_us > 16000)) { // Close enough I'm willing to pay for OpenGL's sync.
 				display_process();
-				last_display_us = timing_total_microseconds();
+				last_display_us = display_us;
 			}
 			if (!sdl_events_update()) {
 				break;

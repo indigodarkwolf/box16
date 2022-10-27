@@ -49,8 +49,9 @@ private:
 bool display_init(const display_settings &);
 void display_shutdown();
 void display_process();
+float display_get_fps();
 
-const display_settings &display_get_settings();
+    const display_settings &display_get_settings();
 SDL_Window *            display_get_window();
 
 void display_toggle_fullscreen();

@@ -2,6 +2,7 @@
 
 #include <string.h>
 #include <algorithm>
+#include <functional>
 
 template <typename T, int SIZE, bool ALLOW_OVERWRITE = true>
 class ring_buffer
@@ -70,6 +71,47 @@ public:
 	{
 		return SIZE - m_count;
 	}
+
+	void for_each(std::function<void(const T &)> f) const
+	{
+		if (f != nullptr) {
+			for (int i = 0; i < m_count; ++i) {
+				f(get(i));
+			}
+		}
+	}
+
+	void for_until(std::function<bool(const T &)> f) const
+	{
+		if (f != nullptr) {
+			for (int i = 0; i < m_count; ++i) {
+				if (!f(get(i))) {
+					break;
+				}
+			}
+		}
+	}
+
+	void for_each_reverse(std::function<void(const T &)> f) const
+	{
+		if (f != nullptr) {
+			for (int i = (int)m_count - 1; i > 0; --i) {
+				f(get(i));
+			}
+		}
+	}
+
+	void for_until_reverse(std::function<bool(const T &)> f) const
+	{
+		if (f != nullptr) {
+			for (int i = (int)m_count - 1; i > 0; --i) {
+				if (!f(get(i))) {
+					break;
+				}
+			}
+		}
+	}
+
 
 private:
 	size_t m_oldest;
