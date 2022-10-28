@@ -11,6 +11,7 @@
 #include "options.h"
 #include "overlay/overlay.h"
 #include "ps2.h"
+#include "timing.h"
 #include "vera/sdcard.h"
 
 #ifdef __APPLE__
@@ -27,6 +28,8 @@ bool sdl_events_update()
 	static bool alt_down = false;
 
 	bool mouse_state_change = false;
+
+	const uint32_t event_handling_start_us = timing_total_microseconds_realtime();
 
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {
@@ -210,6 +213,9 @@ bool sdl_events_update()
 				break;
 		}
 	}
+
+	const uint32_t event_handling_end_us = timing_total_microseconds_realtime();
+	display_refund_render_time(event_handling_end_us - event_handling_start_us);
 
 	if (mouse_state_change) {
 		mouse_send_state();

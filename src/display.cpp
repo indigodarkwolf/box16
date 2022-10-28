@@ -658,6 +658,11 @@ float display_get_fps()
 	//return 60.0f / (((float)display_interval_us) / 1000000.0f);
 }
 
+void display_refund_render_time(uint32_t time_us)
+{
+	Last_render_time += time_us;
+}
+
 namespace ImGui
 {
 	bool TileButton(display_icons icon, bool enabled, bool *hovered)

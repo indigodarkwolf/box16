@@ -3,8 +3,8 @@
 #include "imgui/imgui.h"
 
 #include <SDL.h>
-#include <tuple>
 #include <filesystem>
+#include <tuple>
 
 #if SDL_MAJOR_VERSION <= 2 && SDL_MINOR_VERSION <= 0 && SDL_PATCHLEVEL <= 9
 struct SDL_FRect {
@@ -46,13 +46,14 @@ private:
 	int      map_height     = 0;
 };
 
-bool display_init(const display_settings &);
-void display_shutdown();
-void display_process();
+bool  display_init(const display_settings &);
+void  display_shutdown();
+void  display_process();
 float display_get_fps();
+void  display_refund_render_time(uint32_t time_us);
 
-    const display_settings &display_get_settings();
-SDL_Window *            display_get_window();
+const display_settings &display_get_settings();
+SDL_Window             *display_get_window();
 
 void display_toggle_fullscreen();
 
