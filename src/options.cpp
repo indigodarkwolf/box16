@@ -112,6 +112,9 @@ static void usage()
 	printf("-nobinds\n");
 	printf("\tDisable most emulator keyboard shortcuts.\n");
 
+	printf("-noemucmdkeys\n");
+	printf("\tAlias for -nobinds.\n");
+
 	printf("-nohostieee\n");
 	printf("\tDisable IEEE-488 hypercalls. These are normally enabled unless an SD card is attached or -serial is specified.\n");
 
@@ -460,6 +463,11 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argv++;
 
 		} else if (!strcmp(argv[0], "-nobinds")) {
+			argc--;
+			argv++;
+			ini["nobinds"] = "true";
+
+		} else if (!strcmp(argv[0], "-noemucmdkeys")) {
 			argc--;
 			argv++;
 			ini["nobinds"] = "true";
