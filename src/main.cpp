@@ -516,10 +516,8 @@ void emulator_loop()
 		}
 
 		if (vera_video_get_irq_out() || YM_irq() || via2_irq()) {
-			if (!(status & 4)) {
-				irq6502();
-				debugger_interrupt();
-			}
+			irq6502();
+			debugger_interrupt();
 		}
 
 		hypercalls_process();
