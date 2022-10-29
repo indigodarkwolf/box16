@@ -149,11 +149,14 @@ int main(int argc, char **argv)
 		vera_video_set_cheat_mask((1 << (Options.warp_factor - 1)) - 1);
 	}
 
-	memory_init_params memory_params;
-	memory_params.randomize                           = Options.memory_randomize;
-	memory_params.enable_uninitialized_access_warning = Options.memory_uninit_warn;
+	// Initialize memory
+	{
+		memory_init_params memory_params;
+		memory_params.randomize                           = Options.memory_randomize;
+		memory_params.enable_uninitialized_access_warning = Options.memory_uninit_warn;
 
-	memory_init(memory_params);
+		memory_init(memory_params);
+	}
 
 	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
 		SDL_RWops *f = nullptr;
@@ -270,6 +273,7 @@ int main(int argc, char **argv)
 		YM_set_strict_busy(Options.ym_strict);
 	}
 
+	// Initialize display
 	{
 		display_settings init_settings;
 		init_settings.video_rect.x  = 0;
