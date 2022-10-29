@@ -365,12 +365,41 @@ All rights reserved. License: 2-clause BSD
 Release Notes
 -------------
 
-## Non-Release 41.0 ("Koutoubia Mosque")
-* Ported support for IEEE hypercalls from x16emu.
-* Ported experimental support for serial devices from x16emu.
-* Updated keycodes passed from SDL to X16.
-* Ported support for debug register to disable keybinds.
-* Updated/added a bunch of copyright notices.
+## Non-Release 41.1 ("Koutoubia Mosque")
+* Improved hypercall performance
+* -ignore_patch is now saved to ini file.
+* Saving which panels are open.
+* Keymappings now match r41 kernal.
+* Optimized VIA timer implementation.
+* Moved imgui.ini location to match box16.ini
+* Added -nohypercalls to disable all hypercalls.
+* Added VERA feature: AUDIO_CTRL bit 6 FIFO_EMPTY (ZeroByteOrg)
+* Improved parsing of addresses when loading symbols from a VICE Label File. (claudiobrotto)
+* Improved framerate consistency for 60Hz displays, possibly others too.
+* Added -noemucmdkeys from x16emu (aliased to -nobinds)
+* Added -wuninit from x16emu to print a warning when the X16 accesses uninitialized RAM.
+* Added -randram from x16emu to randomize the contents of RAM, more closely matching hardware behavior.
+* Added -widescreen from x16emu to display the X16's graphics in a widescreen format instead of the default 4:3.
+* Disassembler improvements:
+	* Disassembler now follows into current RAM and ROM bank.
+	* Added inline buttons to toggle breakpoints in disassembler.
+	* Added 'F9' to toggle breakpoint on current instruction.
+* Ported fixes/updates from x16emu:
+	* Usage text had wrong ISO type. https://github.com/commanderx16/x16-emulator/pull/404
+	* Fixed 65C02 WAI instruction behavior. https://github.com/commanderx16/x16-emulator/pull/434
+	* Fixed 65C02 D flag on IRQ/NMI. https://github.com/commanderx16/x16-emulator/pull/436
+	* Updated VERA IEN and IRQLINE_L/SCANLINE_L to match latest behavior in the VERA repo.
+* Bugfixes:
+	* Fixed warp mode toggling.
+	* Fixed YM busy flag when emulator audio is disabled.
+	* Fixed crash on Linux when listing directories with subdirectories.
+	* Disabled patch loading when patch path exists but is empty. (jburks)
+	* Fixed RTC to increment on CPU simulation.
+	* Fixed various false-positives in a check that disabled v-sync.
+	* Pulled fix from Imgui to fix docked windows when the window is minimized.
+	* Fixed display of 16x16x1 w/ t256c tiles.
+	* Fixed empty default set to dump when the X16 detects a crash condition
+	* Fixed VIA writes to IFR registers
 
 <!-------------------------------------------------------------------->
 [x16rom]: https://github.com/commanderx16/x16-rom

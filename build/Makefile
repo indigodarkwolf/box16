@@ -5,7 +5,7 @@
 #-------------------------
 
 PROJECT := box16
-RELEASE := nr41.0
+RELEASE := nr41.1
 
 REPODIR := ..
 OBJDIR := obj

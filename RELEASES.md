@@ -1,6 +1,17 @@
 Release Notes
 -------------
 
+## Non-Release 41.0 ("Koutoubia Mosque")
+* Added dockable ImGui windows
+* Windows build converted to VS2022
+
+## Non-Release 40.0 ("Bonner Munster")
+* Ported support for IEEE hypercalls from x16emu.
+* Ported experimental support for serial devices from x16emu.
+* Updated keycodes passed from SDL to X16.
+* Ported support for debug register to disable keybinds.
+* Updated/added a bunch of copyright notices.
+
 ## Non-Release 39.3 ("Fushimi Inari")
 * Added support for VIA timers. (akumanatt)
 * Can now change v-sync settings. (jburks)
