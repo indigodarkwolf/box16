@@ -13,7 +13,7 @@
 
 #define LOAD_HYPERCALLS
 //#define TRACE
-#define TRACE_VIA
+//#define PROFILE
 
 #define MHZ 8
 

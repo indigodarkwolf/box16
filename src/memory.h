@@ -11,7 +11,12 @@
 #include <stdint.h>
 #include <stdio.h>
 
-void memory_init();
+struct memory_init_params {
+	bool randomize;
+	bool enable_uninitialized_access_warning;
+};
+
+void memory_init(const memory_init_params &params);
 void memory_reset();
 
 uint8_t debug_read6502(uint16_t address);

@@ -6,12 +6,12 @@
 #include "memory.h"
 #include "cpu/fake6502.h"
 #include "gif_recorder.h"
-#include "wav_recorder.h"
 #include "glue.h"
 #include "hypercalls.h"
 #include "ps2.h"
 #include "vera/vera_video.h"
 #include "via.h"
+#include "wav_recorder.h"
 #include "ym2151/ym2151.h"
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +24,9 @@
 uint8_t *RAM;
 uint8_t  ROM[ROM_SIZE];
 
+#define RAM_WRITE_BLOCKS (((RAM_SIZE) + 0x3f) >> 6)
+static uint64_t *RAM_written;
+
 static uint8_t addr_ym = 0;
 
 #define DEVICE_EMULATOR (0x9fb0)
@@ -32,7 +35,7 @@ static uint8_t addr_ym = 0;
 // The idea behind this mapping scheme is to try and avoid chaining a bunch of
 // if()'s by moving to a table lookup. We potentially *could* just have a 64K-sized
 // table, but there's only a handful of ranges that we need to worry about, so we
-// can easily express it as a trio of 256-entry tables, from which we need at most 
+// can easily express it as a trio of 256-entry tables, from which we need at most
 // two lookups.
 //
 
@@ -97,14 +100,30 @@ static void build_memory_map(memmap_table_entry *table_entries, uint8_t *map)
 	}
 }
 
+static memory_init_params Memory_params;
+
 //
 // Initialization and re-initialization
 //
 
-void memory_init()
+void memory_init(const memory_init_params &init_params)
 {
-	RAM = new uint8_t[RAM_SIZE];
-	memset(RAM, 0, RAM_SIZE);
+	Memory_params = init_params;
+
+	const uint32_t ram_size = RAM_SIZE;
+	RAM                     = new uint8_t[ram_size];
+	if (Memory_params.randomize) {
+		srand((uint32_t)SDL_GetPerformanceCounter());
+		for (uint32_t i = 0; i < RAM_SIZE; ++i) {
+			RAM[i] = rand();
+		}
+	} else {
+		memset(RAM, 0, RAM_SIZE);
+	}
+
+	const uint32_t ram_write_blocks = RAM_WRITE_BLOCKS;
+	RAM_written                     = new uint64_t[RAM_WRITE_BLOCKS];
+	memset(RAM_written, 0, RAM_WRITE_BLOCKS * sizeof(uint64_t));
 
 	build_memory_map(memmap_table_hi, memory_map_hi);
 	build_memory_map(memmap_table_io, memory_map_io);
@@ -130,14 +149,21 @@ static uint8_t effective_ram_bank()
 
 static uint8_t debug_ram_read(uint16_t address, uint8_t bank)
 {
-	const int ramBank = bank % Options.num_ram_banks;
-	return RAM[(ramBank << 13) + address];
+	const int ramBank      = bank % Options.num_ram_banks;
+	const int real_address = (ramBank << 13) + address;
+	return RAM[real_address];
 }
 
 static uint8_t real_ram_read(uint16_t address)
 {
-	const int ramBank = effective_ram_bank();
-	return RAM[(ramBank << 13) + address];
+	const int ramBank      = effective_ram_bank();
+	const int real_address = (ramBank << 13) + address;
+
+	if ((RAM_written[real_address >> 6] & ((uint64_t)1 << (real_address & 0x3f))) == 0 && Memory_params.enable_uninitialized_access_warning) {
+		printf("Warning: %02X:%04X accessed uninitialized RAM address %02X:%04X\n", pc < 0xa000 ? 0 : ramBank, pc, address < 0xa000 ? 0 : ramBank, address);
+	}
+
+	return RAM[real_address];
 }
 
 static void debug_ram_write(uint16_t address, uint8_t bank, uint8_t value)
@@ -147,7 +173,12 @@ static void debug_ram_write(uint16_t address, uint8_t bank, uint8_t value)
 
 static void real_ram_write(uint16_t address, uint8_t value)
 {
-	RAM[(effective_ram_bank() << 13) + address] = value;
+	const int ramBank      = effective_ram_bank();
+	const int real_address = (ramBank << 13) + address;
+
+	RAM_written[real_address >> 6] |= (uint64_t)1 << (real_address & 0x3f);
+
+	RAM[real_address] = value;
 }
 
 //

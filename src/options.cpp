@@ -157,6 +157,9 @@ static void usage()
 	printf("-rtc\n");
 	printf("\tSet the real-time-clock to the current system time and date.\n");
 
+	printf("-randram\n");
+	printf("\tRandomize the byte contents of memory on first boot.\n");
+
 	printf("-run\n");
 	printf("\tStart the -prg/-bas program using RUN or SYS, depending\n");
 	printf("\ton the load address.\n");
@@ -209,6 +212,9 @@ static void usage()
 	printf("\tRecord a wav for the audio output.\n");
 	printf("\tUse ,wait to start paused.\n");
 	printf("\tUse ,auto to start paused, but begin recording once a non-zero audio signal is detected.\n");
+
+	printf("-wuninit\n");
+	printf("\tPrint a warning whenever uninitialized RAM is accessed.\n");
 
 	printf("-ymirq\n");
 	printf("\tEnable the YM2151's IRQ generation.\n");
@@ -552,6 +558,11 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 
+		} else if (!strcmp(argv[0], "-randram")) {
+			argc--;
+			argv++;
+			ini["randram"] = "true";
+
 		} else if (!strcmp(argv[0], "-rom")) {
 			argc--;
 			argv++;
@@ -684,6 +695,11 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argv++;
 			argc--;
 
+		} else if (!strcmp(argv[0], "-wuninit")) {
+			argc--;
+			argv++;
+			ini["wuninit"] = "true";
+	
 		} else if (!strcmp(argv[0], "-ymirq")) {
 			argc--;
 			argv++;
@@ -979,6 +995,14 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.ym_strict = true;
 	}
 
+	if (ini.has("randram") && ini["randram"] == "true") {
+		opts.memory_randomize = true;
+	}
+
+	if (ini.has("wuninit") && ini["wuninit"] == "true") {
+		opts.memory_uninit_warn = true;
+	}
+
 	return nullptr;
 }
 
@@ -1203,6 +1227,8 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	set_option("serial", Options.enable_serial, Default_options.enable_serial);
 	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
 	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
+	set_option("randram", Options.memory_randomize, Default_options.memory_randomize);
+	set_option("wuninit", Options.memory_uninit_warn, Default_options.memory_uninit_warn);
 }
 
 void set_ini_panels(mINI::INIMap<std::string> &ini, bool all)

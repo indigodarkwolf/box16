@@ -2,6 +2,7 @@
 
 #include <SDL.h>
 
+#include "glue.h"
 #include "options.h"
 #include "ring_buffer.h"
 
@@ -11,12 +12,19 @@ struct tick_record {
 	uint32_t total_frames;
 };
 
-static ring_buffer<tick_record, 100> Tick_history;
-uint32_t                             Timing_perf = 0;
-static uint32_t                      Total_frames;
-static uint64_t                      Base_performance_time;
-static uint64_t                      Last_performance_time;
-static uint64_t                      Performance_frequency;
+#if defined(PROFILE)
+static constexpr const int Tick_history_length = 10000;
+#else
+static constexpr const int Tick_history_length = 100;
+#endif
+
+static ring_buffer<tick_record, Tick_history_length> Tick_history;
+
+uint32_t        Timing_perf = 0;
+static uint32_t Total_frames;
+static uint64_t Base_performance_time;
+static uint64_t Last_performance_time;
+static uint64_t Performance_frequency;
 
 static constexpr uint32_t Expected_frametime_us = 1000000 / 60;
 
@@ -60,9 +68,9 @@ void timing_update()
 	Tick_history.add(tick);
 
 	const tick_record &first_tick   = Tick_history.get_oldest();
-	const uint32_t     diff_time_us = tick.total_us - first_tick.total_us;
-	const uint32_t     diff_frames  = tick.total_frames - first_tick.total_frames;
-	Timing_perf                     = (uint32_t)((100 * (diff_frames * Expected_frametime_us) + (diff_time_us >> 1)) / (diff_time_us));
+	const uint64_t     diff_time_us = tick.total_us - first_tick.total_us;
+	const uint64_t     diff_frames  = tick.total_frames - first_tick.total_frames;
+	Timing_perf                     = (uint32_t)((100ULL * (diff_frames * Expected_frametime_us) + (diff_time_us >> 1)) / (diff_time_us));
 
 	if (Options.log_speed) {
 		printf("Speed: %d%%\n", Timing_perf);
@@ -71,6 +79,15 @@ void timing_update()
 	}
 
 	Last_performance_time = current_performance_time;
+
+#if defined(PROFILE)
+	if (Tick_history.count() == Tick_history_length) {
+		printf("Runtime: %dus\n", (uint32_t)diff_time_us);
+		printf("Frames:  %d\n", (uint32_t)diff_frames);
+		printf("Speed:   %d%%\n", Timing_perf);
+		pc = 0xffff;
+	}
+#endif
 }
 
 uint32_t timing_total_microseconds()
@@ -82,6 +99,6 @@ uint32_t timing_total_microseconds_realtime()
 {
 	const uint64_t current_performance_time = SDL_GetPerformanceCounter();
 
-	const uint64_t     total_perf_diff = current_performance_time - Base_performance_time;
+	const uint64_t total_perf_diff = current_performance_time - Base_performance_time;
 	return perf_to_us(total_perf_diff);
 }
