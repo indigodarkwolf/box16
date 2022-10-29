@@ -3,6 +3,6 @@
 //               2021-2022 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
-#define VER_NUM "40.0"
-#define VER_NAME "Bonner Munster"
+#define VER_NUM "41.0"
+#define VER_NAME "Koutoubia Mosque"
 #define VER_TITLE "box16"

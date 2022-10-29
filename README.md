@@ -365,7 +365,7 @@ All rights reserved. License: 2-clause BSD
 Release Notes
 -------------
 
-## Non-Release 40.0 ("Bonner Munster")
+## Non-Release 41.0 ("Koutoubia Mosque")
 * Ported support for IEEE hypercalls from x16emu.
 * Ported experimental support for serial devices from x16emu.
 * Updated keycodes passed from SDL to X16.
