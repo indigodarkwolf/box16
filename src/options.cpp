@@ -213,6 +213,9 @@ static void usage()
 	printf("\tUse ,wait to start paused.\n");
 	printf("\tUse ,auto to start paused, but begin recording once a non-zero audio signal is detected.\n");
 
+	printf("-widescreen\n");
+    printf("\tDisplay the emulated X16 in a 16:9 aspect ratio instead of 4:3.\n");
+
 	printf("-wuninit\n");
 	printf("\tPrint a warning whenever uninitialized RAM is accessed.\n");
 
@@ -695,6 +698,11 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argv++;
 			argc--;
 
+		} else if (!strcmp(argv[0], "-widescreen")) {
+			argc--;
+			argv++;
+			ini["widescreen"] = "true";
+
 		} else if (!strcmp(argv[0], "-wuninit")) {
 			argc--;
 			argv++;
@@ -995,6 +1003,10 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.ym_strict = true;
 	}
 
+	if (ini.has("widescreen") && ini["widescreen"] == "true") {
+		opts.widescreen = true;
+	}
+
 	if (ini.has("randram") && ini["randram"] == "true") {
 		opts.memory_randomize = true;
 	}
@@ -1227,6 +1239,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	set_option("serial", Options.enable_serial, Default_options.enable_serial);
 	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
 	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
+	set_option("widescreen", Options.widescreen, Default_options.widescreen);
 	set_option("randram", Options.memory_randomize, Default_options.memory_randomize);
 	set_option("wuninit", Options.memory_uninit_warn, Default_options.memory_uninit_warn);
 }

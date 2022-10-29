@@ -83,6 +83,7 @@ struct options {
 	int             test_number   = -1;
 	int             warp_factor   = 0;
 	int             window_scale  = 2;
+	bool            widescreen    = false;
 	scale_quality_t scale_quality = scale_quality_t::NEAREST;
 	vsync_mode_t    vsync_mode    = vsync_mode_t::VSYNC_MODE_GET_SYNC;
 

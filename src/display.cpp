@@ -231,7 +231,7 @@ static void display_video()
 	client_rect.y = 0;
 
 	SDL_Rect video_rect = client_rect;
-	float    ratio      = ((float)client_rect.w / (float)client_rect.h) / (640.0f / 480.0f);
+	float    ratio      = ((float)client_rect.w / (float)client_rect.h) / (Display.aspect_ratio);
 	if (ratio > 1.0f) {
 		video_rect.w = (int)(video_rect.w / ratio);
 		video_rect.x = (client_rect.w - video_rect.w) / 2;

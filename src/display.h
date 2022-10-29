@@ -18,6 +18,7 @@ struct SDL_FRect {
 struct display_settings {
 	SDL_Rect window_rect;
 	SDL_Rect video_rect;
+	float    aspect_ratio;
 };
 
 class icon_set
