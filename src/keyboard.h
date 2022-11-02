@@ -24,7 +24,6 @@ void    mouse_move(int x, int y);
 uint8_t mouse_read(uint8_t reg);
 void    mouse_send_state();
 
-bool    mouse_has_data();
 uint8_t mouse_get_next_byte();
 
 #endif

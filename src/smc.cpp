@@ -22,7 +22,6 @@
 
 uint8_t power_led;
 uint8_t activity_led;
-uint8_t mouse_data_count = 0;
 
 uint8_t smc_read(uint8_t a)
 {
@@ -31,22 +30,9 @@ uint8_t smc_read(uint8_t a)
 		case 7:
 			return keyboard_get_next_byte();
 
-		// Offset that returns three bytes from mouse buffer (one movement packet) or a single zero if there is not complete packet in the buffer
-		// mse_count keeps track of which one of the three bytes it's sending
+		// Offset that returns one byte from the mouse buffer
 		case 0x21:
-			if (mouse_data_count == 0 && mouse_has_data()) { // If start of packet, check if there are at least three bytes in the buffer
-				mouse_data_count++;
-				return mouse_get_next_byte();
-			} else if (mouse_data_count > 0) { // If we have already started sending bytes, assume there is enough data in the buffer
-				mouse_data_count++;
-				if (mouse_data_count == 3) {
-					mouse_data_count = 0;
-				}
-				return mouse_get_next_byte();
-			} else { // Return a single zero if no complete packet available
-				mouse_data_count = 0;
-				return 0x00;
-			}
+			return mouse_get_next_byte();
 
 		default:
 			return 0xff;

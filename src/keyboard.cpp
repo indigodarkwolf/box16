@@ -290,7 +290,7 @@ void mouse_button_up(int num)
 void mouse_move(int x, int y)
 {
 	mouse_diff_x += x;
-	mouse_diff_y += y;
+	mouse_diff_y -= y;
 }
 
 uint8_t mouse_read(uint8_t reg)
@@ -330,12 +330,7 @@ void mouse_send_state()
 	} while (mouse_diff_x != 0 && mouse_diff_y != 0);
 }
 
-bool mouse_has_data()
-{
-	return Mouse_buffer.count() > 2;
-}
-
 uint8_t mouse_get_next_byte()
 {
-	return Mouse_buffer.pop_oldest();
+	return (Mouse_buffer.count() > 0) ? Mouse_buffer.pop_oldest() : 0;
 }
