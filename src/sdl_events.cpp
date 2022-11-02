@@ -10,7 +10,7 @@
 #include "keyboard.h"
 #include "options.h"
 #include "overlay/overlay.h"
-#include "ps2.h"
+#include "i2c.h"
 #include "timing.h"
 #include "vera/sdcard.h"
 

@@ -30,7 +30,6 @@
 #include "options.h"
 #include "overlay/cpu_visualization.h"
 #include "overlay/overlay.h"
-#include "ps2.h"
 #include "ring_buffer.h"
 #include "rom_patch.h"
 #include "rtc.h"

@@ -6,12 +6,25 @@
 // Copyright (c) 2021-2022 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
-#include <SDL_keycode.h>
+#	include <SDL_keycode.h>
 
 void keyboard_process();
 
 void keyboard_add_event(const bool down, const SDL_Scancode scancode);
 void keyboard_add_text(char const *const text);
 void keyboard_add_file(char const *const path);
+
+void    keyboard_buffer_flush();
+uint8_t keyboard_get_next_byte();
+
+// fake mouse
+void    mouse_button_down(int num);
+void    mouse_button_up(int num);
+void    mouse_move(int x, int y);
+uint8_t mouse_read(uint8_t reg);
+void    mouse_send_state();
+
+bool    mouse_has_data();
+uint8_t mouse_get_next_byte();
 
 #endif

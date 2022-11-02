@@ -14,6 +14,12 @@ public:
 		// Nothing to do.
 	}
 
+	void clear()
+	{
+		m_oldest = 0;
+		m_count  = 0;
+	}
+
 	void add(const T &item)
 	{
 		const size_t index = (m_oldest + m_count) % SIZE;

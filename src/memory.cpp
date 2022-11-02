@@ -8,7 +8,7 @@
 #include "gif_recorder.h"
 #include "glue.h"
 #include "hypercalls.h"
-#include "ps2.h"
+#include "keyboard.h"
 #include "vera/vera_video.h"
 #include "via.h"
 #include "wav_recorder.h"

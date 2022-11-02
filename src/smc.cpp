@@ -5,6 +5,8 @@
 // System Management Controller
 
 #include "smc.h"
+#include "i2c.h"
+#include "keyboard.h"
 
 #include "glue.h"
 #include <stdbool.h>
@@ -20,10 +22,35 @@
 
 uint8_t power_led;
 uint8_t activity_led;
+uint8_t mouse_data_count = 0;
 
 uint8_t smc_read(uint8_t a)
 {
-	return 0xff;
+	switch (a) {
+		// Offset that returns one byte from the keyboard buffer
+		case 7:
+			return keyboard_get_next_byte();
+
+		// Offset that returns three bytes from mouse buffer (one movement packet) or a single zero if there is not complete packet in the buffer
+		// mse_count keeps track of which one of the three bytes it's sending
+		case 0x21:
+			if (mouse_data_count == 0 && mouse_has_data()) { // If start of packet, check if there are at least three bytes in the buffer
+				mouse_data_count++;
+				return mouse_get_next_byte();
+			} else if (mouse_data_count > 0) { // If we have already started sending bytes, assume there is enough data in the buffer
+				mouse_data_count++;
+				if (mouse_data_count == 3) {
+					mouse_data_count = 0;
+				}
+				return mouse_get_next_byte();
+			} else { // Return a single zero if no complete packet available
+				mouse_data_count = 0;
+				return 0x00;
+			}
+
+		default:
+			return 0xff;
+	}
 }
 
 void smc_write(uint8_t a, uint8_t v)

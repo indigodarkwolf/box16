@@ -25,6 +25,14 @@ resources/r41/*.exe
 resources/r41/*.sym
 resources/r41/*.zip
 
+resources/r42/docs
+resources/r42/x16emu
+resources/r42/*.bin
+resources/r42/*.dll
+resources/r42/*.exe
+resources/r42/*.sym
+resources/r42/*.zip
+
 bugs
 
 build/box16

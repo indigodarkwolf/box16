@@ -3,11 +3,13 @@
 // Copyright (c) 2021-2022 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
-#include "i2c.h"
-#include "rtc.h"
-#include "smc.h"
 #include <stdbool.h>
 #include <stdio.h>
+
+#include "i2c.h"
+#include "ring_buffer.h"
+#include "rtc.h"
+#include "smc.h"
 
 #define LOG_LEVEL 0
 #define LOG_PRINTF(LEVEL, ...)          \
@@ -35,11 +37,14 @@ uint8_t i2c_read(uint8_t device, uint8_t offset)
 	uint8_t value;
 	switch (device) {
 		case DEVICE_SMC:
-			return smc_read(offset);
+			value = smc_read(offset);
+			break;
 		case DEVICE_RTC:
-			return rtc_read(offset);
+			value = rtc_read(offset);
+			break;
 		default:
 			value = 0xff;
+			break;
 	}
 	LOG_PRINTF(1, "I2C READ($%02X:$%02X) = $%02X\n", device, offset, value);
 	return value;
@@ -82,7 +87,7 @@ void i2c_step()
 					if (state == 0) {
 						value = i2c_read(device, offset);
 					}
-					i2c_port.data_out = (value & 0x80) >> 5;
+					i2c_port.data_out = ((value & 0x80) >> 7);
 					value <<= 1;
 					LOG_PRINTF(4, "I2C OUT#%d: %d\n", state, i2c_port.data_out);
 					state++;
@@ -101,7 +106,7 @@ void i2c_step()
 						read_mode = false;
 					} else {
 						LOG_PRINTF(3, "I2C OUT DONE (ACK)\n");
-						offset++;
+						// offset++; // Set I2C write bit by increasing offset by one; don't do that if we're in read_mode
 					}
 				} else {
 					bool ack = true;

@@ -9,7 +9,8 @@
 
 #include "glue.h"
 #include "keyboard.h"
-#include "ps2.h"
+#include "i2c.h"
+#include "ring_buffer.h"
 #include "rom_symbols.h"
 #include "unicode.h"
 #include "utf8.h"
@@ -41,7 +42,8 @@ struct keyboard_event {
 	} data;
 };
 
-std::list<keyboard_event> Keyboard_event_list;
+static std::list<keyboard_event> Keyboard_event_list;
+static ring_buffer<uint8_t, 160> Keyboard_buffer;
 
 static const uint16_t SDL_to_PS2_table[] = {
         0x0000, 0x0000, 0x0000, 0x0000, 0x001c, 0x0032, 0x0021, 0x0023, 0x0024, 0x002b, 0x0034, 0x0033, 0x0043, 0x003b, 0x0042, 0x004b,
@@ -82,22 +84,22 @@ static bool process_key_event(const key_event_data &data)
 {
 	if (data.down && data.ps2_code == 0xff) {
 		// "Pause/Break" sequence
-		ps2_buffer_add(0, 0xe1);
-		ps2_buffer_add(0, 0x14);
-		ps2_buffer_add(0, 0x77);
-		ps2_buffer_add(0, 0xe1);
-		ps2_buffer_add(0, 0xf0);
-		ps2_buffer_add(0, 0x14);
-		ps2_buffer_add(0, 0xf0);
-		ps2_buffer_add(0, 0x77);
+		Keyboard_buffer.add(0xe1);
+		Keyboard_buffer.add(0x14);
+		Keyboard_buffer.add(0x77);
+		Keyboard_buffer.add(0xe1);
+		Keyboard_buffer.add(0xf0);
+		Keyboard_buffer.add(0x14);
+		Keyboard_buffer.add(0xf0);
+		Keyboard_buffer.add(0x77);
 	} else {
 		if (data.ps2_code & EXTENDED_FLAG) {
-			ps2_buffer_add(0, 0xe0);
+			Keyboard_buffer.add(0xe0);
 		}
 		if (!data.down) {
-			ps2_buffer_add(0, 0xf0); // BREAK
+			Keyboard_buffer.add(0xf0); // BREAK
 		}
-		ps2_buffer_add(0, data.ps2_code & 0xff);
+		Keyboard_buffer.add(data.ps2_code & 0xff);
 	}
 
 	return true;
@@ -225,4 +227,115 @@ void keyboard_add_file(char const *const path)
 	}
 
 	SDL_RWclose(file);
+}
+
+void keyboard_buffer_flush()
+{
+	Keyboard_buffer.clear();
+}
+
+uint8_t keyboard_get_next_byte()
+{
+	return (Keyboard_buffer.count() > 0) ? Keyboard_buffer.pop_oldest() : 0;
+}
+
+// fake mouse
+
+static ring_buffer<uint8_t, 160> Mouse_buffer;
+
+static uint8_t buttons;
+static int16_t mouse_diff_x = 0;
+static int16_t mouse_diff_y = 0;
+
+// byte 0, bit 7: Y overflow
+// byte 0, bit 6: X overflow
+// byte 0, bit 5: Y sign bit
+// byte 0, bit 4: X sign bit
+// byte 0, bit 3: Always 1
+// byte 0, bit 2: Middle Btn
+// byte 0, bit 1: Right Btn
+// byte 0, bit 0: Left Btn
+// byte 2:        X Movement
+// byte 3:        Y Movement
+
+static bool mouse_send(int x, int y, int b)
+{
+	if (Mouse_buffer.size_remaining() >= 3) {
+		uint8_t byte0 =
+		    ((y >> 9) & 1) << 5 |
+		    ((x >> 9) & 1) << 4 |
+		    1 << 3 |
+		    b;
+		Mouse_buffer.add(byte0);
+		Mouse_buffer.add(x);
+		Mouse_buffer.add(y);
+
+		return true;
+	} else {
+		//		printf("buffer full, skipping...\n");
+		return false;
+	}
+}
+
+void mouse_button_down(int num)
+{
+	buttons |= 1 << num;
+}
+
+void mouse_button_up(int num)
+{
+	buttons &= (1 << num) ^ 0xff;
+}
+
+void mouse_move(int x, int y)
+{
+	mouse_diff_x += x;
+	mouse_diff_y += y;
+}
+
+uint8_t mouse_read(uint8_t reg)
+{
+	return 0xff;
+}
+
+void mouse_send_state()
+{
+	do {
+		int send_diff_x = []() -> int {
+			if (mouse_diff_x > 255) {
+				return 255;
+			}
+			if (mouse_diff_x < -256) {
+				return -256;
+			}
+			return mouse_diff_x;
+		}();
+
+		int send_diff_y = []() -> int {
+			if (mouse_diff_y > 255) {
+				return 255;
+			}
+			if (mouse_diff_y < -256) {
+				return -256;
+			}
+			return mouse_diff_y;
+		}();
+
+		if (!mouse_send(mouse_diff_x, mouse_diff_y, buttons)) {
+			break;
+		}
+
+		mouse_diff_x -= send_diff_x;
+		mouse_diff_y -= send_diff_y;
+	} while (mouse_diff_x != 0 && mouse_diff_y != 0);
+}
+
+bool mouse_has_data()
+{
+	return Mouse_buffer.count() > 2;
+}
+
+uint8_t mouse_get_next_byte()
+{
+	return Mouse_buffer.pop_oldest();
 }
