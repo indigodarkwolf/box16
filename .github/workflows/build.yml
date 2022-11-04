@@ -18,6 +18,17 @@ jobs:
         with:
           name: Box16 (Ubuntu)
           path: build/box16/
+  build-ubuntu-debug:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install Dependencnies
+        run: |
+          sudo apt-get install -y make build-essential libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev
+      - name: Build Box16 (Ubuntu)
+        run: |
+          cd build
+          make debug
   build-win32-debug:
     runs-on: windows-latest
     steps:
@@ -30,19 +41,6 @@ jobs:
         run: |
           cd build\vs2022
           msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Debug -property:Platform=x86
-          cd ..
-          mkdir -p box16-Win32-Debug
-          cp vs2022/out/Win32/Debug/Box16.exe box16-Win32-Debug/
-          cp vs2022/out/Win32/Debug/glew32.dll box16-Win32-Debug/
-          cp vs2022/out/Win32/Debug/SDL2.dll box16-Win32-Debug/
-          cp vs2022/out/Win32/Debug/box16-icon56-24.png box16-Win32-Debug/
-          cp vs2022/out/Win32/Debug/icons.png box16-Win32-Debug/
-          cp vs2022/out/Win32/Debug/README.box16 box16-Win32-Debug/
-      - name: Archive Win32-Debug build
-        uses: actions/upload-artifact@v3
-        with:
-          name: Box16 (Win32 Debug)
-          path: build/box16-Win32-Debug/
   build-win32-release:
     runs-on: windows-latest
     steps:
@@ -80,19 +78,6 @@ jobs:
         run: |
           cd build\vs2022
           msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Debug -property:Platform=x64
-          cd ..
-          mkdir -p box16-x64-Debug
-          cp vs2022/out/x64/Debug/Box16.exe box16-x64-Debug/
-          cp vs2022/out/x64/Debug/glew32.dll box16-x64-Debug/
-          cp vs2022/out/x64/Debug/SDL2.dll box16-x64-Debug/
-          cp vs2022/out/x64/Debug/box16-icon56-24.png box16-x64-Debug/
-          cp vs2022/out/x64/Debug/icons.png box16-x64-Debug/
-          cp vs2022/out/x64/Debug/README.box16 box16-x64-Debug/
-      - name: Archive x64-Debug build
-        uses: actions/upload-artifact@v3
-        with:
-          name: Box16 (x64 Debug)
-          path: build/box16-x64-Debug/
   build-x64-release:
     runs-on: windows-latest
     steps:
