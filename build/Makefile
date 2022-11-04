@@ -123,7 +123,14 @@ release:
 	$(MAKE) zips VSBUILD="Win32"
 	$(MAKE) zips VSBUILD="x64"
 
-zips:
+zips: package
+	cd $(RELDIR) && tar -cvf $(RELNAME).tar $(RELNAME)/*
+	cd $(RELDIR) && 7z a -t7z $(RELNAME).7z $(RELNAME)/*
+	cd $(RELDIR) && 7z a -tzip $(RELNAME).zip $(RELNAME)/*
+	cd $(RELDIR) && 7z a -tgzip $(RELNAME).tar.gz $(RELNAME).tar
+	cd $(RELDIR) && 7z a -tbzip2 $(RELNAME).tar.bz2 $(RELNAME).tar
+
+package:
 	if [ ! -d $(ZIPSDIR) ]; then $(MKDIR) $(ZIPSDIR); fi
 	cp $(VSDIR)/Box16.exe $(ZIPSDIR)/
 	cp $(VSDIR)/glew32.dll $(ZIPSDIR)/
@@ -131,11 +138,6 @@ zips:
 	cp $(VSDIR)/box16-icon56-24.png $(ZIPSDIR)/
 	cp $(VSDIR)/icons.png $(ZIPSDIR)/
 	cp $(VSDIR)/README.box16 $(ZIPSDIR)/
-	cd $(RELDIR) && tar -cvf $(RELNAME).tar $(RELNAME)/*
-	cd $(RELDIR) && 7z a -t7z $(RELNAME).7z $(RELNAME)/*
-	cd $(RELDIR) && 7z a -tzip $(RELNAME).zip $(RELNAME)/*
-	cd $(RELDIR) && 7z a -tgzip $(RELNAME).tar.gz $(RELNAME).tar
-	cd $(RELDIR) && 7z a -tbzip2 $(RELNAME).tar.bz2 $(RELNAME).tar
 
 #=========================
 #
