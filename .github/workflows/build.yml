@@ -29,7 +29,7 @@ jobs:
       - name: Build Box16 (Win32 Debug)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Debug
+          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Debug -property:Platform=x86
           cd ..
           mkdir -p box16-Win32-Debug
           cp vs2022/out/Win32/Debug/Box16.exe box16-Win32-Debug/
@@ -54,7 +54,7 @@ jobs:
       - name: Build Box16 (Win32 Release)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Release
+          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Release -property:Platform=x86
           cd ..
           mkdir -p box16-Win32-Release
           cp vs2022/out/Win32/Release/Box16.exe box16-Win32-Release/
@@ -68,7 +68,7 @@ jobs:
         with:
           name: Box16 (Win32 Release)
           path: build/box16-Win32-Release/
-  build-win64-debug:
+  build-x64-debug:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -79,7 +79,7 @@ jobs:
       - name: Build Box16 (x64 Debug)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Debug
+          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Debug -property:Platform=x64
           cd ..
           mkdir -p box16-x64-Debug
           cp vs2022/out/x64/Debug/Box16.exe box16-x64-Debug/
@@ -93,7 +93,7 @@ jobs:
         with:
           name: Box16 (x64 Debug)
           path: build/box16-x64-Debug/
-  build-win64-release:
+  build-x64-release:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -104,7 +104,7 @@ jobs:
       - name: Build Box16 (x64 Release)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Release
+          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Release -property:Platform=x64
           cd ..
           mkdir -p box16-x64-Release
           cp vs2022/out/x64/Release/Box16.exe box16-x64-Release/
