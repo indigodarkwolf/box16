@@ -1,5 +1,7 @@
 # Box16
 
+![Build status](https://github.com/indigodarkwolf/box16/actions/workflows/build.yml/badge.svg)
+
 This is an emulator for the Commander X16 computer system. Unlike [the official emulator](https://github.com/commanderx16/x16-emulator), this has a few more dependencies, see the build instructions below. It compiles on Windows, Debian Linux, and Raspbian, and probably 
 other Linux-based platforms.
 
