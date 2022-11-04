@@ -18,7 +18,7 @@ jobs:
         with:
           name: Box16 (Ubuntu)
           path: build/box16/
-  build-win32:
+  build-win32-debug:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
@@ -43,7 +43,7 @@ jobs:
         with:
           name: Box16 (Win32 Debug)
           path: build/box16-Win32-Debug/
-  build-win32:
+  build-win32-release:
     runs-on: windows-latest
     steps:
       - name: Add msbuild to PATH
@@ -67,7 +67,7 @@ jobs:
         with:
           name: Box16 (Win32 Release)
           path: build/box16-Win32-Release/
-  build-win64:
+  build-win64-debug:
     runs-on: windows-latest
     steps:
       - name: Add msbuild to PATH
@@ -91,7 +91,7 @@ jobs:
         with:
           name: Box16 (x64 Debug)
           path: build/box16-x64-Debug/
-  build-win64:
+  build-win64-release:
     runs-on: windows-latest
     steps:
       - name: Add msbuild to PATH
