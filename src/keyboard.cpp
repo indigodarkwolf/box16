@@ -229,11 +229,6 @@ void keyboard_add_file(char const *const path)
 	SDL_RWclose(file);
 }
 
-void keyboard_buffer_flush()
-{
-	Keyboard_buffer.clear();
-}
-
 uint8_t keyboard_get_next_byte()
 {
 	return (Keyboard_buffer.count() > 0) ? Keyboard_buffer.pop_oldest() : 0;
@@ -261,7 +256,7 @@ static int16_t mouse_diff_y = 0;
 static bool mouse_send(int x, int y, int b)
 {
 	if (Mouse_buffer.size_remaining() >= 3) {
-		uint8_t byte0 =
+		const uint8_t byte0 =
 		    ((y >> 9) & 1) << 5 |
 		    ((x >> 9) & 1) << 4 |
 		    1 << 3 |
@@ -301,25 +296,8 @@ uint8_t mouse_read(uint8_t reg)
 void mouse_send_state()
 {
 	do {
-		int send_diff_x = []() -> int {
-			if (mouse_diff_x > 255) {
-				return 255;
-			}
-			if (mouse_diff_x < -256) {
-				return -256;
-			}
-			return mouse_diff_x;
-		}();
-
-		int send_diff_y = []() -> int {
-			if (mouse_diff_y > 255) {
-				return 255;
-			}
-			if (mouse_diff_y < -256) {
-				return -256;
-			}
-			return mouse_diff_y;
-		}();
+		const int send_diff_x = (mouse_diff_x > 255) ? 255 : ((mouse_diff_x < -256) ? -256 : mouse_diff_x);
+		const int send_diff_y = (mouse_diff_y > 255) ? 255 : ((mouse_diff_y < -256) ? -256 : mouse_diff_y);
 
 		if (!mouse_send(mouse_diff_x, mouse_diff_y, buttons)) {
 			break;

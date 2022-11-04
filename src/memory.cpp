@@ -4,19 +4,20 @@
 // All rights reserved. License: 2-clause BSD
 
 #include "memory.h"
-#include "cpu/fake6502.h"
-#include "gif_recorder.h"
-#include "glue.h"
-#include "hypercalls.h"
-#include "keyboard.h"
-#include "vera/vera_video.h"
-#include "via.h"
-#include "wav_recorder.h"
-#include "ym2151/ym2151.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include "cpu/fake6502.h"
+#include "gif_recorder.h"
+#include "glue.h"
+#include "hypercalls.h"
+#include "vera/vera_video.h"
+#include "via.h"
+#include "wav_recorder.h"
+#include "ym2151/ym2151.h"
 
 #define RAM_BANK (RAM[0])
 #define ROM_BANK (RAM[1])
@@ -43,18 +44,12 @@ static uint8_t addr_ym = 0;
 #define MEMMAP_DIRECT (1)
 #define MEMMAP_RAMBANK (2)
 #define MEMMAP_ROMBANK (3)
-#define MEMMAP_ZP (4)
-#define MEMMAP_IO (5)
-#define MEMMAP_IO_SOUND (6)
-#define MEMMAP_IO_VIDEO (7)
-#define MEMMAP_IO_LCD (8)
-#define MEMMAP_IO_VIA1 (9)
-#define MEMMAP_IO_VIA2 (10)
-#define MEMMAP_IO_RTC (11)
-#define MEMMAP_IO_MOUSE (12)
-#define MEMMAP_IO_EMU (13)
-#define MEMMAP_IO_RAMBANK (14)
-#define MEMMAP_IO_ROMBANK (15)
+#define MEMMAP_IO (4)
+#define MEMMAP_IO_SOUND (5)
+#define MEMMAP_IO_VIDEO (6)
+#define MEMMAP_IO_VIA1 (7)
+#define MEMMAP_IO_VIA2 (8)
+#define MEMMAP_IO_EMU (9)
 
 struct memmap_table_entry {
 	uint8_t entry_start;
@@ -75,10 +70,9 @@ memmap_table_entry memmap_table_io[] = {
 	{ 0x00, 0x10 - 1, MEMMAP_IO_VIA1 },
 	{ 0x10, 0x20 - 1, MEMMAP_IO_VIA2 },
 	{ 0x20, 0x40 - 1, MEMMAP_IO_VIDEO },
-	{ 0x40, 0x50 - 1, MEMMAP_IO_SOUND },
-	{ 0x50, 0x80 - 1, MEMMAP_NULL },
-	{ 0x80, 0xa0 - 1, MEMMAP_IO_RTC },
-	{ 0xa0, 0xb0 - 1, MEMMAP_IO_MOUSE },
+	{ 0x40, 0x42 - 1, MEMMAP_IO_SOUND },
+	{ 0x42, 0x60 - 1, MEMMAP_NULL },
+	{ 0x60, 0xb0 - 1, MEMMAP_NULL }, // External devices, currently mapped to NULL.
 	{ 0xb0, 0xc0 - 1, MEMMAP_IO_EMU },
 	{ 0xc0, 0xff, MEMMAP_NULL },
 };
@@ -262,7 +256,7 @@ void emu_write(uint8_t reg, uint8_t value)
 		case 4: save_on_exit = v; break;
 		case 5: gif_recorder_set((gif_recorder_command_t)value); break;
 		case 6: wav_recorder_set((wav_recorder_command_t)value); break;
-		case 7: Options.no_keybinds = v;
+		case 7: Options.no_keybinds = v; break;
 		default: break; // printf("WARN: Invalid register %x\n", DEVICE_EMULATOR + reg);
 	}
 }
@@ -304,14 +298,9 @@ static uint8_t debug_read(uint16_t address, uint8_t bank)
 		case MEMMAP_IO: return debug_read<memory_map_io, 0>(address, bank);
 		case MEMMAP_IO_SOUND: return 0;
 		case MEMMAP_IO_VIDEO: return vera_debug_video_read(address & 0x1f);
-		case MEMMAP_IO_LCD: return 0;
 		case MEMMAP_IO_VIA1: return via1_read(address & 0xf, true);
 		case MEMMAP_IO_VIA2: return via2_read(address & 0xf, true);
-		case MEMMAP_IO_RTC: return 0; // TODO: RTC
-		case MEMMAP_IO_MOUSE: return mouse_read(address & 0x1f);
 		case MEMMAP_IO_EMU: return debug_emu_read(address & 0xf);
-		case MEMMAP_IO_RAMBANK: return memory_get_ram_bank();
-		case MEMMAP_IO_ROMBANK: return memory_get_rom_bank();
 		default: return 0;
 	}
 }
@@ -327,14 +316,9 @@ static uint8_t real_read(uint16_t address)
 		case MEMMAP_IO: return real_read<memory_map_io, 0>(address);
 		case MEMMAP_IO_SOUND: return sound_read(address);
 		case MEMMAP_IO_VIDEO: return vera_video_read(address & 0x1f);
-		case MEMMAP_IO_LCD: return 0;
 		case MEMMAP_IO_VIA1: return via1_read(address & 0xf, false);
 		case MEMMAP_IO_VIA2: return via2_read(address & 0xf, false);
-		case MEMMAP_IO_RTC: return 0; // TODO: RTC
-		case MEMMAP_IO_MOUSE: return mouse_read(address & 0x1f);
 		case MEMMAP_IO_EMU: return real_emu_read(address & 0xf);
-		case MEMMAP_IO_RAMBANK: return memory_get_ram_bank();
-		case MEMMAP_IO_ROMBANK: return memory_get_rom_bank();
 		default: return 0;
 	}
 }
@@ -350,14 +334,9 @@ static void debug_write(uint16_t address, uint8_t bank, uint8_t value)
 		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
 		case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
 		case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
-		case MEMMAP_IO_LCD: break;
 		case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
 		case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
-		case MEMMAP_IO_RTC: break; // TODO: RTC
-		case MEMMAP_IO_MOUSE: mouse_read(address & 0x1f); break;
 		case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
-		case MEMMAP_IO_RAMBANK: memory_set_ram_bank(value); break;
-		case MEMMAP_IO_ROMBANK: memory_set_rom_bank(value); break;
 		default: break;
 	}
 }
@@ -373,14 +352,9 @@ static void real_write(uint16_t address, uint8_t value)
 		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
 		case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
 		case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
-		case MEMMAP_IO_LCD: break;
 		case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
 		case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
-		case MEMMAP_IO_RTC: break; // TODO: RTC
-		case MEMMAP_IO_MOUSE: mouse_read(address & 0x1f); break;
 		case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
-		case MEMMAP_IO_RAMBANK: memory_set_ram_bank(value); break;
-		case MEMMAP_IO_ROMBANK: memory_set_rom_bank(value); break;
 		default: break;
 	}
 }

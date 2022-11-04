@@ -14,7 +14,6 @@ void keyboard_add_event(const bool down, const SDL_Scancode scancode);
 void keyboard_add_text(char const *const text);
 void keyboard_add_file(char const *const path);
 
-void    keyboard_buffer_flush();
 uint8_t keyboard_get_next_byte();
 
 // fake mouse
