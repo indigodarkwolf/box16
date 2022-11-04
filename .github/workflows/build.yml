@@ -2,7 +2,7 @@ name: Box16 Build CI
 on: [push, pull_request]
 
 jobs:
-  build:
+  build-ubuntu:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -46,6 +46,7 @@ jobs:
   build-win32-release:
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
         with:
@@ -70,6 +71,7 @@ jobs:
   build-win64-debug:
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
         with:
@@ -94,6 +96,7 @@ jobs:
   build-win64-release:
     runs-on: windows-latest
     steps:
+      - uses: actions/checkout@v3
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v1.1
         with:
