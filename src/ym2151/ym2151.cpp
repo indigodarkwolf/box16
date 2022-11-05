@@ -12,8 +12,9 @@
 //#define YM2151_USE_PICK 1
 //#define YM2151_USE_LINEAR_INTERPOLATION 1
 //#define YM2151_USE_R8BRAIN_RESAMPLING 1
+#define YM2151_USE_LOWPASS_FILTER_RESAMPLING 1
 
-#if !defined(YM2151_USE_PICK) && !defined(YM2151_USE_LINEAR_INTERPOLATION) && !defined(YM2151_USE_R8BRAIN_RESAMPLING)
+#if !defined(YM2151_USE_PICK) && !defined(YM2151_USE_LINEAR_INTERPOLATION) && !defined(YM2151_USE_R8BRAIN_RESAMPLING) && !defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
 #	define YM2151_USE_LINEAR_INTERPOLATION 1
 #endif
 
@@ -305,6 +306,57 @@ public:
 		}
 
 		samples_used = samples_needed;
+#elif defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
+		// The idea is to upsample the YM2151 signal (which comes in at 55.93 kHz), 
+		// then use a simple FIR lowpass-filter to restrict the signal to a 44 kHz band.
+		// This will then remove the high requency content responsible for aliasing.
+		// Then, the signal is downsampled again (how??)
+
+		const int32_t old_ringbuffer_end = m_ringbuffer_end;
+		const int32_t old_ringbuffer_end_2 = m_ringbuffer_end_2;
+
+		// Upsample the signal
+		for (int32_t s = 0; s < samples_needed; s++) {
+			// insert the original sample first
+			upsampled_input_ring_buffers[0][m_ringbuffer_end] = (float) m_backbuffer[s].data[0];
+			upsampled_input_ring_buffers[1][m_ringbuffer_end] = (float) m_backbuffer[s].data[1];
+			ringbuffer_advance(m_ringbuffer_end);
+
+			// then pad with zeros.
+			for (int i = 1; i < upsampling_factor; i++) {
+				upsampled_input_ring_buffers[0][m_ringbuffer_end] = 0.f;
+				upsampled_input_ring_buffers[1][m_ringbuffer_end] = 0.f;
+				ringbuffer_advance(m_ringbuffer_end);
+			}
+		}
+
+		// Filter the signal
+		for (int32_t s = 0; s < upsampling_factor * samples_needed; s++) {
+			// find the starting index of that sample in the ring buffer
+			int32_t start_sample = (old_ringbuffer_end + s) % ringbuffer_size;
+			for (int i = 0; i < 2; i++) {
+				float sum = 0.f;
+				int32_t input_idx = start_sample;
+				for (int32_t k = 0; k < filter_kernel_length; k++) {
+					sum += filter_kernel[k] * upsampled_input_ring_buffers[i][input_idx];
+					ringbuffer_revert(input_idx);
+				}
+				m_filtered_signal_buffer[i][m_ringbuffer_end_2] = sum;
+				ringbuffer_advance(m_ringbuffer_end_2);
+			}
+		}
+
+		// Downsample: "pick" strategy
+		int16_t *out_streams[2] = {&buffers[0], &buffers[1]};
+		for (uint32_t s = 0; s < samples; s++) {
+			int32_t pick_index = (old_ringbuffer_end_2 + (int32_t)(s * (m_chip_sample_rate * upsampling_factor) / sample_rate)) % ringbuffer_size;
+			for (int i = 0; i < 2; i++) {
+				*out_streams[i] = (int16_t)(m_filtered_signal_buffer[i][pick_index]);
+				out_streams[i] += 2;
+			}
+		}
+
+		samples_used = samples_needed;
 #endif
 
 		if (samples_used < m_backbuffer_used) {
@@ -432,6 +484,33 @@ private:
 	int32_t m_busy_timer;
 
 	bool m_irq_status;
+
+#if defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
+	static constexpr int upsampling_factor = 4;
+	static constexpr int ringbuffer_size = YM_SAMPLE_RATE * upsampling_factor;
+	float upsampled_input_ring_buffers[2][ringbuffer_size];
+	int32_t m_ringbuffer_begin = 0; // corresponds to the oldest sample
+	int32_t m_ringbuffer_end = 1; // corresponds to (one past) the newest sample
+
+	void ringbuffer_advance(int32_t &x) {
+		x = (x + 1) % ringbuffer_size;
+	}
+
+	void ringbuffer_revert(int32_t &x) {
+		x = (x - 1) % ringbuffer_size;
+	}
+
+	static constexpr int filter_kernel_length = 32;
+	static constexpr float filter_kernel[filter_kernel_length] = {
+		1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f,
+		0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
+		0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
+		0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+	
+	float m_filtered_signal_buffer[2][ringbuffer_size];
+	int32_t m_ringbuffer_begin_2 = 0;
+	int32_t m_ringbuffer_end_2 = 1;
+#endif
 };
 
 static ym2151_interface Ym_interface;
