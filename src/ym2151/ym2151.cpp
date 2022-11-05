@@ -342,14 +342,14 @@ public:
 					ringbuffer_revert(input_idx);
 				}
 				m_filtered_signal_buffer[i][m_ringbuffer_end_2] = sum;
-				ringbuffer_advance(m_ringbuffer_end_2);
 			}
+			ringbuffer_advance(m_ringbuffer_end_2);
 		}
 
 		// Downsample: "pick" strategy
 		int16_t *out_streams[2] = {&buffers[0], &buffers[1]};
 		for (uint32_t s = 0; s < samples; s++) {
-			int32_t pick_index = (old_ringbuffer_end_2 + (int32_t)(s * (m_chip_sample_rate * upsampling_factor) / sample_rate)) % ringbuffer_size;
+			int32_t pick_index = (old_ringbuffer_end_2 + (int32_t)(((float)(s * m_chip_sample_rate * upsampling_factor)) / sample_rate)) % ringbuffer_size;
 			for (int i = 0; i < 2; i++) {
 				*out_streams[i] = (int16_t)(m_filtered_signal_buffer[i][pick_index]);
 				out_streams[i] += 2;
@@ -502,7 +502,7 @@ private:
 
 	static constexpr int filter_kernel_length = 32;
 	static constexpr float filter_kernel[filter_kernel_length] = {
-		1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f, 1.f,
+		1.f, 1.f, 1.f, 1.f, 0.f, 0.f, 0.f, 0.f,
 		0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
 		0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
 		0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
