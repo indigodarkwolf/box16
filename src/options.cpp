@@ -685,8 +685,13 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 
-			ini["warp"] = "true";
-
+			if (argc && isdigit(argv[0][0])) {
+				ini["warp"] = argv[0];
+				argc--;
+				argv++;
+			} else {
+				ini["warp"] = "true";			
+			}
 		} else if (!strcmp(argv[0], "-wav")) {
 			argc--;
 			argv++;
@@ -814,8 +819,12 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.sdcard_path = ini["sdcard"];
 	}
 
-	if (ini.has("warp") && ini["warp"] == "true") {
-		opts.warp_factor = 9;
+	if (ini.has("warp")) {
+		if (ini["warp"] == "true") {
+			opts.warp_factor = 9;
+		} else {
+			opts.warp_factor = atoi(ini["warp"].c_str());
+		}
 	}
 
 	if (ini.has("echo")) {
