@@ -12,10 +12,10 @@
 //#define YM2151_USE_PICK 1
 //#define YM2151_USE_LINEAR_INTERPOLATION 1
 //#define YM2151_USE_R8BRAIN_RESAMPLING 1
-#define YM2151_USE_LOWPASS_FILTER_RESAMPLING 1
+//#define YM2151_USE_LOWPASS_FILTER_RESAMPLING 1
 
 #if !defined(YM2151_USE_PICK) && !defined(YM2151_USE_LINEAR_INTERPOLATION) && !defined(YM2151_USE_R8BRAIN_RESAMPLING) && !defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
-#	define YM2151_USE_LINEAR_INTERPOLATION 1
+#	define YM2151_USE_LOWPASS_FILTER_RESAMPLING 1
 #endif
 
 #if defined(YM2151_USE_R8BRAIN_RESAMPLING)
@@ -307,58 +307,58 @@ public:
 
 		samples_used = samples_needed;
 #elif defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
-		// The idea is to upsample the YM2151 signal (which comes in at 55.93 kHz), 
-		// then use a simple FIR lowpass-filter to restrict the signal to a 44 kHz band.
-		// This will then remove the high requency content responsible for aliasing.
-		// Then, the signal is downsampled again (how??)
+		// The task is to resample the signal of the YM2151, which comes at 55930 Hz,
+		// To whatever frequency the host system wants, most likely 44100 Hz or 48000 Hz.
+		// A crude approach to achieve this is to upsample the signal, and then "pick"
+		// samples from the upsampled signals, reducing the error being made by
+		// selecting signal samples from mismatching time points.
+		// The higher the upsampling factor, the finer the available grid of samples,
+		// and the smaller the error made by "snapping" onto it.
 
-		const int32_t old_ringbuffer_end = m_ringbuffer_end;
-		const int32_t old_ringbuffer_end_2 = m_ringbuffer_end_2;
+		// Typically, upsampling by an integer factor is done by inserting zeros in
+		// between the available samples, and applying a low-pass filter afterwards,
+		// to smoothen out the discontinuities.
+		// This FIR filter can be optimized, as at least half of its input samples
+		// will be zero, and don't contribute to the sum.
 
-		// Upsample the signal
-		for (int32_t s = 0; s < samples_needed; s++) {
-			// insert the original sample first
-			//upsampled_input_ring_buffers[0][m_ringbuffer_end] = (float) (upsampling_factor * m_backbuffer[s].data[0]);
-			//upsampled_input_ring_buffers[1][m_ringbuffer_end] = (float) (upsampling_factor * m_backbuffer[s].data[1]);
+		// For the downsampling (picking) stage, the underlying signal in the fine grid must not
+		// contain any content in the frequency domain above the Nyquist frequency
+		// of the host (e.g. 22050 Hz or 24000 Hz). Otherwise, aliasing would occur.
+		// Hence, we need a low-pass filter to remove anything above target Nyquist frequency.
 
-			upsampled_input_ring_buffers[0][m_ringbuffer_end] = (float) (m_backbuffer[s].data[0]);
-			upsampled_input_ring_buffers[1][m_ringbuffer_end] = (float) (m_backbuffer[s].data[1]);
-			ringbuffer_advance(m_ringbuffer_end);
+		// The two lowpass filter tasks can be performed by a single filter, which is nice.
 
-			// then pad with zeros.
-			for (int i = 1; i < upsampling_factor; i++) {
-				//upsampled_input_ring_buffers[0][m_ringbuffer_end] = 0.f;
-				//upsampled_input_ring_buffers[1][m_ringbuffer_end] = 0.f;
-				upsampled_input_ring_buffers[0][m_ringbuffer_end] = (float) (m_backbuffer[s].data[0]);
-				upsampled_input_ring_buffers[1][m_ringbuffer_end] = (float) (m_backbuffer[s].data[0]);
-				ringbuffer_advance(m_ringbuffer_end);
-			}
-		}
+		// Finally, when "picking" samples, we discard most samples from the filtered signal,
+		// so we don't even have to compute the entire upsampled signal.
 
-		// Filter the signal
-		for (int32_t s = 0; s < upsampling_factor * samples_needed; s++) {
-			// find the starting index of that sample in the ring buffer
-			int32_t start_sample = (old_ringbuffer_end + s) % ringbuffer_size;
-			for (int i = 0; i < 2; i++) {
-				float sum = 0.f;
-				int32_t input_idx = start_sample;
-				for (int32_t k = 0; k < filter_kernel_length; k++) {
-					sum += filter_kernel[k] * upsampled_input_ring_buffers[i][input_idx];
-					ringbuffer_revert(input_idx);
-				}
-				m_filtered_signal_buffer[i][m_ringbuffer_end_2] = sum;
-			}
-			ringbuffer_advance(m_ringbuffer_end_2);
-		}
 
-		// Downsample: "pick" strategy
+		// iterate over output samples
 		int16_t *out_streams[2] = {&buffers[0], &buffers[1]};
 		for (uint32_t s = 0; s < samples; s++) {
-			int32_t pick_index = (old_ringbuffer_end_2 + (int32_t)(((float)(s * m_chip_sample_rate * upsampling_factor)) / sample_rate)) % ringbuffer_size;
+			// which sample in the upsampled, filtered signal will we use for the given output sample?
+			int32_t pick_index = (int32_t)(((float)(s * m_chip_sample_rate * upsampling_factor)) / sample_rate);
+			// now, compute this sample (L/R)
 			for (int i = 0; i < 2; i++) {
-				*out_streams[i] = (int16_t)(m_filtered_signal_buffer[i][pick_index]);
+				float sum = 0.f;
+				constexpr int effective_filter_kernel_length = filter_kernel_length / upsampling_factor;
+				int32_t filter_index = pick_index % upsampling_factor;
+				int32_t source_sample = pick_index / upsampling_factor;
+				for (int32_t k = 0; k < effective_filter_kernel_length; k++) {
+					if (source_sample - k >= 0) {
+						sum += filter_kernel[filter_index] * m_backbuffer[source_sample - k].data[i];
+					} else {
+						sum += filter_kernel[filter_index] * filter_memory[k - source_sample - 1].data[i];
+					}
+					filter_index += upsampling_factor;
+				}
+				*out_streams[i] = (int16_t)(sum); // this multiplication could be absorbed into the filter coefficients
 				out_streams[i] += 2;
 			}
+		}
+
+		// fill filter memory with the last few input samples
+		for (int32_t s = 0; s < filter_kernel_length; s++) {
+			filter_memory[s] = m_backbuffer[samples_needed - 1 - s];
 		}
 
 		samples_used = samples_needed;
@@ -492,59 +492,91 @@ private:
 
 #if defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
 	static constexpr int upsampling_factor = 4;
-	static constexpr int ringbuffer_size = YM_SAMPLE_RATE * upsampling_factor;
-	float upsampled_input_ring_buffers[2][ringbuffer_size];
-	int32_t m_ringbuffer_begin = 0; // corresponds to the oldest sample
-	int32_t m_ringbuffer_end = 1; // corresponds to (one past) the newest sample
-
-	void ringbuffer_advance(int32_t &x) {
-		x = (x + 1) % ringbuffer_size;
-	}
-
-	void ringbuffer_revert(int32_t &x) {
-		x = (x - 1) % ringbuffer_size;
-	}
 
 	// http://t-filter.engineerjs.com/
-	static constexpr int filter_kernel_length = 31;
+	// post-processed with custom tool to optimize for interpolation usage
+	static constexpr int filter_kernel_length = 76;
 	static constexpr float filter_kernel[filter_kernel_length] = 
 	{
-  -0.04601642653188986,
-  0.004719652992540219,
-  0.015214989181286621,
-  0.026254132201104056,
-  0.03111594804880489,
-  0.024510511624000624,
-  0.006004580121174373,
-  -0.01860060594949218,
-  -0.03855095261207284,
-  -0.041845602786975,
-  -0.02009211547061448,
-  0.027402162853346006,
-  0.09210507486367986,
-  0.15820275134405468,
-  0.20753784949563178,
-  0.2257902270893119,
-  0.20753784949563178,
-  0.15820275134405468,
-  0.09210507486367986,
-  0.027402162853346006,
-  -0.02009211547061448,
-  -0.041845602786975,
-  -0.03855095261207284,
-  -0.01860060594949218,
-  0.006004580121174373,
-  0.024510511624000624,
-  0.03111594804880489,
-  0.026254132201104056,
-  0.015214989181286621,
-  0.004719652992540219,
-  -0.04601642653188986
+		0.0064019625317632105 ,
+		0.010536145676692955 ,
+		0.014311666689444568 ,
+		0.016358638455084683 ,
+		0.009122624790466244 ,
+		0.0008158541814642928 ,
+		-0.009924586434854242 ,
+		-0.020176571584785863 ,
+		-0.026581037930200082 ,
+		-0.026495196755216457 ,
+		-0.01910037662105655 ,
+		-0.005992964958555505 ,
+		0.008934148896463816 ,
+		0.020561347811643118 ,
+		0.024218498953803867 ,
+		0.017441169103468303 ,
+		0.001257944746759953 ,
+		-0.01965786683604532 ,
+		-0.038119412301865496 ,
+		-0.046668899369489356 ,
+		-0.04027648766313543 ,
+		-0.018608507212945803 ,
+		0.013054687425284057 ,
+		0.04474842527775971 ,
+		0.06459506786744947 ,
+		0.06273683658273568 ,
+		0.03524571568812087 ,
+		-0.013280005744314618 ,
+		-0.06949194632206003 ,
+		-0.11383784787329758 ,
+		-0.125436050555215 ,
+		-0.08805020355361018 ,
+		0.004507333714656066 ,
+		0.1452272039856754 ,
+		0.31412004718539877 ,
+		0.4820000199943984 ,
+		0.6170092532443263 ,
+		0.6922103119066778 ,
+		0.6922103119066778 ,
+		0.6170092532443262 ,
+		0.4820000199943984 ,
+		0.31412004718539877 ,
+		0.1452272039856754 ,
+		0.004507333714656066 ,
+		-0.08805020355361018 ,
+		-0.125436050555215 ,
+		-0.11383784787329759 ,
+		-0.06949194632206002 ,
+		-0.013280005744314611 ,
+		0.03524571568812086 ,
+		0.06273683658273568 ,
+		0.06459506786744945 ,
+		0.04474842527775971 ,
+		0.013054687425284059 ,
+		-0.018608507212945803 ,
+		-0.04027648766313543 ,
+		-0.04666889936948935 ,
+		-0.038119412301865496 ,
+		-0.01965786683604532 ,
+		0.001257944746759953 ,
+		0.0174411691034683 ,
+		0.024218498953803867 ,
+		0.02056134781164312 ,
+		0.008934148896463816 ,
+		-0.005992964958555506 ,
+		-0.019100376621056552 ,
+		-0.02649519675521646 ,
+		-0.026581037930200082 ,
+		-0.020176571584785863 ,
+		-0.00992458643485424 ,
+		0.0008158541814642928 ,
+		0.009122624790466242 ,
+		0.016358638455084683 ,
+		0.014311666689444568 ,
+		0.010536145676692955 ,
+		0.0064019625317632105
 	};
 	
-	float m_filtered_signal_buffer[2][ringbuffer_size];
-	int32_t m_ringbuffer_begin_2 = 0;
-	int32_t m_ringbuffer_end_2 = 1;
+	ymfm::ym2151::output_data filter_memory[filter_kernel_length];
 #endif
 };
 
