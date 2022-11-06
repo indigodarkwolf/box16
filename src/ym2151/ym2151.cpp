@@ -318,14 +318,19 @@ public:
 		// Upsample the signal
 		for (int32_t s = 0; s < samples_needed; s++) {
 			// insert the original sample first
-			upsampled_input_ring_buffers[0][m_ringbuffer_end] = (float) m_backbuffer[s].data[0];
-			upsampled_input_ring_buffers[1][m_ringbuffer_end] = (float) m_backbuffer[s].data[1];
+			//upsampled_input_ring_buffers[0][m_ringbuffer_end] = (float) (upsampling_factor * m_backbuffer[s].data[0]);
+			//upsampled_input_ring_buffers[1][m_ringbuffer_end] = (float) (upsampling_factor * m_backbuffer[s].data[1]);
+
+			upsampled_input_ring_buffers[0][m_ringbuffer_end] = (float) (m_backbuffer[s].data[0]);
+			upsampled_input_ring_buffers[1][m_ringbuffer_end] = (float) (m_backbuffer[s].data[1]);
 			ringbuffer_advance(m_ringbuffer_end);
 
 			// then pad with zeros.
 			for (int i = 1; i < upsampling_factor; i++) {
-				upsampled_input_ring_buffers[0][m_ringbuffer_end] = 0.f;
-				upsampled_input_ring_buffers[1][m_ringbuffer_end] = 0.f;
+				//upsampled_input_ring_buffers[0][m_ringbuffer_end] = 0.f;
+				//upsampled_input_ring_buffers[1][m_ringbuffer_end] = 0.f;
+				upsampled_input_ring_buffers[0][m_ringbuffer_end] = (float) (m_backbuffer[s].data[0]);
+				upsampled_input_ring_buffers[1][m_ringbuffer_end] = (float) (m_backbuffer[s].data[0]);
 				ringbuffer_advance(m_ringbuffer_end);
 			}
 		}
@@ -500,12 +505,42 @@ private:
 		x = (x - 1) % ringbuffer_size;
 	}
 
-	static constexpr int filter_kernel_length = 32;
-	static constexpr float filter_kernel[filter_kernel_length] = {
-		1.f, 1.f, 1.f, 1.f, 0.f, 0.f, 0.f, 0.f,
-		0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-		0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f,
-		0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f, 0.f};
+	// http://t-filter.engineerjs.com/
+	static constexpr int filter_kernel_length = 31;
+	static constexpr float filter_kernel[filter_kernel_length] = 
+	{
+  -0.04601642653188986,
+  0.004719652992540219,
+  0.015214989181286621,
+  0.026254132201104056,
+  0.03111594804880489,
+  0.024510511624000624,
+  0.006004580121174373,
+  -0.01860060594949218,
+  -0.03855095261207284,
+  -0.041845602786975,
+  -0.02009211547061448,
+  0.027402162853346006,
+  0.09210507486367986,
+  0.15820275134405468,
+  0.20753784949563178,
+  0.2257902270893119,
+  0.20753784949563178,
+  0.15820275134405468,
+  0.09210507486367986,
+  0.027402162853346006,
+  -0.02009211547061448,
+  -0.041845602786975,
+  -0.03855095261207284,
+  -0.01860060594949218,
+  0.006004580121174373,
+  0.024510511624000624,
+  0.03111594804880489,
+  0.026254132201104056,
+  0.015214989181286621,
+  0.004719652992540219,
+  -0.04601642653188986
+	};
 	
 	float m_filtered_signal_buffer[2][ringbuffer_size];
 	int32_t m_ringbuffer_begin_2 = 0;
