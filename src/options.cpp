@@ -896,7 +896,7 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 			opts.wav_start = wav_recorder_start_t::WAV_RECORDER_START_NOW;
 		} else if (strcmp(start, "wait") == 0) {
 			opts.wav_start = wav_recorder_start_t::WAV_RECORDER_START_WAIT;
-		} else if (strcmp(start, "auto")) {
+		} else if (strcmp(start, "auto") == 0) {
 			opts.wav_start = wav_recorder_start_t::WAV_RECORDER_START_AUTO;
 		} else {
 			return "wav";
