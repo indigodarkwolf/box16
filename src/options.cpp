@@ -205,8 +205,10 @@ static void usage()
 	printf("\tUse specified vsync rendering strategy to avoid visual tearing.\n");
 	printf("\tUse 'none' if the content area remains white after start.\n");
 
-	printf("-warp\n");
+	printf("-warp {factor}\n");
 	printf("\tEnable warp mode, run emulator as fast as possible.\n");
+	printf("\tIf specified, the warp factor [1...16] determines how frequently to skip video rendering.\n");
+	printf("\tThis can significantly boost the emulated speed, at the cost of not seeing video.\n");
 
 	printf("-wav <file.wav>[{,wait|,auto}]\n");
 	printf("\tRecord a wav for the audio output.\n");
