@@ -340,25 +340,24 @@ public:
 			// now, compute this sample (L/R)
 			for (int i = 0; i < 2; i++) {
 				double sum = 0.0f;
-				constexpr int effective_filter_kernel_length = filter_kernel_length / upsampling_factor;
-				int32_t filter_index = pick_index % upsampling_factor;
 				int32_t source_sample = pick_index / upsampling_factor;
-				for (int32_t k = 0; k < effective_filter_kernel_length; k++) {
+				int32_t k = 0;
+				for (int32_t filter_index = pick_index % upsampling_factor; filter_index < filter_kernel_length; filter_index += upsampling_factor) {
 					if (source_sample - k >= 0) {
 						sum += filter_kernel[filter_index] * m_backbuffer[source_sample - k].data[i];
 					} else {
-						sum += filter_kernel[filter_index] * filter_memory[k - source_sample - 1].data[i];
+						sum += filter_kernel[filter_index] * m_filter_memory[k - source_sample - 1].data[i];
 					}
-					filter_index += upsampling_factor;
+					k++;
 				}
-				*out_streams[i] = (int16_t)(sum); // this multiplication could be absorbed into the filter coefficients
+				*out_streams[i] = (int16_t)(sum);
 				out_streams[i] += 2;
 			}
 		}
 
 		// fill filter memory with the last few input samples
 		for (int32_t s = 0; s < filter_kernel_length; s++) {
-			filter_memory[s] = m_backbuffer[samples_needed - 1 - s];
+			m_filter_memory[s] = m_backbuffer[samples_needed - 1 - s];
 		}
 
 		samples_used = samples_needed;
@@ -576,7 +575,7 @@ private:
 		0.0064019625317632105
 	};
 	
-	ymfm::ym2151::output_data filter_memory[filter_kernel_length];
+	ymfm::ym2151::output_data m_filter_memory[filter_kernel_length];
 #endif
 };
 
