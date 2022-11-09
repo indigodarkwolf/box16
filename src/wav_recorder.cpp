@@ -66,17 +66,26 @@ private:
 
 void wav_recorder::begin(const char *path, int32_t sample_rate)
 {
-	wav_file = SDL_RWFromFile(path, "wb");
-	if (wav_file) {
-		header.fmt.samples_per_sec = sample_rate;
-		header.fmt.bytes_per_sec   = sample_rate * sizeof(int16_t) * header.fmt.channels;
-		header.fmt.block_align     = sizeof(int16_t) * header.fmt.channels;
-		header.fmt.bits_per_sample = (sizeof(int16_t)) << 3;
+	if (wav_file != nullptr) {
+		if (header.fmt.samples_per_sec != sample_rate) {
+			end();
+		}
+	}
 
-		const size_t written = SDL_RWwrite(wav_file, &header, sizeof(file_header), 1);
-		if (written == 0) {
-			SDL_RWclose(wav_file);
-			wav_file = nullptr;
+	if (wav_file == nullptr) {
+		wav_file = SDL_RWFromFile(path, "wb");
+
+		if (wav_file != nullptr) {
+			header.fmt.samples_per_sec = sample_rate;
+			header.fmt.bytes_per_sec   = sample_rate * sizeof(int16_t) * header.fmt.channels;
+			header.fmt.block_align     = sizeof(int16_t) * header.fmt.channels;
+			header.fmt.bits_per_sample = (sizeof(int16_t)) << 3;
+
+			const size_t written = SDL_RWwrite(wav_file, &header, sizeof(file_header), 1);
+			if (written == 0) {
+				SDL_RWclose(wav_file);
+				wav_file = nullptr;
+			}
 		}
 	}
 }
@@ -148,6 +157,9 @@ void wav_recorder_set(wav_recorder_command_t command)
 				Wav_recorder.begin(Wav_path, audio_get_sample_rate());
 				break;
 			case RECORD_WAV_AUTOSTART:
+				if (Wav_record_state == RECORD_WAV_RECORDING) {
+					Wav_recorder.end();
+				}
 				Wav_record_state = RECORD_WAV_AUTOSTARTING;
 				break;
 			default:
