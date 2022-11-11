@@ -262,7 +262,7 @@ uint8_t via1_read(uint8_t reg, bool debug)
 				       (via[0].registers[3] & i2c_port.data_in) |   // I2C Data: PA0=1 if DDR bit is 1 (output) and data_in is 1
 				       (~via[0].registers[3] & I2C_CLK_MASK) |      // I2C Clock: PA1=1 if DDR bit is 0 (input), simulating an input pull-up
 				       (via[0].registers[3] & i2c_port.clk_in) |    // I2C Clock: PA1=1 if DDR bit is 1 (output) and clk_in is 1, simulating a pin driven by the VIA
-				       Joystick_data;
+				       (~via[0].registers[3] & Joystick_data);
 			}
 
 		default:
