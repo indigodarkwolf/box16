@@ -340,7 +340,6 @@ bool display_init(const display_settings &settings)
 
 		if (SDL_GL_SetSwapInterval(1) < 0) {
 			printf("Create display context (SDL_GL_SetSwapInterval): %s\n", SDL_GetError());
-			return false;
 		}
 	}
 	Initd_display_context = true;
