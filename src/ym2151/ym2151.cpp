@@ -307,31 +307,6 @@ public:
 
 		samples_used = samples_needed;
 #elif defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
-		// The task is to resample the signal of the YM2151, which comes at 55930 Hz,
-		// To whatever frequency the host system wants, most likely 44100 Hz or 48000 Hz.
-		// A crude approach to achieve this is to upsample the signal, and then "pick"
-		// samples from the upsampled signals, reducing the error being made by
-		// selecting signal samples from mismatching time points.
-		// The higher the upsampling factor, the finer the available grid of samples,
-		// and the smaller the error made by "snapping" onto it.
-
-		// Typically, upsampling by an integer factor is done by inserting zeros in
-		// between the available samples, and applying a low-pass filter afterwards,
-		// to smoothen out the discontinuities.
-		// This FIR filter can be optimized, as at least half of its input samples
-		// will be zero, and don't contribute to the sum.
-
-		// For the downsampling (picking) stage, the underlying signal in the fine grid must not
-		// contain any content in the frequency domain above the Nyquist frequency
-		// of the host (e.g. 22050 Hz or 24000 Hz). Otherwise, aliasing would occur.
-		// Hence, we need a low-pass filter to remove anything above target Nyquist frequency.
-
-		// The two lowpass filter tasks can be performed by a single filter, which is nice.
-
-		// Finally, when "picking" samples, we discard most samples from the filtered signal,
-		// so we don't even have to compute the entire upsampled signal.
-
-
 		// iterate over output samples
 		int16_t *out_streams[2] = {&buffers[0], &buffers[1]};
 		for (uint32_t s = 0; s < samples; s++) {
@@ -356,7 +331,7 @@ public:
 		}
 
 		// fill filter memory with the last few input samples
-		for (int32_t s = 0; s < filter_kernel_length; s++) {
+		for (int32_t s = 0; s < filter_memory_length; s++) {
 			m_filter_memory[s] = m_backbuffer[samples_needed - 1 - s];
 		}
 
@@ -490,91 +465,11 @@ private:
 	bool m_irq_status;
 
 #if defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
-	static constexpr int upsampling_factor = 4;
+	static constexpr int upsampling_factor = 8;
 
-	// http://t-filter.engineerjs.com/
-	// post-processed with custom tool to optimize for interpolation usage
-	static constexpr int filter_kernel_length = 76;
-	static constexpr double filter_kernel[filter_kernel_length] = 
-	{
-		0.0064019625317632105,
-		0.010536145676692955,
-		0.014311666689444568,
-		0.016358638455084683,
-		0.009122624790466244,
-		0.0008158541814642928,
-		-0.009924586434854242,
-		-0.020176571584785863,
-		-0.026581037930200082,
-		-0.026495196755216457,
-		-0.01910037662105655,
-		-0.005992964958555505,
-		0.008934148896463816,
-		0.020561347811643118,
-		0.024218498953803867,
-		0.017441169103468303,
-		0.001257944746759953,
-		-0.01965786683604532,
-		-0.038119412301865496,
-		-0.046668899369489356,
-		-0.04027648766313543,
-		-0.018608507212945803,
-		0.013054687425284057,
-		0.04474842527775971,
-		0.06459506786744947,
-		0.06273683658273568,
-		0.03524571568812087,
-		-0.013280005744314618,
-		-0.06949194632206003,
-		-0.11383784787329758,
-		-0.125436050555215,
-		-0.08805020355361018,
-		0.004507333714656066,
-		0.1452272039856754,
-		0.31412004718539877,
-		0.4820000199943984,
-		0.6170092532443263,
-		0.6922103119066778,
-		0.6922103119066778,
-		0.6170092532443262,
-		0.4820000199943984,
-		0.31412004718539877,
-		0.1452272039856754,
-		0.004507333714656066,
-		-0.08805020355361018,
-		-0.125436050555215,
-		-0.11383784787329759,
-		-0.06949194632206002,
-		-0.013280005744314611,
-		0.03524571568812086,
-		0.06273683658273568,
-		0.06459506786744945,
-		0.04474842527775971,
-		0.013054687425284059,
-		-0.018608507212945803,
-		-0.04027648766313543,
-		-0.04666889936948935,
-		-0.038119412301865496,
-		-0.01965786683604532,
-		0.001257944746759953,
-		0.0174411691034683,
-		0.024218498953803867,
-		0.02056134781164312,
-		0.008934148896463816,
-		-0.005992964958555506,
-		-0.019100376621056552,
-		-0.02649519675521646,
-		-0.026581037930200082,
-		-0.020176571584785863,
-		-0.00992458643485424,
-		0.0008158541814642928,
-		0.009122624790466242,
-		0.016358638455084683,
-		0.014311666689444568,
-		0.010536145676692955,
-		0.0064019625317632105
-	};
+#include "resampling_filter_kernel.inl"
 	
+	static constexpr int filter_memory_length = filter_kernel_length / upsampling_factor + 1;
 	ymfm::ym2151::output_data m_filter_memory[filter_kernel_length];
 #endif
 };
