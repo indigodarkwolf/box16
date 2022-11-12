@@ -12,9 +12,10 @@
 //#define YM2151_USE_PICK 1
 //#define YM2151_USE_LINEAR_INTERPOLATION 1
 //#define YM2151_USE_R8BRAIN_RESAMPLING 1
+//#define YM2151_USE_LOWPASS_FILTER_RESAMPLING 1
 
-#if !defined(YM2151_USE_PICK) && !defined(YM2151_USE_LINEAR_INTERPOLATION) && !defined(YM2151_USE_R8BRAIN_RESAMPLING)
-#	define YM2151_USE_LINEAR_INTERPOLATION 1
+#if !defined(YM2151_USE_PICK) && !defined(YM2151_USE_LINEAR_INTERPOLATION) && !defined(YM2151_USE_R8BRAIN_RESAMPLING) && !defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
+#	define YM2151_USE_LOWPASS_FILTER_RESAMPLING 1
 #endif
 
 #if defined(YM2151_USE_R8BRAIN_RESAMPLING)
@@ -305,6 +306,36 @@ public:
 		}
 
 		samples_used = samples_needed;
+#elif defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
+		// iterate over output samples
+		int16_t *out_streams[2] = {&buffers[0], &buffers[1]};
+		for (uint32_t s = 0; s < samples; s++) {
+			// which sample in the upsampled, filtered signal will we use for the given output sample?
+			int32_t pick_index = (int32_t)(((float)(s * m_chip_sample_rate * upsampling_factor)) / sample_rate);
+			// now, compute this sample (L/R)
+			for (int i = 0; i < 2; i++) {
+				double sum = 0.0f;
+				int32_t source_sample = pick_index / upsampling_factor;
+				int32_t k = 0;
+				for (int32_t filter_index = pick_index % upsampling_factor; filter_index < filter_kernel_length; filter_index += upsampling_factor) {
+					if (source_sample - k >= 0) {
+						sum += filter_kernel[filter_index] * m_backbuffer[source_sample - k].data[i];
+					} else {
+						sum += filter_kernel[filter_index] * m_filter_memory[k - source_sample - 1].data[i];
+					}
+					k++;
+				}
+				*out_streams[i] = (int16_t)(sum);
+				out_streams[i] += 2;
+			}
+		}
+
+		// fill filter memory with the last few input samples
+		for (int32_t s = 0; s < filter_memory_length; s++) {
+			m_filter_memory[s] = m_backbuffer[samples_needed - 1 - s];
+		}
+
+		samples_used = samples_needed;
 #endif
 
 		if (samples_used < m_backbuffer_used) {
@@ -432,6 +463,15 @@ private:
 	int32_t m_busy_timer;
 
 	bool m_irq_status;
+
+#if defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
+	static constexpr int upsampling_factor = 8;
+
+#include "resampling_filter_kernel.inl"
+	
+	static constexpr int filter_memory_length = filter_kernel_length / upsampling_factor + 1;
+	ymfm::ym2151::output_data m_filter_memory[filter_kernel_length];
+#endif
 };
 
 static ym2151_interface Ym_interface;
