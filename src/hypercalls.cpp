@@ -149,39 +149,39 @@ void hypercalls_update()
 
 	if (ieee_hypercalls_allowed()) {
 		Hypercall_table[KERNAL_MACPTR & 0xff] = []() -> bool {
-			uint16_t count = a;
+			uint16_t count = state6502.a;
 
-			const uint8_t s = MACPTR(y << 8 | x, &count);
+			const uint8_t s = MACPTR(state6502.y << 8 | state6502.x, &count);
 
-			x = count & 0xff;
-			y = count >> 8;
-			status &= 0xfe; // clear C -> supported
+			state6502.x = count & 0xff;
+			state6502.y = count >> 8;
+			state6502.status &= 0xfe; // clear C -> supported
 
 			set_kernal_status(s);
 			return true;
 		};
 
 		Hypercall_table[KERNAL_SECOND & 0xff] = []() -> bool {
-			SECOND(a);
+			SECOND(state6502.a);
 			return true;
 		};
 
 		Hypercall_table[KERNAL_TKSA & 0xff] = []() -> bool {
-			TKSA(a);
+			TKSA(state6502.a);
 			return true;
 		};
 
 		Hypercall_table[KERNAL_ACPTR & 0xff] = []() -> bool {
-			const uint8_t s = ACPTR(&a);
+			const uint8_t s = ACPTR(&state6502.a);
 
-			status = (status & ~2) | (!a << 1);
+			state6502.status = (state6502.status & ~2) | (!state6502.a << 1);
 
 			set_kernal_status(s);
 			return true;
 		};
 
 		Hypercall_table[KERNAL_CIOUT & 0xff] = []() -> bool {
-			const uint8_t s = CIOUT(a);
+			const uint8_t s = CIOUT(state6502.a);
 
 			set_kernal_status(s);
 			return true;
@@ -200,12 +200,12 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_LISTEN & 0xff] = []() -> bool {
-			LISTEN(a);
+			LISTEN(state6502.a);
 			return true;
 		};
 
 		Hypercall_table[KERNAL_TALK & 0xff] = []() -> bool {
-			TALK(a);
+			TALK(state6502.a);
 			return true;
 		};
 	}
@@ -250,7 +250,7 @@ void hypercalls_update()
 				} else {
 					start = start_hi << 8 | start_lo;
 				}
-				uint16_t end = start + (uint16_t)SDL_RWread(prg_file, RAM + start, 1, 65536 - start);
+				uint16_t end = start + (uint16_t)SDL_RWread(prg_file, RAM + start, 1, 65536 - (int)start);
 				SDL_RWclose(prg_file);
 				prg_file = nullptr;
 				if (start == 0x0801) {
@@ -295,7 +295,7 @@ void hypercalls_update()
 
 	if (Options.echo_mode != echo_mode_t::ECHO_MODE_NONE) {
 		Hypercall_table[KERNAL_CHROUT & 0xff] = []() -> bool {
-			uint8_t c = a;
+			uint8_t c = state6502.a;
 			if (Options.echo_mode == echo_mode_t::ECHO_MODE_COOKED) {
 				if (c == 0x0d) {
 					printf("\n");
@@ -327,15 +327,15 @@ void hypercalls_update()
 
 void hypercalls_process()
 {
-	if (!is_kernal() || pc < 0xFF44) {
+	if (!is_kernal() || state6502.pc < 0xFF44) {
 		return;
 	}
 
-	const auto hypercall = Hypercall_table[pc & 0xff];
+	const auto hypercall = Hypercall_table[state6502.pc & 0xff];
 	if (hypercall != nullptr) {
 		if (hypercall()) {
-			pc = (RAM[0x100 + sp + 1] | (RAM[0x100 + sp + 2] << 8)) + 1;
-			sp += 2;
+			state6502.pc = (RAM[0x100 + state6502.sp + 1] | (RAM[0x100 + state6502.sp + 2] << 8)) + 1;
+			state6502.sp += 2;
 		}
 	}
 }

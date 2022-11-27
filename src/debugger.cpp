@@ -1,5 +1,6 @@
 #include "debugger.h"
 #include "cpu/fake6502.h"
+#include "cpu/mnemonics.h"
 #include "glue.h"
 #include "memory.h"
 
@@ -9,7 +10,7 @@
 
 static breakpoint_list Breakpoints;
 static breakpoint_list Active_breakpoints;
-static bool            Breakpoint_check[0x10000];
+static uint8_t        *Breakpoint_flags = nullptr;
 
 enum debugger_mode {
 	DEBUG_RUN,
@@ -32,14 +33,14 @@ uint16_t debug_peek16(uint16_t addr)
 	return (uint16_t)debug_read6502(addr) | ((uint16_t)debug_read6502(addr + 1) << 8);
 }
 
-static breakpoint_type get_current_pc()
-{
-	return breakpoint_type{ pc, memory_get_current_bank(pc) };
-}
-
 static breakpoint_type get_bp_from_addr(uint16_t addr)
 {
 	return breakpoint_type{ addr, memory_get_current_bank(addr) };
+}
+
+static breakpoint_type get_current_pc()
+{
+	return get_bp_from_addr(state6502.pc - waiting);
 }
 
 static constexpr const uint16_t breakpoint_addr(const breakpoint_type bp)
@@ -47,21 +48,60 @@ static constexpr const uint16_t breakpoint_addr(const breakpoint_type bp)
 	return std::get<0>(bp);
 }
 
-static bool execution_exited_interrupt()
+static constexpr const uint8_t breakpoint_bank(const breakpoint_type bp)
 {
-	return (Step_interrupt != 0) && (Step_interrupt != (status & 0x04));
+	return std::get<1>(bp);
 }
 
-static bool breakpoint_hit(breakpoint_type current_pc)
+static uint32_t get_offset(const uint16_t addr, const uint8_t bank)
 {
-	// If the debugger was set to run, make sure it allows at least one CPU cycle...
-	if (debugger_step_clocks() == 0) {
-		return false;
+	if (addr >= 0xa000) {
+		return addr + (bank << 13) + (bank << 14);
+	} else {
+		return addr;
 	}
-	if (Breakpoint_check[breakpoint_addr(current_pc)]) {
-		return Active_breakpoints.find(current_pc) != Active_breakpoints.end();
-	}
-	return false;
+}
+
+static uint8_t &get_flags(const uint16_t addr, const uint8_t bank)
+{
+	return Breakpoint_flags[get_offset(addr, bank)];
+}
+
+static void set_flags(const uint16_t addr, const uint8_t bank, uint8_t flags)
+{
+	Breakpoint_flags[get_offset(addr, bank)] = flags;
+}
+
+static bool execution_exited_interrupt()
+{
+	return (Step_interrupt != 0) && (Step_interrupt != (state6502.status & 0x04));
+}
+
+// static bool is_breakpoint_hit(breakpoint_type bp)
+//{
+//	// If the debugger was set to run, make sure it allows at least one CPU cycle...
+//	if (debugger_step_clocks() == 0) {
+//		return false;
+//	}
+//
+//	if (get_flags(std::get<0>(bp), std::get<1>(bp)) & DEBUG6502_EXEC) {
+//		return true;
+//	}
+//
+//	return false;
+// }
+
+void debugger_init(int max_ram_banks)
+{
+	constexpr const int breakpoint_flags_size = 0xa000 + 0x6000 * NUM_MAX_RAM_BANKS;
+
+	Breakpoint_flags = new uint8_t[breakpoint_flags_size];
+	memset(Breakpoint_flags, 0, breakpoint_flags_size);
+}
+
+void debugger_shutdown()
+{
+	delete[] Breakpoint_flags;
 }
 
 bool debugger_is_paused()
@@ -70,15 +110,15 @@ bool debugger_is_paused()
 
 	switch (Debug_mode) {
 		case DEBUG_RUN:
-			if (breakpoint_hit(current_pc)) {
-				debugger_pause_execution();
-				return true;
-			}
+			// if (is_breakpoint_hit(current_pc)) {
+			//	debugger_pause_execution();
+			//	return true;
+			// }
 			break;
 		case DEBUG_PAUSE:
 			return true;
 		case DEBUG_STEP_INTO:
-			if (Step_clocks != clockticks6502) {
+			if (!waiting && Step_clocks != clockticks6502) {
 				debugger_pause_execution();
 				return true;
 			}
@@ -88,11 +128,11 @@ bool debugger_is_paused()
 				debugger_pause_execution();
 				return true;
 			}
-			if (breakpoint_hit(current_pc)) {
-				debugger_pause_execution();
-				return true;
-			}
-			if ((Step_interrupt == (status & 0x04)) && current_pc == Step_target) {
+			// if (is_breakpoint_hit(current_pc)) {
+			//	debugger_pause_execution();
+			//	return true;
+			// }
+			if (!waiting && (Step_interrupt == (state6502.status & 0x04)) && current_pc == Step_target) {
 				debugger_pause_execution();
 				return true;
 			}
@@ -102,12 +142,12 @@ bool debugger_is_paused()
 				debugger_pause_execution();
 				return true;
 			}
-			if (breakpoint_hit(current_pc)) {
-				debugger_pause_execution();
-				return true;
-			}
-			if (Step_interrupt == (status & 0x04)) {
-				switch (debug_read6502(pc)) {
+			// if (is_breakpoint_hit(current_pc)) {
+			//	debugger_pause_execution();
+			//	return true;
+			// }
+			if (Step_interrupt == (state6502.status & 0x04)) {
+				switch (debug_read6502(state6502.pc)) {
 					case 0x20: { // jsr
 						Debug_mode              = DEBUG_STEP_OUT_OVER;
 						const auto [addr, bank] = get_current_pc();
@@ -115,11 +155,11 @@ bool debugger_is_paused()
 					} break;
 					case 0x60: // rts
 						Debug_mode  = DEBUG_STEP_OUT_RETURN;
-						Step_target = get_bp_from_addr(debug_peek16(0x100 + sp + 1) + 1);
+						Step_target = get_bp_from_addr(debug_peek16(0x100 + state6502.sp + 1) + 1);
 						break;
 					case 0x40: // rti
 						Debug_mode  = DEBUG_STEP_OUT_RETURN;
-						Step_target = get_bp_from_addr(debug_peek16(0x100 + sp + 2));
+						Step_target = get_bp_from_addr(debug_peek16(0x100 + state6502.sp + 2));
 						break;
 				}
 			}
@@ -129,11 +169,11 @@ bool debugger_is_paused()
 				Debug_mode = DEBUG_PAUSE;
 				return true;
 			}
-			if (breakpoint_hit(current_pc)) {
-				Debug_mode = DEBUG_PAUSE;
-				return true;
-			}
-			if ((Step_interrupt == (status & 0x04)) && current_pc == Step_target) {
+			// if (is_breakpoint_hit(current_pc)) {
+			//	Debug_mode = DEBUG_PAUSE;
+			//	return true;
+			// }
+			if ((Step_interrupt == (state6502.status & 0x04)) && current_pc == Step_target) {
 				Debug_mode = DEBUG_STEP_OUT_RUN;
 				return true;
 			}
@@ -144,11 +184,11 @@ bool debugger_is_paused()
 				debugger_pause_execution();
 				return true;
 			}
-			if (breakpoint_hit(current_pc)) {
-				debugger_pause_execution();
-				return true;
-			}
-			if ((Step_interrupt == (status & 0x04)) && (current_pc == Step_target)) {
+			// if (is_breakpoint_hit(current_pc)) {
+			//	debugger_pause_execution();
+			//	return true;
+			// }
+			if ((Step_interrupt == (state6502.status & 0x04)) && (current_pc == Step_target)) {
 				debugger_pause_execution();
 				return true;
 			}
@@ -156,6 +196,15 @@ bool debugger_is_paused()
 	}
 
 	return false;
+}
+
+void debugger_process_cpu()
+{
+	if (debugger_step_clocks() == 0) {
+		return;
+	}
+
+	debugger_pause_execution();
 }
 
 void debugger_pause_execution()
@@ -173,21 +222,29 @@ void debugger_continue_execution()
 
 void debugger_step_execution()
 {
-	Debug_mode  = DEBUG_STEP_INTO;
-	Step_clocks = clockticks6502;
-	Step_interrupt  = status & 0x04;
+	Debug_mode      = DEBUG_STEP_INTO;
+	Step_clocks     = clockticks6502;
+	Step_interrupt  = state6502.status & 0x04;
 	Interrupt_check = Step_interrupt;
 }
 
 void debugger_step_over_execution()
 {
-	if (debug_read6502(pc) == 0x20) {
+	const uint8_t op = debug_read6502(state6502.pc - waiting);
+	if (op == 0x20) {
 		Debug_mode              = DEBUG_STEP_OVER;
 		Step_clocks             = clockticks6502;
-		Step_interrupt          = status & 0x04;
+		Step_interrupt          = state6502.status & 0x04;
 		Interrupt_check         = Step_interrupt;
 		const auto [addr, bank] = get_current_pc();
 		Step_target             = { addr + 3, bank };
+	} else if (op == 0xcb) {
+		Debug_mode              = DEBUG_STEP_OVER;
+		Step_clocks             = clockticks6502;
+		Step_interrupt          = state6502.status & 0x04;
+		Interrupt_check         = Step_interrupt;
+		const auto [addr, bank] = get_current_pc();
+		Step_target             = { addr + 1, bank };
 	} else {
 		debugger_step_execution();
 	}
@@ -196,18 +253,18 @@ void debugger_step_over_execution()
 void debugger_step_out_execution()
 {
 	Step_clocks     = clockticks6502;
-	Step_interrupt  = status & 0x04;
+	Step_interrupt  = state6502.status & 0x04;
 	Interrupt_check = Step_interrupt;
 
 	// Stepping out turned out to be harder than expected, since I have neither symbols nor
 	// a reliable stack: it can have arbitrary, undocumented data; there are no standard
 	// "stack frames"; it's possible for non-interrupt code to be interrupted; and it's
-	// possible for interrupt code to exit, well, anywhere. So my approach is to put the 
-	// debugger in a mode where it essentially performs repeated "step over" operations until 
-	// it discovers an RTS or RTI op, at which point we can interpret the stack and set the 
+	// possible for interrupt code to exit, well, anywhere. So my approach is to put the
+	// debugger in a mode where it essentially performs repeated "step over" operations until
+	// it discovers an RTS or RTI op, at which point we can interpret the stack and set the
 	// stop point correctly.
 
-	switch (debug_read6502(pc)) {
+	switch (debug_read6502(state6502.pc)) {
 		case 0x20: { // jsr
 			Debug_mode              = DEBUG_STEP_OUT_OVER;
 			const auto [addr, bank] = get_current_pc();
@@ -215,11 +272,11 @@ void debugger_step_out_execution()
 		} break;
 		case 0x60: // rts
 			Debug_mode  = DEBUG_STEP_OUT_RETURN;
-			Step_target = get_bp_from_addr(debug_peek16(0x100 + sp + 1));
+			Step_target = get_bp_from_addr(debug_peek16(0x100 + state6502.sp + 1));
 			break;
 		case 0x40: // rti
 			Debug_mode  = DEBUG_STEP_OUT_RETURN;
-			Step_target = get_bp_from_addr(debug_peek16(0x100 + sp + 2));
+			Step_target = get_bp_from_addr(debug_peek16(0x100 + state6502.sp + 2));
 			break;
 		default:
 			Debug_mode = DEBUG_STEP_OUT_RUN;
@@ -234,7 +291,7 @@ uint64_t debugger_step_clocks()
 
 void debugger_interrupt()
 {
-	Interrupt_check |= status & 0x04;
+	Interrupt_check |= state6502.status & 0x04;
 }
 
 bool debugger_step_interrupted()
@@ -242,86 +299,106 @@ bool debugger_step_interrupted()
 	return Interrupt_check != Step_interrupt;
 }
 
-void debugger_add_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
+uint8_t debugger_get_flags(uint16_t address, uint8_t bank)
 {
 	if (address < 0xa000) {
 		bank = 0;
 	}
+	return get_flags(address, bank) & 0x0f;
+}
+
+void debugger_add_breakpoint(uint16_t address, uint8_t bank /* = 0 */, uint8_t flags /* = DEBUG6502_EXEC */)
+{
+	if (address < 0xa000) {
+		bank = 0;
+	}
+
+	flags &= 0x0f;
+
+	flags |= (flags << 4);
+	flags |= get_flags(address, bank);
+	set_flags(address, bank, flags);
 
 	breakpoint_type new_bp{ address, bank };
 	if (Breakpoints.find(new_bp) == Breakpoints.end()) {
 		Breakpoints.insert(new_bp);
 		Active_breakpoints.insert(new_bp);
-		Breakpoint_check[address] = true;
 	}
 }
 
-void debugger_remove_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
+void debugger_remove_breakpoint(uint16_t address, uint8_t bank /* = 0 */, uint8_t flags /* = DEBUG6502_EXEC */)
 {
 	if (address < 0xa000) {
 		bank = 0;
 	}
 
-	breakpoint_type old_bp{ address, bank };
-	Breakpoints.erase(old_bp);
-	Active_breakpoints.erase(old_bp);
-	Breakpoint_check[address] = false;
-	for (const auto &bp : Active_breakpoints) {
-		if (breakpoint_addr(bp) == address) {
-			Breakpoint_check[address] = true;
-			break;
-		}
+	flags &= 0x0f;
+
+	flags |= (flags << 4);
+	flags = get_flags(address, bank) & ~flags;
+	set_flags(address, bank, flags);
+
+	if (flags == 0) {
+		breakpoint_type old_bp{ address, bank };
+		Breakpoints.erase(old_bp);
+		Active_breakpoints.erase(old_bp);
 	}
 }
 
-void debugger_activate_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
+void debugger_activate_breakpoint(uint16_t address, uint8_t bank /* = 0 */, uint8_t flags /* = DEBUG6502_EXEC */)
 {
 	if (address < 0xa000) {
 		bank = 0;
 	}
+
+	flags &= 0x0f;
+
+	flags = get_flags(address, bank) | flags;
+	set_flags(address, bank, flags);
 
 	breakpoint_type new_bp{ address, bank };
-	if (Breakpoints.find(new_bp) == Breakpoints.end()) {
-		return;
-	}
 	if (Active_breakpoints.find(new_bp) == Active_breakpoints.end()) {
 		Active_breakpoints.insert(new_bp);
-		Breakpoint_check[address] = true;
 	}
 }
 
-void debugger_deactivate_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
+void debugger_deactivate_breakpoint(uint16_t address, uint8_t bank /* = 0 */, uint8_t flags /* = DEBUG6502_EXEC */)
 {
 	if (address < 0xa000) {
 		bank = 0;
 	}
 
-	breakpoint_type old_bp{ address, bank };
-	Active_breakpoints.erase(old_bp);
+	flags &= 0x0f;
+	flags = get_flags(address, bank) & ~flags;
+	set_flags(address, bank, flags);
 
-	Breakpoint_check[address] = false;
-	for (const auto &bp : Active_breakpoints) {
-		if (breakpoint_addr(bp) == address) {
-			Breakpoint_check[address] = true;
-			break;
-		}
+	if ((flags & 0x0f) == 0) {
+		breakpoint_type old_bp{ address, bank };
+		Active_breakpoints.erase(old_bp);
 	}
 }
 
-bool debugger_has_breakpoint(uint16_t address, uint8_t bank /* = 0 */)
+bool debugger_has_breakpoint(uint16_t address, uint8_t bank /* = 0 */, uint8_t flags /* = DEBUG6502_EXEC */)
 {
 	if (address < 0xa000) {
 		bank = 0;
 	}
 
-	breakpoint_type new_bp{ address, bank };
-	return Breakpoints.find(new_bp) != Breakpoints.end();
+	flags &= 0x0f;
+	flags |= flags << 4;
+
+	return get_flags(address, bank) & flags;
 }
 
-bool debugger_breakpoint_is_active(uint16_t address, uint8_t bank /* = 0 */)
+bool debugger_breakpoint_is_active(uint16_t address, uint8_t bank /* = 0 */, uint8_t flags /* = DEBUG6502_EXEC */)
 {
-	breakpoint_type bp{ address, bank };
-	return (Active_breakpoints.find(bp) != Active_breakpoints.end());
+	if (address < 0xa000) {
+		bank = 0;
+	}
+
+	flags &= 0x0f;
+
+	return get_flags(address, bank) & flags;
 }
 
 const breakpoint_list &debugger_get_breakpoints()

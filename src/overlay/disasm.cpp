@@ -110,7 +110,7 @@ void imgui_debugger_disasm::draw()
 			if (!paused) {
 				follow_countdown = 3;
 			} else if (follow_countdown > 0) {
-				set_dump_start(pc);
+				set_dump_start(state6502.pc - waiting);
 				ram_bank = memory_get_ram_bank();
 				rom_bank = memory_get_rom_bank();
 			}
@@ -196,7 +196,7 @@ void imgui_debugger_disasm::draw()
 
 					bool found_symbols = false;
 
-					if (pc == addr) {
+					if (state6502.pc - waiting == addr) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
 					}
 
@@ -227,7 +227,7 @@ void imgui_debugger_disasm::draw()
 					}
 
 					if (y >= lines) {
-						if (pc == addr) {
+						if (state6502.pc - waiting == addr) {
 							ImGui::PopStyleColor();
 						}
 						ImGui::PopID();
@@ -249,7 +249,7 @@ void imgui_debugger_disasm::draw()
 
 					imgui_disasm_line(addr, addr < 0xc000 ? ram_bank : rom_bank);
 
-					if (pc == addr) {
+					if (state6502.pc - waiting == addr) {
 						ImGui::PopStyleColor();
 					}
 					ImGui::PopID();

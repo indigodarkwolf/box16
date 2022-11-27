@@ -60,7 +60,7 @@ void cpu_visualization_step()
 				return bright;
 
 			case cpu_visualization_highlight::IRQ:
-				return (status & 0x04) ? bright : dim;
+				return (state6502.status & 0x04) ? bright : dim;
 
 			case cpu_visualization_highlight::VISIBLE: {
 				const vera_video_rect visible = vera_video_get_scan_visible();
@@ -82,9 +82,9 @@ void cpu_visualization_step()
 	const color_u32 vis_color = [sv]() -> color_u32 {
 		switch (Coloring_type) {
 			case cpu_visualization_coloring::ADDRESS:
-				return { hsv_to_rgb((float)pc / 65536.0f, sv, sv) };
+				return { hsv_to_rgb((float)state6502.pc / 65536.0f, sv, sv) };
 			case cpu_visualization_coloring::INSTRUCTION: {
-				uint8_t instruction = debug_read6502(pc);
+				uint8_t instruction = debug_read6502(state6502.pc);
 				if (instruction == 0xCB) {
 					return { 0, 0, 0, 0 };
 				} else {

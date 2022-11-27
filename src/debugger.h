@@ -9,6 +9,8 @@
 #	include <set>
 #	include <tuple>
 
+#include "cpu/fake6502.h"
+
 //
 // Breakpoints
 //
@@ -16,8 +18,11 @@
 using breakpoint_type = std::tuple<uint16_t, uint8_t>;
 using breakpoint_list = std::set<breakpoint_type>;
 
+void debugger_init(int max_ram_banks);
+void debugger_shutdown();
 bool debugger_is_paused();
 
+void debugger_process_cpu();
 void debugger_pause_execution();
 void debugger_continue_execution();
 void debugger_step_execution();
@@ -28,14 +33,16 @@ uint64_t debugger_step_clocks();
 void     debugger_interrupt();
 bool     debugger_step_interrupted();
 
+uint8_t  debugger_get_flags(uint16_t address, uint8_t bank);
+
 // Bank parameter is only meaninful for addresses >= $A000.
 // Addresses < $A000 will force bank to 0.
-void debugger_add_breakpoint(uint16_t address, uint8_t bank = 0);
-void debugger_remove_breakpoint(uint16_t address, uint8_t bank = 0);
-void debugger_activate_breakpoint(uint16_t address, uint8_t bank = 0);
-void debugger_deactivate_breakpoint(uint16_t address, uint8_t bank = 0);
-bool debugger_has_breakpoint(uint16_t address, uint8_t bank = 0);
-bool debugger_breakpoint_is_active(uint16_t address, uint8_t bank = 0);
+void debugger_add_breakpoint(uint16_t address, uint8_t bank = 0, uint8_t flags = DEBUG6502_EXEC);
+void debugger_remove_breakpoint(uint16_t address, uint8_t bank = 0, uint8_t flags = DEBUG6502_EXEC);
+void debugger_activate_breakpoint(uint16_t address, uint8_t bank = 0, uint8_t flags = DEBUG6502_EXEC);
+void debugger_deactivate_breakpoint(uint16_t address, uint8_t bank = 0, uint8_t flags = DEBUG6502_EXEC);
+bool debugger_has_breakpoint(uint16_t address, uint8_t bank = 0, uint8_t flags = DEBUG6502_EXEC);
+bool debugger_breakpoint_is_active(uint16_t address, uint8_t bank = 0, uint8_t flags = DEBUG6502_EXEC);
 
 const breakpoint_list &debugger_get_breakpoints();
 
@@ -56,10 +63,10 @@ using watch_address_list = std::set<watch_address_type>;
 #	define DEBUGGER_SIZE_TYPE_S32 7
 
 constexpr const uint8_t Num_debugger_size_types = 8;
-extern char const *     Debugger_size_types[Num_debugger_size_types];
+extern char const      *Debugger_size_types[Num_debugger_size_types];
 
-void                      debugger_add_watch(uint16_t address, uint8_t bank, uint8_t size);
-void                      debugger_remove_watch(uint16_t address, uint8_t bank, uint8_t size);
+void debugger_add_watch(uint16_t address, uint8_t bank, uint8_t size);
+void debugger_remove_watch(uint16_t address, uint8_t bank, uint8_t size);
 
 const watch_address_list &debugger_get_watchlist();
 

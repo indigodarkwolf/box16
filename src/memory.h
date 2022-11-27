@@ -11,7 +11,10 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define NUM_MAX_RAM_BANKS 256
+
 struct memory_init_params {
+	uint16_t num_banks;
 	bool randomize;
 	bool enable_uninitialized_access_warning;
 };

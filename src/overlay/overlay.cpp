@@ -83,8 +83,8 @@ static void draw_debugger_cpu_status()
 			while (mask > 0) {
 				ImGui::BeginGroup();
 				ImGui::Text("%s", names[n]);
-				if (ImGui::SmallButton(status & mask ? "1" : "0")) {
-					status ^= mask;
+				if (ImGui::SmallButton(state6502.status & mask ? "1" : "0")) {
+					state6502.status ^= mask;
 				}
 				mask >>= 1;
 				++n;
@@ -99,9 +99,9 @@ static void draw_debugger_cpu_status()
 
 			ImGui::BeginGroup();
 			{
-				ImGui::InputHexLabel("A", a);
-				ImGui::InputHexLabel("X", x);
-				ImGui::InputHexLabel("Y", y);
+				ImGui::InputHexLabel("A", state6502.a);
+				ImGui::InputHexLabel("X", state6502.x);
+				ImGui::InputHexLabel("Y", state6502.y);
 			}
 			ImGui::EndGroup();
 
@@ -109,8 +109,8 @@ static void draw_debugger_cpu_status()
 
 			ImGui::BeginGroup();
 			{
-				ImGui::InputHexLabel("PC", pc);
-				ImGui::InputHexLabel("SP", sp);
+				ImGui::InputHexLabel("PC", state6502.pc);
+				ImGui::InputHexLabel("SP", state6502.sp);
 			}
 			ImGui::EndGroup();
 
@@ -160,7 +160,7 @@ static void draw_debugger_cpu_status()
 
 		ImGui::BeginChild("cpu stack", ImVec2(44, 460));
 		{
-			for (uint16_t i = (uint16_t)sp + 0x100; i < 0x200; ++i) {
+			for (uint16_t i = (uint16_t)state6502.sp + 0x100; i < 0x200; ++i) {
 				uint8_t value = debug_read6502(i);
 				if (ImGui::InputHex(i, value)) {
 					debug_write6502(i, 0, value);
@@ -1635,9 +1635,11 @@ static void draw_breakpoints()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 		if (ImGui::TreeNodeEx("Breakpoints", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			if (ImGui::BeginTable("breakpoints", 5)) {
+			if (ImGui::BeginTable("breakpoints", 7)) {
 				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
-				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
+				ImGui::TableSetupColumn("R", ImGuiTableColumnFlags_WidthFixed, 16);
+				ImGui::TableSetupColumn("W", ImGuiTableColumnFlags_WidthFixed, 16);
+				ImGui::TableSetupColumn("X", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 64);
 				ImGui::TableSetupColumn("Bank", ImGuiTableColumnFlags_WidthFixed, 48);
 				ImGui::TableSetupColumn("Symbol");
@@ -1657,16 +1659,46 @@ static void draw_breakpoints()
 						break;
 					}
 
+					int c = 0;
+
 					ImGui::TableNextColumn();
-					if (debugger_breakpoint_is_active(address, bank)) {
+					ImGui::PushID(c++);
+					if (debugger_breakpoint_is_active(address, bank, DEBUG6502_READ)) {
 						if (ImGui::TileButton(ICON_CHECKED)) {
-							debugger_deactivate_breakpoint(address, bank);
+							debugger_deactivate_breakpoint(address, bank, DEBUG6502_READ);
 						}
 					} else {
 						if (ImGui::TileButton(ICON_UNCHECKED)) {
-							debugger_activate_breakpoint(address, bank);
+							debugger_activate_breakpoint(address, bank, DEBUG6502_READ);
 						}
 					}
+					ImGui::PopID();
+
+					ImGui::TableNextColumn();
+					ImGui::PushID(c++);
+					if (debugger_breakpoint_is_active(address, bank, DEBUG6502_WRITE)) {
+						if (ImGui::TileButton(ICON_CHECKED)) {
+							debugger_deactivate_breakpoint(address, bank, DEBUG6502_WRITE);
+						}
+					} else {
+						if (ImGui::TileButton(ICON_UNCHECKED)) {
+							debugger_activate_breakpoint(address, bank, DEBUG6502_WRITE);
+						}
+					}
+					ImGui::PopID();
+
+					ImGui::TableNextColumn();
+					ImGui::PushID(c++);
+					if (debugger_breakpoint_is_active(address, bank, DEBUG6502_EXEC)) {
+						if (ImGui::TileButton(ICON_CHECKED)) {
+							debugger_deactivate_breakpoint(address, bank, DEBUG6502_EXEC);
+						}
+					} else {
+						if (ImGui::TileButton(ICON_UNCHECKED)) {
+							debugger_activate_breakpoint(address, bank, DEBUG6502_EXEC);
+						}
+					}
+					ImGui::PopID();
 
 					ImGui::TableNextColumn();
 					char addr_text[5];
@@ -1986,19 +2018,19 @@ static void draw_symbols_files()
 
 				if (symbols_file_all_are_visible()) {
 					if (ImGui::TileButton(ICON_CHECKED)) {
-						for (auto file : files) {
+						for (auto &file : files) {
 							symbols_hide_file(file);
 						}
 					}
 				} else if (symbols_file_any_is_visible()) {
 					if (ImGui::TileButton(ICON_CHECK_UNCERTAIN)) {
-						for (auto file : files) {
+						for (auto &file : files) {
 							symbols_hide_file(file);
 						}
 					}
 				} else {
 					if (ImGui::TileButton(ICON_UNCHECKED)) {
-						for (auto file : files) {
+						for (auto &file : files) {
 							symbols_show_file(file);
 						}
 					}
@@ -2107,15 +2139,15 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	static bool set_breakpoint_hovered = false;
-	const bool  breakpoint_exists      = debugger_has_breakpoint(pc, memory_get_current_bank(pc));
-	const bool  breakpoint_active      = debugger_breakpoint_is_active(pc, memory_get_current_bank(pc));
+	const bool  breakpoint_exists      = debugger_has_breakpoint(state6502.pc, memory_get_current_bank(state6502.pc));
+	const bool  breakpoint_active      = debugger_breakpoint_is_active(state6502.pc, memory_get_current_bank(state6502.pc));
 	if (ImGui::TileButton(paused ? ICON_ADD_BREAKPOINT : ICON_UNCHECKED_DISABLED, paused, &set_breakpoint_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F9))) {
 		if (breakpoint_active) {
-			debugger_deactivate_breakpoint(pc, memory_get_current_bank(pc));
+			debugger_deactivate_breakpoint(state6502.pc, memory_get_current_bank(state6502.pc));
 		} else if (breakpoint_exists) {
-			debugger_remove_breakpoint(pc, memory_get_current_bank(pc));
+			debugger_remove_breakpoint(state6502.pc, memory_get_current_bank(state6502.pc));
 		} else {
-			debugger_add_breakpoint(pc, memory_get_current_bank(pc));
+			debugger_add_breakpoint(state6502.pc, memory_get_current_bank(state6502.pc));
 		}
 	}
 	if (paused && ImGui::IsItemHovered()) {

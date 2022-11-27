@@ -6,7 +6,6 @@
 #include "audio.h"
 #include "debugger.h"
 #include "overlay/overlay.h"
-#include "rom_patch.h"
 #include "symbols.h"
 #include "version.h"
 
@@ -59,9 +58,6 @@ static void usage()
 	printf("\tInject a BASIC program in ASCII encoding through the\n");
 	printf("\tkeyboard.\n");
 
-	printf("-create_patch <target.bin>\n");
-	printf("\tCreate a patch from the current ROM image (specified by -rom) to this target ROM image.\n");
-
 	printf("-debug <address>\n");
 	printf("\tSet a breakpoint in the debugger\n");
 
@@ -94,9 +90,6 @@ static void usage()
 	printf("-ignore_ini\n");
 	printf("\tDo not attempt to apply Box16 options from any ini file.\n");
 
-	printf("-ignore_patch\n");
-	printf("\tWhen loading ROM data, ignore the current patch file.\n");
-
 	printf("-ini <inifile.ini>\n");
 	printf("\tUse this ini file for emulator settings and options.\n");
 	printf("\tIf -ignore_ini is also specified, this will set the location of the ini file, but not actually load settings from it.\n");
@@ -124,20 +117,12 @@ static void usage()
 	printf("-nopanels\n");
 	printf("\tDo not automatically re-open any panels from the previous session.\n");
 
-	printf("-nopatch\n");
-	printf("\tThis is an alias for -ignore_patch.\n");
-
 	printf("-nosound\n");
 	printf("\tDisables audio. Incompatible with -sound.\n");
 
 	printf("-nvram <nvram.bin>\n");
 	printf("\tSpecify NVRAM image. By default, the machine starts with\n");
 	printf("\tempty NVRAM and does not save it to disk.\n");
-
-	printf("-patch <patch.bpf>\n");
-	printf("\tApply the following patch file to rom.\n");
-	printf("\tIf -create_patch has also been specified, this patch file is overwritten with the newly created patch data.\n");
-	printf("\tIf -ignore_patch has also specified, this patch file will not be applied during system boot.\n");
 
 	printf("-prg <app.prg>[,<load_addr>]\n");
 	printf("\tLoad application from the local disk into RAM\n");
@@ -227,6 +212,34 @@ static void usage()
 	printf("-ymstrict\n");
 	printf("\tEnable strict enforcement of YM behaviors.\n");
 	printf("\n");
+
+	printf("\nThe following options are deprecated and will be ignored:\n\n");
+
+	printf("-create_patch <target.bin>\n");
+	//printf("\tCreate a patch from the current ROM image (specified by -rom) to this target ROM image.\n");
+
+	printf("-ignore_patch\n");
+	//printf("\tWhen loading ROM data, ignore the current patch file.\n");
+
+	printf("-joy1\n");
+	//printf("\tEnable binding a gamepad to SNES controller port 1\n");
+
+	printf("-joy2\n");
+	//printf("\tEnable binding a gamepad to SNES controller port 2\n");
+
+	printf("-joy3\n");
+	//printf("\tEnable binding a gamepad to SNES controller port 3\n");
+
+	printf("-joy4\n");
+	// printf("\tEnable binding a gamepad to SNES controller port 4\n");
+
+	printf("-nopatch\n");
+	//printf("\tThis is an alias for -ignore_patch.\n");
+
+	printf("-patch <patch.bpf>\n");
+	//printf("\tApply the following patch file to rom.\n");
+	//printf("\tIf -create_patch has also been specified, this patch file is overwritten with the newly created patch data.\n");
+	//printf("\tIf -ignore_patch has also specified, this patch file will not be applied during system boot.\n");
 
 	exit(1);
 }
@@ -355,8 +368,9 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["create_patch"] = "true";
-			ini["patch_target"] = argv[0];
+			// Deprecated and ignored
+			//ini["create_patch"] = "true";
+			//ini["patch_target"] = argv[0];
 			argc--;
 			argv++;
 
@@ -437,7 +451,8 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 		} else if (!strcmp(argv[0], "-ignore_patch")) {
 			argc--;
 			argv++;
-			ini["ignore_patch"] = "true";
+			// Deprecated and ignored
+			//ini["ignore_patch"] = "true";
 
 		} else if (!strcmp(argv[0], "-ini")) {
 			argc--;
@@ -501,7 +516,8 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 		} else if (!strcmp(argv[0], "-nopatch")) {
 			argc--;
 			argv++;
-			ini["ignore_patch"] = "true";
+			// Deprecated and ignored
+			//ini["ignore_patch"] = "true";
 
 		} else if (!strcmp(argv[0], "-nosound")) {
 			argc--;
@@ -526,7 +542,8 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 				usage();
 			}
 
-			ini["patch"] = argv[0];
+			// Deprecated and ignored
+			//ini["patch"] = argv[0];
 			argc--;
 			argv++;
 
@@ -737,16 +754,18 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.rom_path = ini["rom"];
 	}
 
-	if (ini.has("patch") && ini["patch"] != "") {
-		opts.patch_path = ini["patch"];
-		if (!ini.has("ignore_patch") || ini["ignore_patch"] != "true") {
-			opts.apply_patch = true;
-		}
-	}
+	// Deprecated and ignored
+	//if (ini.has("patch") && ini["patch"] != "") {
+	//	opts.patch_path = ini["patch"];
+	//	if (!ini.has("ignore_patch") || ini["ignore_patch"] != "true") {
+	//		opts.apply_patch = true;
+	//	}
+	//}
 
-	if (ini.has("ignore_patch") && ini["ignore_patch"] == "true") {
-		opts.apply_patch = false;
-	}
+	// Deprecated and ignored
+	//if (ini.has("ignore_patch") && ini["ignore_patch"] == "true") {
+	//	opts.apply_patch = false;
+	//}
 
 	if (ini.has("ram")) {
 		int  kb    = atoi(ini["ram"].c_str());
@@ -1188,8 +1207,9 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	};
 
 	set_option("rom", Options.rom_path, Default_options.rom_path);
-	set_option("patch", Options.patch_path, Default_options.patch_path);
-	set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());
+	// Deprecated and ignored
+	//set_option("patch", Options.patch_path, Default_options.patch_path);
+	//set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());
 	set_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
 	set_option("keymap", keymaps_strict[Options.keymap], keymaps_strict[Default_options.keymap]);
 	set_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
@@ -1342,12 +1362,13 @@ void options_init(const char *base_path, const char *prefs_path, int argc, char 
 		Options.log_verbose = true;
 	}
 
-	if (cmdline_main.has("create_patch")) {
-		if (cmdline_main["create_patch"] == "true") {
-			Options.create_patch = true;
-			Options.patch_target = cmdline_main["patch_target"];
-		}
-	}
+	// Deprecated and ignored
+	//if (cmdline_main.has("create_patch")) {
+	//	if (cmdline_main["create_patch"] == "true") {
+	//		Options.create_patch = true;
+	//		Options.patch_target = cmdline_main["patch_target"];
+	//	}
+	//}
 
 	bool have_ini = false;
 	if (cmdline_main.has("ini")) {

@@ -85,7 +85,7 @@ void timing_update()
 		printf("Runtime: %dus\n", (uint32_t)diff_time_us);
 		printf("Frames:  %d\n", (uint32_t)diff_frames);
 		printf("Speed:   %d%%\n", Timing_perf);
-		pc = 0xffff;
+		state6502.pc = 0xffff;
 	}
 #endif
 }

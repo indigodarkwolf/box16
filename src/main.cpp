@@ -31,7 +31,6 @@
 #include "overlay/cpu_visualization.h"
 #include "overlay/overlay.h"
 #include "ring_buffer.h"
-#include "rom_patch.h"
 #include "rtc.h"
 #include "sdl_events.h"
 #include "serial.h"
@@ -83,12 +82,12 @@ void machine_dump()
 	}
 
 	if (Options.dump_cpu) {
-		SDL_RWwrite(f, &a, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &x, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &y, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &sp, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &status, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &pc, sizeof(uint16_t), 1);
+		SDL_RWwrite(f, &state6502.a, sizeof(uint8_t), 1);
+		SDL_RWwrite(f, &state6502.x, sizeof(uint8_t), 1);
+		SDL_RWwrite(f, &state6502.y, sizeof(uint8_t), 1);
+		SDL_RWwrite(f, &state6502.sp, sizeof(uint8_t), 1);
+		SDL_RWwrite(f, &state6502.status, sizeof(uint8_t), 1);
+		SDL_RWwrite(f, &state6502.pc, sizeof(uint16_t), 1);
 	}
 	memory_save(f, Options.dump_ram, Options.dump_bank);
 
@@ -153,8 +152,14 @@ int main(int argc, char **argv)
 		memory_init_params memory_params;
 		memory_params.randomize                           = Options.memory_randomize;
 		memory_params.enable_uninitialized_access_warning = Options.memory_uninit_warn;
+		memory_params.num_banks                           = Options.num_ram_banks;
 
 		memory_init(memory_params);
+	}
+
+	// Initialize debugger
+	{
+		debugger_init(Options.num_ram_banks);
 	}
 
 	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
@@ -195,43 +200,6 @@ int main(int argc, char **argv)
 		memset(ROM, 0, ROM_SIZE);
 		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
-	}
-
-	// Create ROM patch file
-	if (Options.create_patch) {
-		struct rom_struct {
-			uint8_t bytes[ROM_SIZE];
-		};
-
-		auto *target = new rom_struct;
-		memset(target->bytes, 0, ROM_SIZE);
-
-		SDL_RWops *target_file = open_file(Options.patch_target, "patch_target", "rb");
-		if (target_file != nullptr) {
-			SDL_RWread(target_file, target->bytes, ROM_SIZE, 1);
-			SDL_RWclose(target_file);
-
-			SDL_RWops *patch_file = open_file(Options.patch_path, "patch", "wb");
-			if (patch_file != nullptr) {
-				rom_patch_create(ROM, target->bytes, patch_file);
-				SDL_RWclose(patch_file);
-			}
-		}
-
-		delete target;
-	}
-
-	// Load patch
-	if (Options.apply_patch) {
-		SDL_RWops *patch_file = open_file(Options.patch_path, "patch", "rb");
-		if (patch_file == nullptr) {
-			error("Patch error", "Could not find patch file");
-		}
-
-		int result = rom_patch_load(patch_file, ROM);
-		if (result != ROM_PATCH_LOAD_OK) {
-			error("Patch error", "Could not load patch file from %s:\nerror %d", Options.patch_path.generic_string().c_str(), result);
-		}
 	}
 
 	// Load NVRAM, if specified
@@ -356,6 +324,7 @@ int main(int argc, char **argv)
 	audio_close();
 	wav_recorder_shutdown();
 	gif_recorder_shutdown();
+	debugger_shutdown();
 	display_shutdown();
 	SDL_Quit();
 
@@ -453,7 +422,7 @@ void emulator_loop()
 		{
 			printf("[%6d] ", instruction_counter);
 
-			char *label     = label_for_address(pc);
+			char *label     = label_for_address(state6502.pc);
 			int   label_len = label ? strlen(label) : 0;
 			if (label) {
 				printf("%s", label);
@@ -461,11 +430,11 @@ void emulator_loop()
 			for (int i = 0; i < 20 - label_len; i++) {
 				printf(" ");
 			}
-			printf(" %02x:.,%04x ", memory_get_rom_bank(), pc);
+			printf(" %02x:.,%04x ", memory_get_rom_bank(), state6502.pc);
 			char disasm_line[15];
-			int  len = disasm(pc, disasm_line, sizeof(disasm_line), 0);
+			int  len = disasm(state6502.pc, disasm_line, sizeof(disasm_line), 0);
 			for (int i = 0; i < len; i++) {
-				printf("%02x ", debug_read6502(pc + i));
+				printf("%02x ", debug_read6502(state6502.pc + i));
 			}
 			for (int i = 0; i < 9 - 3 * len; i++) {
 				printf(" ");
@@ -486,6 +455,14 @@ void emulator_loop()
 
 		uint64_t old_clockticks6502 = clockticks6502;
 		step6502();
+		if (debug6502) {
+			debugger_process_cpu();
+			if (debugger_is_paused()) {
+				continue;
+			} else {
+				force6502();
+			}
+		}
 		cpu_visualization_step();
 		uint8_t clocks       = (uint8_t)(clockticks6502 - old_clockticks6502);
 		bool    new_frame    = vera_video_step(MHZ, clocks);
@@ -530,7 +507,7 @@ void emulator_loop()
 
 		hypercalls_process();
 
-		if (pc == 0xffff) {
+		if (state6502.pc == 0xffff) {
 			if (save_on_exit) {
 				machine_dump();
 			}

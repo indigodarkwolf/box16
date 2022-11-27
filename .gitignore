@@ -53,6 +53,7 @@ build/vs2022/intermediates
 build/vs2022/out
 
 release
+samples
 
 vendor/*.zip
 vendor/r8brain-free-src/bench

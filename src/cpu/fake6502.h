@@ -7,11 +7,22 @@
 
 #include <stdint.h>
 
+#define DEBUG6502_EXEC 0x1
+#define DEBUG6502_READ 0x2
+#define DEBUG6502_WRITE 0x4
+
+struct _state6502 {
+	uint16_t pc;
+	uint8_t  sp, a, x, y, status;
+};
+
 extern void     reset6502();
 extern void     step6502();
+extern void     force6502();
 extern void     exec6502(uint32_t tickcount);
 extern void     nmi6502();
 extern void     irq6502();
 extern uint64_t clockticks6502;
+extern uint8_t  debug6502;
 
 #endif

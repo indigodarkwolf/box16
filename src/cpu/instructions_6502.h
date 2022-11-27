@@ -1,3 +1,8 @@
+#if !defined(INSTRUCTIONS_6502_H)
+#	define INSTRUCTIONS_6502_H
+
+#include "support.h"
+
 /*
 
 						Extracted from original single fake6502.c file
@@ -18,12 +23,12 @@ static void
 adc()
 {
 	penaltyop = 1;
-#ifndef NES_CPU
-	if (status & FLAG_DECIMAL) {
+
+	if (state6502.status & FLAG_DECIMAL) {
 		uint16_t tmp, tmp2;
 		value = getvalue();
-		tmp   = ((uint16_t)a & 0x0F) + (value & 0x0F) + (uint16_t)(status & FLAG_CARRY);
-		tmp2  = ((uint16_t)a & 0xF0) + (value & 0xF0);
+		tmp   = ((uint16_t)state6502.a & 0x0F) + (value & 0x0F) + (uint16_t)(state6502.status & FLAG_CARRY);
+		tmp2  = ((uint16_t)state6502.a & 0xF0) + (value & 0xF0);
 		if (tmp > 0x09) {
 			tmp2 += 0x10;
 			tmp += 0x06;
@@ -43,17 +48,15 @@ adc()
 
 		clockticks6502++;
 	} else {
-#endif
+
 		value  = getvalue();
-		result = (uint16_t)a + value + (uint16_t)(status & FLAG_CARRY);
+		result = (uint16_t)state6502.a + value + (uint16_t)(state6502.status & FLAG_CARRY);
 
 		carrycalc(result);
 		zerocalc(result);
-		overflowcalc(result, a, value);
+		overflowcalc(result, state6502.a, value);
 		signcalc(result);
-#ifndef NES_CPU
 	}
-#endif
 
 	saveaccum(result);
 }
@@ -63,7 +66,7 @@ and_op()
 {
 	penaltyop = 1;
 	value     = getvalue();
-	result    = (uint16_t)a & value;
+	result    = (uint16_t)state6502.a & value;
 
 	zerocalc(result);
 	signcalc(result);
@@ -87,10 +90,10 @@ asl()
 static void
 bcc()
 {
-	if ((status & FLAG_CARRY) == 0) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+	if ((state6502.status & FLAG_CARRY) == 0) {
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;
@@ -100,10 +103,10 @@ bcc()
 static void
 bcs()
 {
-	if ((status & FLAG_CARRY) == FLAG_CARRY) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+	if ((state6502.status & FLAG_CARRY) == FLAG_CARRY) {
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;
@@ -113,10 +116,10 @@ bcs()
 static void
 beq()
 {
-	if ((status & FLAG_ZERO) == FLAG_ZERO) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+	if ((state6502.status & FLAG_ZERO) == FLAG_ZERO) {
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;
@@ -127,19 +130,19 @@ static void
 bit()
 {
 	value  = getvalue();
-	result = (uint16_t)a & value;
+	result = (uint16_t)state6502.a & value;
 
 	zerocalc(result);
-	status = (status & 0x3F) | (uint8_t)(value & 0xC0);
+	state6502.status = (state6502.status & 0x3F) | (uint8_t)(value & 0xC0);
 }
 
 static void
 bmi()
 {
-	if ((status & FLAG_SIGN) == FLAG_SIGN) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+	if ((state6502.status & FLAG_SIGN) == FLAG_SIGN) {
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;
@@ -149,10 +152,10 @@ bmi()
 static void
 bne()
 {
-	if ((status & FLAG_ZERO) == 0) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+	if ((state6502.status & FLAG_ZERO) == 0) {
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;
@@ -162,10 +165,10 @@ bne()
 static void
 bpl()
 {
-	if ((status & FLAG_SIGN) == 0) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+	if ((state6502.status & FLAG_SIGN) == 0) {
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;
@@ -175,22 +178,22 @@ bpl()
 static void
 brk()
 {
-	pc++;
+	state6502.pc++;
 
-	push16(pc);                 //push next instruction address onto stack
-	push8(status | FLAG_BREAK); //push CPU status to stack
+	push16(state6502.pc);                 //push next instruction address onto stack
+	push8(state6502.status | FLAG_BREAK); // push CPU status to stack
 	setinterrupt();             //set interrupt flag
 	cleardecimal();             // clear decimal flag (65C02 change)
-	pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
+	state6502.pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
 }
 
 static void
 bvc()
 {
-	if ((status & FLAG_OVERFLOW) == 0) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+	if ((state6502.status & FLAG_OVERFLOW) == 0) {
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;
@@ -200,10 +203,10 @@ bvc()
 static void
 bvs()
 {
-	if ((status & FLAG_OVERFLOW) == FLAG_OVERFLOW) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+	if ((state6502.status & FLAG_OVERFLOW) == FLAG_OVERFLOW) {
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;
@@ -239,13 +242,13 @@ cmp()
 {
 	penaltyop = 1;
 	value     = getvalue();
-	result    = (uint16_t)a - value;
+	result    = (uint16_t)state6502.a - value;
 
-	if (a >= (uint8_t)(value & 0x00FF))
+	if (state6502.a >= (uint8_t)(value & 0x00FF))
 		setcarry();
 	else
 		clearcarry();
-	if (a == (uint8_t)(value & 0x00FF))
+	if (state6502.a == (uint8_t)(value & 0x00FF))
 		setzero();
 	else
 		clearzero();
@@ -256,13 +259,13 @@ static void
 cpx()
 {
 	value  = getvalue();
-	result = (uint16_t)x - value;
+	result = (uint16_t)state6502.x - value;
 
-	if (x >= (uint8_t)(value & 0x00FF))
+	if (state6502.x >= (uint8_t)(value & 0x00FF))
 		setcarry();
 	else
 		clearcarry();
-	if (x == (uint8_t)(value & 0x00FF))
+	if (state6502.x == (uint8_t)(value & 0x00FF))
 		setzero();
 	else
 		clearzero();
@@ -273,13 +276,13 @@ static void
 cpy()
 {
 	value  = getvalue();
-	result = (uint16_t)y - value;
+	result = (uint16_t)state6502.y - value;
 
-	if (y >= (uint8_t)(value & 0x00FF))
+	if (state6502.y >= (uint8_t)(value & 0x00FF))
 		setcarry();
 	else
 		clearcarry();
-	if (y == (uint8_t)(value & 0x00FF))
+	if (state6502.y == (uint8_t)(value & 0x00FF))
 		setzero();
 	else
 		clearzero();
@@ -301,19 +304,19 @@ dec()
 static void
 dex()
 {
-	x--;
+	state6502.x--;
 
-	zerocalc(x);
-	signcalc(x);
+	zerocalc(state6502.x);
+	signcalc(state6502.x);
 }
 
 static void
 dey()
 {
-	y--;
+	state6502.y--;
 
-	zerocalc(y);
-	signcalc(y);
+	zerocalc(state6502.y);
+	signcalc(state6502.y);
 }
 
 static void
@@ -321,7 +324,7 @@ eor()
 {
 	penaltyop = 1;
 	value     = getvalue();
-	result    = (uint16_t)a ^ value;
+	result    = (uint16_t)state6502.a ^ value;
 
 	zerocalc(result);
 	signcalc(result);
@@ -344,32 +347,32 @@ inc()
 static void
 inx()
 {
-	x++;
+	state6502.x++;
 
-	zerocalc(x);
-	signcalc(x);
+	zerocalc(state6502.x);
+	signcalc(state6502.x);
 }
 
 static void
 iny()
 {
-	y++;
+	state6502.y++;
 
-	zerocalc(y);
-	signcalc(y);
+	zerocalc(state6502.y);
+	signcalc(state6502.y);
 }
 
 static void
 jmp()
 {
-	pc = ea;
+	state6502.pc = ea;
 }
 
 static void
 jsr()
 {
-	push16(pc - 1);
-	pc = ea;
+	push16(state6502.pc - 1);
+	state6502.pc = ea;
 }
 
 static void
@@ -377,10 +380,10 @@ lda()
 {
 	penaltyop = 1;
 	value     = getvalue();
-	a         = (uint8_t)(value & 0x00FF);
+	state6502.a = (uint8_t)(value & 0x00FF);
 
-	zerocalc(a);
-	signcalc(a);
+	zerocalc(state6502.a);
+	signcalc(state6502.a);
 }
 
 static void
@@ -388,10 +391,10 @@ ldx()
 {
 	penaltyop = 1;
 	value     = getvalue();
-	x         = (uint8_t)(value & 0x00FF);
+	state6502.x = (uint8_t)(value & 0x00FF);
 
-	zerocalc(x);
-	signcalc(x);
+	zerocalc(state6502.x);
+	signcalc(state6502.x);
 }
 
 static void
@@ -399,10 +402,10 @@ ldy()
 {
 	penaltyop = 1;
 	value     = getvalue();
-	y         = (uint8_t)(value & 0x00FF);
+	state6502.y = (uint8_t)(value & 0x00FF);
 
-	zerocalc(y);
-	signcalc(y);
+	zerocalc(state6502.y);
+	signcalc(state6502.y);
 }
 
 static void
@@ -441,7 +444,7 @@ ora()
 {
 	penaltyop = 1;
 	value     = getvalue();
-	result    = (uint16_t)a | value;
+	result    = (uint16_t)state6502.a | value;
 
 	zerocalc(result);
 	signcalc(result);
@@ -452,35 +455,35 @@ ora()
 static void
 pha()
 {
-	push8(a);
+	push8(state6502.a);
 }
 
 static void
 php()
 {
-	push8(status | FLAG_BREAK);
+	push8(state6502.status | FLAG_BREAK);
 }
 
 static void
 pla()
 {
-	a = pull8();
+	state6502.a = pull8();
 
-	zerocalc(a);
-	signcalc(a);
+	zerocalc(state6502.a);
+	signcalc(state6502.a);
 }
 
 static void
 plp()
 {
-	status = pull8() | FLAG_CONSTANT;
+	state6502.status = pull8() | FLAG_CONSTANT;
 }
 
 static void
 rol()
 {
 	value  = getvalue();
-	result = (value << 1) | (status & FLAG_CARRY);
+	result = (value << 1) | (state6502.status & FLAG_CARRY);
 
 	carrycalc(result);
 	zerocalc(result);
@@ -493,7 +496,7 @@ static void
 ror()
 {
 	value  = getvalue();
-	result = (value >> 1) | ((status & FLAG_CARRY) << 7);
+	result = (value >> 1) | ((state6502.status & FLAG_CARRY) << 7);
 
 	if (value & 1)
 		setcarry();
@@ -508,16 +511,16 @@ ror()
 static void
 rti()
 {
-	status = pull8();
+	state6502.status = pull8();
 	value  = pull16();
-	pc     = value;
+	state6502.pc     = value;
 }
 
 static void
 rts()
 {
 	value = pull16();
-	pc    = value + 1;
+	state6502.pc    = value + 1;
 }
 
 static void
@@ -525,18 +528,17 @@ sbc()
 {
 	penaltyop = 1;
 
-#ifndef NES_CPU
-	if (status & FLAG_DECIMAL) {
+	if (state6502.status & FLAG_DECIMAL) {
 		value  = getvalue();
-		result = (uint16_t)a - (value & 0x0f) + (status & FLAG_CARRY) - 1;
-		if ((result & 0x0f) > (a & 0x0f)) {
+		result = (uint16_t)state6502.a - (value & 0x0f) + (state6502.status & FLAG_CARRY) - 1;
+		if ((result & 0x0f) > (state6502.a & 0x0f)) {
 			result -= 6;
 		}
 		result -= (value & 0xf0);
-		if ((result & 0xfff0) > ((uint16_t)a & 0xf0)) {
+		if ((result & 0xfff0) > ((uint16_t)state6502.a & 0xf0)) {
 			result -= 0x60;
 		}
-		if (result <= (uint16_t)a) {
+		if (result <= (uint16_t)state6502.a) {
 			setcarry();
 		} else {
 			clearcarry();
@@ -546,18 +548,16 @@ sbc()
 		signcalc(result);
 
 		clockticks6502++;
+
 	} else {
-#endif
 		value  = getvalue() ^ 0x00FF;
-		result = (uint16_t)a + value + (uint16_t)(status & FLAG_CARRY);
+		result = (uint16_t)state6502.a + value + (uint16_t)(state6502.status & FLAG_CARRY);
 
 		carrycalc(result);
 		zerocalc(result);
-		overflowcalc(result, a, value);
+		overflowcalc(result, state6502.a, value);
 		signcalc(result);
-#ifndef NES_CPU
 	}
-#endif
 
 	saveaccum(result);
 }
@@ -583,68 +583,70 @@ sei()
 static void
 sta()
 {
-	putvalue(a);
+	putvalue(state6502.a);
 }
 
 static void
 stx()
 {
-	putvalue(x);
+	putvalue(state6502.x);
 }
 
 static void
 sty()
 {
-	putvalue(y);
+	putvalue(state6502.y);
 }
 
 static void
 tax()
 {
-	x = a;
+	state6502.x = state6502.a;
 
-	zerocalc(x);
-	signcalc(x);
+	zerocalc(state6502.x);
+	signcalc(state6502.x);
 }
 
 static void
 tay()
 {
-	y = a;
+	state6502.y = state6502.a;
 
-	zerocalc(y);
-	signcalc(y);
+	zerocalc(state6502.y);
+	signcalc(state6502.y);
 }
 
 static void
 tsx()
 {
-	x = sp;
+	state6502.x = state6502.sp;
 
-	zerocalc(x);
-	signcalc(x);
+	zerocalc(state6502.x);
+	signcalc(state6502.x);
 }
 
 static void
 txa()
 {
-	a = x;
+	state6502.a = state6502.x;
 
-	zerocalc(a);
-	signcalc(a);
+	zerocalc(state6502.a);
+	signcalc(state6502.a);
 }
 
 static void
 txs()
 {
-	sp = x;
+	state6502.sp = state6502.x;
 }
 
 static void
 tya()
 {
-	a = y;
+	state6502.a = state6502.y;
 
-	zerocalc(a);
-	signcalc(a);
+	zerocalc(state6502.a);
+	signcalc(state6502.a);
 }
+
+#endif // defined(INSTRUCTIONS_6502_H)

@@ -19,23 +19,6 @@
  * engine in C. It was written as part of a Nintendo *
  * Entertainment System emulator I've been writing.  *
  *                                                   *
- * A couple important things to know about are two   *
- * defines in the code. One is "UNDOCUMENTED" which, *
- * when defined, allows Fake6502 to compile with     *
- * full support for the more predictable             *
- * undocumented instructions of the 6502. If it is   *
- * undefined, undocumented opcodes just act as NOPs. *
- *                                                   *
- * The other define is "NES_CPU", which causes the   *
- * code to compile without support for binary-coded  *
- * decimal (BCD) support for the ADC and SBC         *
- * opcodes. The Ricoh 2A03 CPU in the NES does not   *
- * support BCD, but is otherwise identical to the    *
- * standard MOS 6502. (Note that this define is      *
- * enabled in this file if you haven't changed it    *
- * yourself. If you're not emulating a NES, you      *
- * should comment it out.)                           *
- *                                                   *
  * If you do discover an error in timing accuracy,   *
  * or operation in general please e-mail me at the   *
  * address above so that I can fix it. Thank you!    *
@@ -49,21 +32,6 @@
  * uint8_t read6502(uint16_t address)                *
  * void write6502(uint16_t address, uint8_t value)   *
  *                                                   *
- * You may optionally pass Fake6502 the pointer to a *
- * function which you want to be called after every  *
- * emulated instruction. This function should be a   *
- * void with no parameters expected to be passed to  *
- * it.                                               *
- *                                                   *
- * This can be very useful. For example, in a NES    *
- * emulator, you check the number of clock ticks     *
- * that have passed so you can know when to handle   *
- * APU events.                                       *
- *                                                   *
- * To pass Fake6502 this pointer, use the            *
- * hookexternal(void *funcptr) function provided.    *
- *                                                   *
- * To disable the hook later, pass NULL to it.       *
  *****************************************************
  * Useful functions in this emulator:                *
  *                                                   *
@@ -83,12 +51,6 @@
  * void nmi6502()                                    *
  *   - Trigger an NMI in the 6502 core.              *
  *                                                   *
- * void hookexternal(void *funcptr)                  *
- *   - Pass a pointer to a void function taking no   *
- *     parameters. This will cause Fake6502 to call  *
- *     that function once after each emulated        *
- *     instruction.                                  *
- *                                                   *
  *****************************************************
  * Useful variables in this emulator:                *
  *                                                   *
@@ -102,18 +64,11 @@
  *                                                   *
  *****************************************************/
 
-#include <stdio.h>
-#include <stdint.h>
+#include "fake6502.h"
+
 #include "../debugger.h"
-
-//6502 defines
-#define UNDOCUMENTED //when this is defined, undocumented opcodes are handled.
-                     //otherwise, they're simply treated as NOPs.
-
-//#define NES_CPU      //when this is defined, the binary-coded decimal (BCD)
-//status flag is not honored by ADC and SBC. the 2A03
-//CPU in the Nintendo Entertainment System does not
-//support BCD operation.
+#include <stdint.h>
+#include <stdio.h>
 
 #define FLAG_CARRY 0x01
 #define FLAG_ZERO 0x02
@@ -126,35 +81,35 @@
 
 #define BASE_STACK 0x100
 
-//6502 CPU registers
-uint16_t pc;
-uint8_t  sp, a, x, y, status;
+// 6502 CPU registers
+_state6502 state6502, debug_state6502;
 
-//helper variables
-uint32_t instructions   = 0; //keep track of total instructions executed
+// helper variables
+uint32_t instructions   = 0; // keep track of total instructions executed
 uint64_t clockticks6502 = 0, clockgoal6502 = 0;
 uint16_t oldpc, ea, reladdr, value, result;
 uint8_t  opcode, oldstatus;
+uint8_t  debug6502 = 0;
 
 uint8_t penaltyop, penaltyaddr;
 uint8_t waiting = 0;
 
-//externally supplied functions
-extern uint8_t  read6502(uint16_t address);
-extern void     write6502(uint16_t address, uint8_t value);
+// externally supplied functions
+extern uint8_t read6502(uint16_t address);
+extern void    write6502(uint16_t address, uint8_t value);
+
 static uint16_t getvalue();
 static void     putvalue(uint16_t saveval);
 
-#include "support.h"
-#include "modes.h"
 #include "instructions_6502.h"
 #include "instructions_65c02.h"
+#include "modes.h"
 #include "tables.h"
 
 static uint16_t getvalue()
 {
 	if (addrtable[opcode] == acc)
-		return ((uint16_t)a);
+		return ((uint16_t)state6502.a);
 	else
 		return ((uint16_t)read6502(ea));
 }
@@ -162,38 +117,37 @@ static uint16_t getvalue()
 static void putvalue(uint16_t saveval)
 {
 	if (addrtable[opcode] == acc)
-		a = (uint8_t)(saveval & 0x00FF);
+		state6502.a = (uint8_t)(saveval & 0x00FF);
 	else
 		write6502(ea, (saveval & 0x00FF));
 }
 
 void nmi6502()
 {
-	push16(pc);
-	push8(status & ~FLAG_BREAK);
+	push16(state6502.pc);
+	push8(state6502.status & ~FLAG_BREAK);
 	setinterrupt();
 	cleardecimal();
-	pc      = (uint16_t)read6502(0xFFFA) | ((uint16_t)read6502(0xFFFB) << 8);
-	waiting = 0;
+	state6502.pc = (uint16_t)read6502(0xFFFA) | ((uint16_t)read6502(0xFFFB) << 8);
+	waiting      = 0;
 }
 
 void irq6502()
 {
-	if (!(status & FLAG_INTERRUPT)) {
-		push16(pc);
-		push8(status & ~FLAG_BREAK);
+	if (!(state6502.status & FLAG_INTERRUPT)) {
+		push16(state6502.pc);
+		push8(state6502.status & ~FLAG_BREAK);
 		setinterrupt();
 		cleardecimal();
-		pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
+		state6502.pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
 	}
 	waiting = 0;
 }
 
-uint8_t callexternal = 0;
-void (*loopexternal)();
-
 void exec6502(uint32_t tickcount)
 {
+	debug6502 = 0;
+
 	if (waiting) {
 		clockticks6502 += tickcount;
 		clockgoal6502 = clockticks6502;
@@ -203,60 +157,107 @@ void exec6502(uint32_t tickcount)
 	clockgoal6502 += tickcount;
 
 	while (clockticks6502 < clockgoal6502) {
-		opcode = read6502(pc++);
-		status |= FLAG_CONSTANT;
+		debug_state6502                     = state6502;
+		const uint64_t debug_clockticks6502 = clockticks6502;
+
+		opcode = read6502(state6502.pc++);
+		if (debug6502 & DEBUG6502_EXEC) {
+			state6502      = debug_state6502;
+			clockticks6502 = debug_clockticks6502;
+			return;
+		}
+		state6502.status |= FLAG_CONSTANT;
 
 		penaltyop   = 0;
 		penaltyaddr = 0;
 
 		(*addrtable[opcode])();
 		(*optable[opcode])();
+
+		if (debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) {
+			state6502      = debug_state6502;
+			clockticks6502 = debug_clockticks6502;
+			return;
+		}
+
 		clockticks6502 += ticktable[opcode];
 		if (penaltyop && penaltyaddr)
 			clockticks6502++;
 
 		instructions++;
-
-		if (callexternal)
-			(*loopexternal)();
+		debug6502 = 0;
 	}
 }
 
 void step6502()
 {
+	debug6502 = 0;
+
 	if (waiting) {
 		++clockticks6502;
 		clockgoal6502 = clockticks6502;
 		return;
 	}
 
-	opcode = read6502(pc++);
-	status |= FLAG_CONSTANT;
+	debug_state6502                     = state6502;
+	const uint64_t debug_clockticks6502 = clockticks6502;
+
+	opcode = read6502(state6502.pc++);
+	if (debug6502 & DEBUG6502_EXEC) {
+		state6502      = debug_state6502;
+		clockticks6502 = debug_clockticks6502;
+		return;
+	}
+	state6502.status |= FLAG_CONSTANT;
 
 	penaltyop   = 0;
 	penaltyaddr = 0;
 
 	(*addrtable[opcode])();
 	(*optable[opcode])();
+
+	if (debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) {
+		state6502      = debug_state6502;
+		clockticks6502 = debug_clockticks6502;
+		return;
+	}
+
 	clockticks6502 += ticktable[opcode];
 	if (penaltyop && penaltyaddr)
 		clockticks6502++;
 	clockgoal6502 = clockticks6502;
 
 	instructions++;
-
-	if (callexternal)
-		(*loopexternal)();
+	debug6502 = 0;
 }
 
-void hookexternal(void (*funcptr)())
+void force6502()
 {
-	if (funcptr != (void *)NULL) {
-		loopexternal = funcptr;
-		callexternal = 1;
-	} else
-		callexternal = 0;
+	debug6502 = 0;
+
+	if (waiting) {
+		++clockticks6502;
+		clockgoal6502 = clockticks6502;
+		return;
+	}
+
+	opcode = read6502(state6502.pc++);
+	state6502.status |= FLAG_CONSTANT;
+
+	penaltyop   = 0;
+	penaltyaddr = 0;
+
+	(*addrtable[opcode])();
+	(*optable[opcode])();
+
+	clockticks6502 += ticktable[opcode];
+	if (penaltyop && penaltyaddr)
+		clockticks6502++;
+	clockgoal6502 = clockticks6502;
+
+	instructions++;
 }
+
 
 //  Fixes from http://6502.org/tutorials/65c02opcodes.html
 //

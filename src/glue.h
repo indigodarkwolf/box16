@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#include "cpu/fake6502.h"
 #include "options.h"
 
 #define LOAD_HYPERCALLS
@@ -17,19 +18,19 @@
 
 #define MHZ 8
 
-#define NUM_MAX_RAM_BANKS 256
 #define NUM_ROM_BANKS 32
 
-#define RAM_SIZE (0xa000 + (uint32_t)Options.num_ram_banks * 8192) /* $0000-$9FFF + banks at $A000-$BFFF */
-#define ROM_SIZE (NUM_ROM_BANKS * 16384)                   /* banks at $C000-$FFFF */
+#define ROM_SIZE (NUM_ROM_BANKS * 16384) /* banks at $C000-$FFFF */
 
-extern uint8_t  a, x, y, sp, status;
-extern uint16_t pc;
+extern _state6502 state6502;
+extern uint8_t    waiting;
+
 extern uint8_t *RAM;
 extern uint8_t  ROM[ROM_SIZE];
 extern uint32_t instructions;
+extern uint8_t  debug6502;
 
-extern bool        save_on_exit;
+extern bool save_on_exit;
 
 extern void machine_dump();
 extern void machine_reset();

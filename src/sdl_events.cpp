@@ -74,6 +74,7 @@ bool sdl_events_update()
 				bool consumed = false;
 				if (event.key.keysym.sym == SDLK_F12) {
 					Show_cpu_monitor = true;
+					Show_disassembler = true;
 					debugger_pause_execution();
 				}
 				if (!Options.no_keybinds) {

@@ -11,6 +11,7 @@
 #include <unistd.h>
 
 #include "cpu/fake6502.h"
+#include "debugger.h"
 #include "gif_recorder.h"
 #include "glue.h"
 #include "hypercalls.h"
@@ -18,6 +19,8 @@
 #include "via.h"
 #include "wav_recorder.h"
 #include "ym2151/ym2151.h"
+
+#define RAM_SIZE (0xa000 + (uint32_t)Options.num_ram_banks * 8192) /* $0000-$9FFF + banks at $A000-$BFFF */
 
 #define RAM_BANK (RAM[0])
 #define ROM_BANK (RAM[1])
@@ -154,7 +157,7 @@ static uint8_t real_ram_read(uint16_t address)
 	const int real_address = (ramBank << 13) + address;
 
 	if ((RAM_written[real_address >> 6] & ((uint64_t)1 << (real_address & 0x3f))) == 0 && Memory_params.enable_uninitialized_access_warning) {
-		printf("Warning: %02X:%04X accessed uninitialized RAM address %02X:%04X\n", pc < 0xa000 ? 0 : ramBank, pc, address < 0xa000 ? 0 : ramBank, address);
+		printf("Warning: %02X:%04X accessed uninitialized RAM address %02X:%04X\n", state6502.pc < 0xa000 ? 0 : ramBank, state6502.pc, address < 0xa000 ? 0 : ramBank, address);
 	}
 
 	return RAM[real_address];
@@ -375,6 +378,8 @@ uint8_t debug_read6502(uint16_t address, uint8_t bank)
 
 uint8_t read6502(uint16_t address)
 {
+	debug6502 |= (DEBUG6502_READ | DEBUG6502_EXEC) & debugger_get_flags(address, address >= 0xc000 ? memory_get_rom_bank() : memory_get_ram_bank());
+
 	uint8_t value = real_read<memory_map_hi, 1>(address);
 #if defined(TRACE)
 	printf("%04X -> %02X\n", address, value);
@@ -389,10 +394,13 @@ void debug_write6502(uint16_t address, uint8_t bank, uint8_t value)
 
 void write6502(uint16_t address, uint8_t value)
 {
+	debug6502 |= DEBUG6502_WRITE & debugger_get_flags(address, address >= 0xc000 ? memory_get_rom_bank() : memory_get_ram_bank());
+	if (~debug6502 & DEBUG6502_WRITE) {
 #if defined(TRACE)
-	printf("%02X -> %04X\n", value, address);
+		printf("%02X -> %04X\n", value, address);
 #endif
-	real_write<memory_map_hi, 1>(address, value);
+		real_write<memory_map_hi, 1>(address, value);
+	}
 }
 
 //

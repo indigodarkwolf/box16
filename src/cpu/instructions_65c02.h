@@ -1,3 +1,5 @@
+#include "support.h"
+
 // *******************************************************************************************
 // *******************************************************************************************
 //
@@ -19,7 +21,7 @@ static void
 ind0()
 {
 	uint16_t eahelp, eahelp2;
-	eahelp  = (uint16_t)read6502(pc++);
+	eahelp  = (uint16_t)read6502(state6502.pc++);
 	eahelp2 = (eahelp & 0xFF00) | ((eahelp + 1) & 0x00FF); //zero-page wraparound
 	ea      = (uint16_t)read6502(eahelp) | ((uint16_t)read6502(eahelp2) << 8);
 }
@@ -34,15 +36,15 @@ static void
 ainx()
 { // absolute indexed branch
 	uint16_t eahelp, eahelp2;
-	eahelp = (uint16_t)read6502(pc) | (uint16_t)((uint16_t)read6502(pc + 1) << 8);
-	eahelp = (eahelp + (uint16_t)x) & 0xFFFF;
+	eahelp = (uint16_t)read6502(state6502.pc) | (uint16_t)((uint16_t)read6502(state6502.pc + 1) << 8);
+	eahelp = (eahelp + (uint16_t)state6502.x) & 0xFFFF;
 #if 0
     eahelp2 = (eahelp & 0xFF00) | ((eahelp + 1) & 0x00FF); //replicate 6502 page-boundary wraparound bug
 #else
 	eahelp2 = eahelp + 1; // the 65c02 doesn't have the bug
 #endif
 	ea = (uint16_t)read6502(eahelp) | ((uint16_t)read6502(eahelp2) << 8);
-	pc += 2;
+	state6502.pc += 2;
 }
 
 // *******************************************************************************************
@@ -66,9 +68,9 @@ stz()
 static void
 bra()
 {
-	oldpc = pc;
-	pc += reladdr;
-	if ((oldpc & 0xFF00) != (pc & 0xFF00))
+	oldpc = state6502.pc;
+	state6502.pc += reladdr;
+	if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 		clockticks6502++; //check if jump crossed a page boundary
 }
 
@@ -81,31 +83,31 @@ bra()
 static void
 phx()
 {
-	push8(x);
+	push8(state6502.x);
 }
 
 static void
 plx()
 {
-	x = pull8();
+	state6502.x = pull8();
 
-	zerocalc(x);
-	signcalc(x);
+	zerocalc(state6502.x);
+	signcalc(state6502.x);
 }
 
 static void
 phy()
 {
-	push8(y);
+	push8(state6502.y);
 }
 
 static void
 ply()
 {
-	y = pull8();
+	state6502.y = pull8();
 
-	zerocalc(y);
-	signcalc(y);
+	zerocalc(state6502.y);
+	signcalc(state6502.y);
 }
 
 // *******************************************************************************************
@@ -118,9 +120,9 @@ static void
 tsb()
 {
 	value  = getvalue();          // Read memory
-	result = (uint16_t)a & value; // calculate A & memory
+	result = (uint16_t)state6502.a & value; // calculate A & memory
 	zerocalc(result);             // Set Z flag from this.
-	result = value | a;           // Write back value read, A bits are set.
+	result = value | state6502.a;           // Write back value read, A bits are set.
 	putvalue(result);
 }
 
@@ -128,9 +130,9 @@ static void
 trb()
 {
 	value  = getvalue();          // Read memory
-	result = (uint16_t)a & value; // calculate A & memory
+	result = (uint16_t)state6502.a & value; // calculate A & memory
 	zerocalc(result);             // Set Z flag from this.
-	result = value & (a ^ 0xFF);  // Write back value read, A bits are clear.
+	result = value & (state6502.a ^ 0xFF);  // Write back value read, A bits are clear.
 	putvalue(result);
 }
 
@@ -167,9 +169,9 @@ static void
 bbr(uint16_t bitmask)
 {
 	if ((getvalue() & bitmask) == 0) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;
@@ -221,9 +223,9 @@ static void
 bbs(uint16_t bitmask)
 {
 	if ((getvalue() & bitmask) != 0) {
-		oldpc = pc;
-		pc += reladdr;
-		if ((oldpc & 0xFF00) != (pc & 0xFF00))
+		oldpc = state6502.pc;
+		state6502.pc += reladdr;
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
 			clockticks6502 += 2; //check if jump crossed a page boundary
 		else
 			clockticks6502++;

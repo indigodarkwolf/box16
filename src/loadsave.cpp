@@ -130,16 +130,16 @@ int create_directory_listing(uint8_t *data)
 void LOAD()
 {
 	char const    *kernal_filename = (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8];
-	const uint16_t override_start  = (x | (y << 8));
+	const uint16_t override_start  = (state6502.x | (state6502.y << 8));
 
 	if (kernal_filename[0] == '$') {
 		const uint16_t dir_len = create_directory_listing(RAM + override_start);
 		const uint16_t end     = override_start + dir_len;
-		x                      = end & 0xff;
-		y                      = end >> 8;
-		status &= 0xfe;
+		state6502.x            = end & 0xff;
+		state6502.y            = end >> 8;
+		state6502.status &= 0xfe;
 		RAM[STATUS] = 0;
-		a           = 0;
+		state6502.a = 0;
 	} else {
 		char      filename[PATH_MAX];
 		const int len = MIN(RAM[FNLEN], PATH_MAX - 1);
@@ -150,9 +150,9 @@ void LOAD()
 
 		SDL_RWops *f = SDL_RWFromFile(filepath.generic_string().c_str(), "rb");
 		if (!f) {
-			a           = 4; // FNF
-			RAM[STATUS] = a;
-			status |= 1;
+			state6502.a = 4; // FNF
+			RAM[STATUS] = state6502.a;
+			state6502.status |= 1;
 			return;
 		}
 		const uint8_t sa       = RAM[SA];
@@ -171,11 +171,11 @@ void LOAD()
 		}
 
 		uint16_t bytes_read = 0;
-		if (a > 1) {
+		if (state6502.a > 1) {
 			// Video RAM
 			vera_video_write(0, start & 0xff);
 			vera_video_write(1, start >> 8);
-			vera_video_write(2, ((a - 2) & 0xf) | 0x10);
+			vera_video_write(2, ((state6502.a - 2) & 0xf) | 0x10);
 			uint8_t buf[2048];
 			while (1) {
 				uint16_t n = (uint16_t)SDL_RWread(f, buf, 1, sizeof buf);
@@ -211,11 +211,11 @@ void LOAD()
 		SDL_RWclose(f);
 
 		uint16_t end = start + bytes_read;
-		x            = end & 0xff;
-		y            = end >> 8;
-		status &= 0xfe;
+		state6502.x  = end & 0xff;
+		state6502.y  = end >> 8;
+		state6502.status &= 0xfe;
 		RAM[STATUS] = 0;
-		a           = 0;
+		state6502.a = 0;
 	}
 }
 
@@ -230,19 +230,19 @@ void SAVE()
 
 	std::filesystem::path filepath = Options.hyper_path / filename;
 
-	uint16_t start = RAM[a] | RAM[a + 1] << 8;
-	uint16_t end   = x | y << 8;
+	uint16_t start = RAM[state6502.a] | RAM[state6502.a + 1] << 8;
+	uint16_t end   = state6502.x | state6502.y << 8;
 	if (end < start) {
-		status |= 1;
-		a = 0;
+		state6502.status |= 1;
+		state6502.a = 0;
 		return;
 	}
 
 	SDL_RWops *f = SDL_RWFromFile(filepath.generic_string().c_str(), "wb");
 	if (!f) {
-		a           = 4; // FNF
-		RAM[STATUS] = a;
-		status |= 1;
+		state6502.a = 4; // FNF
+		RAM[STATUS] = state6502.a;
+		state6502.status |= 1;
 		return;
 	}
 
@@ -252,7 +252,7 @@ void SAVE()
 	SDL_RWwrite(f, RAM + start, 1, end - start);
 	SDL_RWclose(f);
 
-	status &= 0xfe;
+	state6502.status &= 0xfe;
 	RAM[STATUS] = 0;
-	a           = 0;
+	state6502.a = 0;
 }
