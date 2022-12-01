@@ -21,6 +21,11 @@ imgui_debugger_disasm disasm;
 static int disasm_len(uint16_t pc, uint8_t bank)
 {
 	uint8_t opcode = debug_read6502(pc, bank);
+
+	// BRK is a two-byte instruction.
+	if (opcode == 0x00) {
+		return 2;
+	}
 	op_mode mode   = mnemonics_mode[opcode];
 	switch (mode) {
 		case op_mode::MODE_A:
