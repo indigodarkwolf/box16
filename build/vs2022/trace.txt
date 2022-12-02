@@ -1,0 +1,6 @@
+Using rom at C:/Users/svenv/OneDrive/Documents/GitHub/box16/build/vs2022/out/x64/Release/rom.bin
+	-rom sourced from: Default
+ INFO: Audio buffer is 1024 bytes
+Using rom at C:/Users/svenv/OneDrive/Documents/GitHub/box16/build/vs2022/out/x64/Release/rom.bin
+	-rom sourced from: Default
+ INFO: Audio buffer is 1024 bytes

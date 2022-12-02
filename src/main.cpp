@@ -649,33 +649,36 @@ void emulator_loop()
 			uint8_t  ram     = memory_get_ram_bank();	
 			uint8_t  rom     = memory_get_rom_bank();	
 			uint8_t  cur     = memory_get_current_bank(pc);	
-			char     buffer[80];
+			char     buffer[256];
 			uint8_t  pos = 0;
 
-			if (pc >= 0x0800 && pc < 0xD000) {
+			if ( (Options.log_cpu_main && (pc >= 0x0800 && pc <= 0x9FFF ) ) ||
+			     (Options.log_cpu_bram && (pc >= 0xA000 && pc <= 0xBFFF ) ) ||
+			     (Options.log_cpu_low  && (pc >= 0x0000 && pc <= 0x07FF ) ) ||
+ 			     (Options.log_cpu_brom && (pc >= 0xC000 && pc <= 0xFFFF ) )
+				) {
 
-				 const char *label     = disasm_get_label(pc);
-				 size_t   label_len = label ? strlen(label) : 0;
-				 if (label) {
-					 printf("%s", label);
-				 }
-				 for (int i = 0; i < 20 - label_len; i++) {
-					 printf(" ");
-				 }
-				 printf("%02x %02x : ", ram, rom);
-				 printf("%02x:%04x ", cur, pc);
-				 uint8_t len = disasm_code(buffer, pc, cur);
-				 printf("%s", buffer);
-				 for (int i = 0; i < 15 - len; i++) {
-					 printf(" ");
-				 }
-
-				 printf("a=$%02x x=$%02x y=$%02x s=$%02x p=", a, x, y, sp);
+				 printf("a:$%02x x:$%02x y:$%02x s:$%02x p:", a, x, y, sp);
 				 for (int i = 7; i >= 0; i--) {
 					 printf("%c", (status & (1 << i)) ? "czidb.vn"[i] : '-');
 				 }
 
-				printf("\n");
+				 printf(" ram=$%02x rom=$%02x ", ram, rom);
+				 const char *label     = disasm_get_label(pc);
+				 size_t      label_len = label ? strlen(label) : 0;
+				 if (label) {
+					 printf("%s", label);
+				 }
+				 label_len = (label_len <= 20) ? label_len : 20;
+				 for (int i = 0; i < 20 - label_len; i++) {
+					 printf(" ");
+				 }
+				 printf("$%02x:$%04x ", cur, pc);
+				 uint8_t len = disasm_code(buffer, pc, cur);
+				 printf("%s", buffer);
+
+
+				 printf("\n");
 			}
 		}
 //#endif

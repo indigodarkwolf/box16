@@ -71,6 +71,10 @@ struct options {
 	bool log_keyboard = false;
 	bool log_speed    = false;
 	bool log_video    = false;
+	bool log_cpu_low  = false;
+	bool log_cpu_main = false;
+	bool log_cpu_bram = false;
+	bool log_cpu_brom = false;
 	bool dump_cpu     = true;
 	bool dump_ram     = true;
 	bool dump_bank    = true;
