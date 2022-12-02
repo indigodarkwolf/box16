@@ -2398,6 +2398,7 @@ static void draw_menu_bar()
 	}
 }
 
+
 void overlay_draw()
 {
 	draw_menu_bar();

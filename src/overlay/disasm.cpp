@@ -75,6 +75,13 @@ static char const *get_disasm_label(uint16_t address)
 * 
 --------------------- */
 
+bool imgui_debugger_disasm::getShowHex()
+{
+	return show_hex;
+}
+
+
+
 void imgui_debugger_disasm::set_dump_start(uint16_t addr)
 {
 	dump_start   = addr;
