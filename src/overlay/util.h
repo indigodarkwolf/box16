@@ -83,7 +83,7 @@ namespace ImGui
 		constexpr const size_t ARRAY_SIZE = BITS / 4 + 1;
 
 		char str[ARRAY_SIZE];
-		sprintf(str, hex_formats[ARRAY_SIZE], (int)value);
+		sprintf(str, hex_formats[ARRAY_SIZE], (int)(value & ((1ULL << BITS) - 1)));
 		PushID(id);
 		PushItemWidth(hex_widths[ARRAY_SIZE]);
 		bool result = InputText("", str, ARRAY_SIZE, hex_flags);
@@ -149,6 +149,12 @@ namespace ImGui
 		return result;
 	}
 
+	void VERAColorTooltip(const char *text, const float *col, ImGuiColorEditFlags flags = 0);
+	bool VERAColorButton(const char *desc_id, const ImVec4 &col, ImGuiColorEditFlags flags = 0, const ImVec2 &size = ImVec2(0, 0));
+	bool VERAColorPicker3(const char *label, float col[3], ImGuiColorEditFlags flags = 0);
+	bool VERAColorPicker4(const char *label, float col[4], ImGuiColorEditFlags flags = 0, const float *ref_col = NULL);
+	bool VERAColorEdit3(const char *label, float col[3], ImGuiColorEditFlags flags = 0);
+	bool VERAColorEdit4(const char *label, float col[4], ImGuiColorEditFlags flags = 0);
 } // namespace ImGui
 
 static uint16_t get_mem16(uint16_t address, uint8_t bank)

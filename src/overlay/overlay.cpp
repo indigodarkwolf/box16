@@ -370,7 +370,7 @@ static void draw_debugger_vera_palette()
 			const uint8_t *p = reinterpret_cast<const uint8_t *>(&palette[i]);
 			ImVec4         c{ (float)(p[2]) / 255.0f, (float)(p[1]) / 255.0f, (float)(p[0]) / 255.0f, 1.0f };
 			ImGui::PushID(i);
-			if (ImGui::ColorButton("Color##3f", c, ImGuiColorEditFlags_NoBorder, ImVec2(16, 16))) {
+			if (ImGui::VERAColorButton("Color##3f", c, ImGuiColorEditFlags_NoBorder | ImGuiColorEditFlags_NoAlpha, ImVec2(16, 16))) {
 				ImGui::OpenPopup("palette_picker");
 				backup_color = c;
 				picker_color = c;
@@ -378,16 +378,16 @@ static void draw_debugger_vera_palette()
 			}
 
 			if (ImGui::BeginPopup("palette_picker")) {
-				if (ImGui::ColorPicker3("##picker", (float *)&picker_color, ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel)) {
+				if (ImGui::VERAColorPicker3("##picker", (float *)&picker_color, ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview | ImGuiColorEditFlags_NoAlpha | ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueWheel)) {
 					c = picker_color;
 				}
 				ImGui::SameLine();
 
 				ImGui::BeginGroup(); // Lock X position
 				ImGui::Text("Current");
-				ImGui::ColorButton("##current", c, ImGuiColorEditFlags_NoPicker, ImVec2(60, 40));
+				ImGui::VERAColorButton("##current", c, ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoAlpha, ImVec2(60, 40));
 				ImGui::Text("Previous");
-				if (ImGui::ColorButton("##previous", backup_color, ImGuiColorEditFlags_NoPicker, ImVec2(60, 40))) {
+				if (ImGui::VERAColorButton("##previous", backup_color, ImGuiColorEditFlags_NoPicker | ImGuiColorEditFlags_NoAlpha, ImVec2(60, 40))) {
 					c = backup_color;
 				}
 
