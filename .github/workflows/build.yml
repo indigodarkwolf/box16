@@ -155,7 +155,7 @@ jobs:
       - name: Build Box16 (x64 Release w/ Tracing)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Release -property:Platform=x64
+          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration="Release (Trace)" -property:Platform=x64
           cd ..
           mkdir -p box16-x64-Release-Trace
           cp "vs2022/out/x64/Release (TRACE)/Box16.exe" box16-x64-Release-Trace/
