@@ -45,6 +45,9 @@
 #include "via.h"
 #include "wav_recorder.h"
 #include "ym2151/ym2151.h"
+#include "cpu/mnemonics.h"
+#include "overlay/disasm.h"
+
 
 #ifdef __EMSCRIPTEN__
 #	include <emscripten.h>
@@ -331,76 +334,268 @@ int main(int argc, char **argv)
 	return 0;
 }
 
+////
+//// Trace functionality preserved for comparison with official emulator releases
+////
+//#if defined(TRACE)
+//#	include "rom_labels.h"
+//char *label_for_address(uint16_t address)
+//{
+//	uint16_t *addresses;
+//	char    **labels;
+//	int       count;
+//	switch (memory_get_rom_bank()) {
+//		case 0:
+//			addresses = addresses_bank0;
+//			labels    = labels_bank0;
+//			count     = sizeof(addresses_bank0) / sizeof(uint16_t);
+//			break;
+//		case 1:
+//			addresses = addresses_bank1;
+//			labels    = labels_bank1;
+//			count     = sizeof(addresses_bank1) / sizeof(uint16_t);
+//			break;
+//		case 2:
+//			addresses = addresses_bank2;
+//			labels    = labels_bank2;
+//			count     = sizeof(addresses_bank2) / sizeof(uint16_t);
+//			break;
+//		case 3:
+//			addresses = addresses_bank3;
+//			labels    = labels_bank3;
+//			count     = sizeof(addresses_bank3) / sizeof(uint16_t);
+//			break;
+//		case 4:
+//			addresses = addresses_bank4;
+//			labels    = labels_bank4;
+//			count     = sizeof(addresses_bank4) / sizeof(uint16_t);
+//			break;
+//		case 5:
+//			addresses = addresses_bank5;
+//			labels    = labels_bank5;
+//			count     = sizeof(addresses_bank5) / sizeof(uint16_t);
+//			break;
+//#	if 0
+//		case 6:
+//			addresses = addresses_bank6;
+//			labels    = labels_bank6;
+//			count     = sizeof(addresses_bank6) / sizeof(uint16_t);
+//			break;
+//		case 7:
+//			addresses = addresses_bank7;
+//			labels = labels_bank7;
+//			count = sizeof(addresses_bank7) / sizeof(uint16_t);
+//			break;
+//#	endif
+//		default:
+//			addresses = NULL;
+//			labels    = NULL;
+//	}
 //
-// Trace functionality preserved for comparison with official emulator releases
+//	if (!addresses) {
+//		return NULL;
+//	}
 //
-#if defined(TRACE)
-#	include "rom_labels.h"
-char *label_for_address(uint16_t address)
+//	for (int i = 0; i < count; i++) {
+//		if (address == addresses[i]) {
+//			return labels[i];
+//		}
+//	}
+//	return NULL;
+//}
+//#endif
+
+static char const *disasm_get_label(uint16_t address)
 {
-	uint16_t *addresses;
-	char    **labels;
-	int       count;
-	switch (memory_get_rom_bank()) {
-		case 0:
-			addresses = addresses_bank0;
-			labels    = labels_bank0;
-			count     = sizeof(addresses_bank0) / sizeof(uint16_t);
-			break;
-		case 1:
-			addresses = addresses_bank1;
-			labels    = labels_bank1;
-			count     = sizeof(addresses_bank1) / sizeof(uint16_t);
-			break;
-		case 2:
-			addresses = addresses_bank2;
-			labels    = labels_bank2;
-			count     = sizeof(addresses_bank2) / sizeof(uint16_t);
-			break;
-		case 3:
-			addresses = addresses_bank3;
-			labels    = labels_bank3;
-			count     = sizeof(addresses_bank3) / sizeof(uint16_t);
-			break;
-		case 4:
-			addresses = addresses_bank4;
-			labels    = labels_bank4;
-			count     = sizeof(addresses_bank4) / sizeof(uint16_t);
-			break;
-		case 5:
-			addresses = addresses_bank5;
-			labels    = labels_bank5;
-			count     = sizeof(addresses_bank5) / sizeof(uint16_t);
-			break;
-#	if 0
-		case 6:
-			addresses = addresses_bank6;
-			labels    = labels_bank6;
-			count     = sizeof(addresses_bank6) / sizeof(uint16_t);
-			break;
-		case 7:
-			addresses = addresses_bank7;
-			labels = labels_bank7;
-			count = sizeof(addresses_bank7) / sizeof(uint16_t);
-			break;
-#	endif
-		default:
-			addresses = NULL;
-			labels    = NULL;
+	static char label[256];
+
+	const symbol_list_type &symbols = symbols_find(address);
+	if (symbols.size() > 0) {
+		strncpy(label, symbols.front().c_str(), 256);
+		label[255] = '\0';
+		return label;
 	}
 
-	if (!addresses) {
-		return NULL;
-	}
-
-	for (int i = 0; i < count; i++) {
-		if (address == addresses[i]) {
-			return labels[i];
+	for (uint16_t i = 1; i < 3; ++i) {
+		const symbol_list_type &symbols = symbols_find(address - i);
+		if (symbols.size() > 0) {
+			snprintf(label, 256, "%s+%d", symbols.front().c_str(), i);
+			label[255] = '\0';
+			return label;
 		}
 	}
-	return NULL;
+
+	return nullptr;
 }
-#endif
+
+static char const * disasm_label(uint16_t target, bool branch_target, const char *hex_format)
+{
+	const char *symbol = disasm_get_label(target);
+
+	static char inner[256];
+	if (symbol != nullptr) {
+		snprintf(inner, 256, "%s", symbol);
+	} else {
+		snprintf(inner, 256, hex_format, target);
+	}
+	inner[255] = '\0';
+	return inner;
+}
+
+static char const* disasm_label_wrap(uint16_t target, bool branch_target, const char *hex_format, const char *wrapper_format)
+{
+	const char *symbol = disasm_get_label(target);
+
+	static char inner[256];
+	if (symbol != nullptr) {
+		snprintf(inner, 256, "%s", symbol);
+	} else {
+		snprintf(inner, 256, hex_format, target);
+	}
+	inner[255] = '\0';
+
+	static char wrapped[256];
+	snprintf(wrapped, 256, wrapper_format, inner);
+	wrapped[255] = '\0';
+	return wrapped;
+}
+
+uint8_t disasm_code(char* buffer, uint16_t pc, /*char *line, unsigned int max_line,*/ uint8_t bank)
+{
+
+	uint8_t     opcode   = debug_read6502(pc, bank);
+	char const *mnemonic = mnemonics[opcode];
+	op_mode     mode     = mnemonics_mode[opcode];
+
+	//		Test for branches. These are BRA ($80) and
+	//		$10,$30,$50,$70,$90,$B0,$D0,$F0.
+	//
+	bool is_branch = (opcode == 0x80) || ((opcode & 0x1F) == 0x10) || (opcode == 0x20);
+
+	//		Ditto bbr and bbs, the "zero-page, relative" ops.
+	//		$0F,$1F,$2F,$3F,$4F,$5F,$6F,$7F,$8F,$9F,$AF,$BF,$CF,$DF,$EF,$FF
+	//
+	bool is_zprel = (opcode & 0x0F) == 0x0F;
+
+	is_branch = is_branch || is_zprel;
+	char* buffer_beg = buffer;
+
+
+	switch (mode) {
+		case op_mode::MODE_ZPREL: {
+			uint8_t  zp     = debug_read6502(pc + 1, bank);
+			uint16_t target = pc + 3 + (int8_t)debug_read6502(pc + 2, bank);
+
+			buffer = buffer + sprintf(buffer, "%s", mnemonic);
+
+			buffer = buffer + sprintf(buffer, "%s", disasm_label(zp, is_branch, "$%02X") );
+
+			buffer = buffer + sprintf(buffer, ", ");
+
+			buffer = buffer + sprintf(buffer, "%s", disasm_label(target, is_branch, "$%04X") );
+		} break;
+
+		case op_mode::MODE_IMP:
+			buffer = buffer + sprintf(buffer, "%s", mnemonic);
+			break;
+
+		case op_mode::MODE_IMM: {
+			uint16_t value = debug_read6502(pc + 1, bank);
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, "#$%02X", value);
+		} break;
+
+		case op_mode::MODE_ZP: {
+			uint8_t value = debug_read6502(pc + 1, bank);
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, "$%02X", value);
+		} break;
+
+		case op_mode::MODE_REL: {
+			uint16_t target = pc + 2 + (int8_t)debug_read6502(pc + 1, bank);
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, "%s", disasm_label(target, is_branch, "$%04X"));
+		} break;
+
+		case op_mode::MODE_ZPX: {
+			uint8_t value = debug_read6502(pc + 1, bank);
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label_wrap(value, is_branch, "$%02X", "%s,x") );
+		} break;
+
+		case op_mode::MODE_ZPY: {
+			uint8_t value = debug_read6502(pc + 1, bank);
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label_wrap(value, is_branch, "$%02X", "%s,y") );
+		} break;
+
+		case op_mode::MODE_ABSO: {
+			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label(target, is_branch, "$%04X") );
+		} break;
+
+		case op_mode::MODE_ABSX: {
+			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label_wrap(target, is_branch, "$%04X", "%s,x"));
+		} break;
+
+		case op_mode::MODE_ABSY: {
+			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label_wrap(target, is_branch, "$%04X", "%s,y"));
+		} break;
+
+		case op_mode::MODE_AINX: {
+			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label_wrap(target, is_branch, "$%04X", "(%s,x)"));
+		} break;
+
+		case op_mode::MODE_INDY: {
+			uint8_t target = debug_read6502(pc + 1, bank);
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label_wrap(target, is_branch, "$%02X", "(%s),y"));
+		} break;
+
+		case op_mode::MODE_INDX: {
+			uint8_t target = debug_read6502(pc + 1, bank);
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label_wrap(target, is_branch, "$%02X", "(%s,x)"));
+		} break;
+
+		case op_mode::MODE_IND: {
+			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label_wrap(target, is_branch, "$%04X", "(%s)"));
+		} break;
+
+		case op_mode::MODE_IND0: {
+			uint8_t target = debug_read6502(pc + 1, bank);
+
+			buffer = buffer + sprintf(buffer, "%s ", mnemonic);
+			buffer = buffer + sprintf(buffer, disasm_label_wrap(target, is_branch, "$%02X", "(%s)"));
+		} break;
+
+		case op_mode::MODE_A:
+			buffer = buffer + sprintf(buffer, "%s a", mnemonic);
+			break;
+	}
+	return (uint8_t)(buffer - buffer_beg);
+}
 
 void emulator_loop()
 {
@@ -420,36 +615,46 @@ void emulator_loop()
 		//
 #if defined(TRACE)
 		{
-			printf("[%6d] ", instruction_counter);
+			uint16_t pc = state6502.pc;
+			uint8_t  x  = state6502.x;
+			uint8_t  y  = state6502.y;
+			uint8_t  a  = state6502.a;
+			uint8_t  status  = state6502.status;
+			uint8_t  sp      = state6502.sp;
+			uint8_t  ram     = memory_get_ram_bank();	
+			uint8_t  rom     = memory_get_rom_bank();	
+			uint8_t  cur     = memory_get_current_bank(pc);	
+			char     buffer[256];
+			uint8_t  pos = 0;
 
-			char *label     = label_for_address(state6502.pc);
-			int   label_len = label ? strlen(label) : 0;
-			if (label) {
-				printf("%s", label);
-			}
-			for (int i = 0; i < 20 - label_len; i++) {
-				printf(" ");
-			}
-			printf(" %02x:.,%04x ", memory_get_rom_bank(), state6502.pc);
-			char disasm_line[15];
-			int  len = disasm(state6502.pc, disasm_line, sizeof(disasm_line), 0);
-			for (int i = 0; i < len; i++) {
-				printf("%02x ", debug_read6502(state6502.pc + i));
-			}
-			for (int i = 0; i < 9 - 3 * len; i++) {
-				printf(" ");
-			}
-			printf("%s", disasm_line);
-			for (int i = 0; i < 15 - strlen(disasm_line); i++) {
-				printf(" ");
-			}
+			if ( (Options.log_cpu_main && (pc >= 0x0800 && pc <= 0x9FFF ) ) ||
+			     (Options.log_cpu_bram && (pc >= 0xA000 && pc <= 0xBFFF ) ) ||
+			     (Options.log_cpu_low  && (pc >= 0x0000 && pc <= 0x07FF ) ) ||
+ 			     (Options.log_cpu_brom && (pc >= 0xC000 && pc <= 0xFFFF ) )
+				) {
 
-			printf("a=$%02x x=$%02x y=$%02x s=$%02x p=", a, x, y, sp);
-			for (int i = 7; i >= 0; i--) {
-				printf("%c", (status & (1 << i)) ? "czidb.vn"[i] : '-');
-			}
+				 printf("a:$%02x x:$%02x y:$%02x s:$%02x p:", a, x, y, sp);
+				 for (int i = 7; i >= 0; i--) {
+					 printf("%c", (status & (1 << i)) ? "czidb.vn"[i] : '-');
+				 }
 
-			printf("\n");
+				 printf(" ram=$%02x rom=$%02x ", ram, rom);
+				 const char *label     = disasm_get_label(pc);
+				 size_t      label_len = label ? strlen(label) : 0;
+				 if (label) {
+					 printf("%s", label);
+				 }
+				 label_len = (label_len <= 25) ? label_len : 25;
+				 for (size_t i = 0; i < 25 - label_len; i++) {
+					 printf(" ");
+				 }
+				 printf("$%02x:$%04x ", cur, pc);
+				 uint8_t len = disasm_code(buffer, pc, cur);
+				 printf("%s", buffer);
+
+
+				 printf("\n");
+			}
 		}
 #endif
 

@@ -98,9 +98,24 @@ static void usage()
 	printf("-keymap <keymap>\n");
 	printf("\tEnable a specific keyboard layout decode table.\n");
 
-	printf("-log {K|S|V}...\n");
-	printf("\tEnable logging of (K)eyboard, (S)peed, (V)ideo.\n");
+#if defined(TRACE)
+	printf("-log {K|S|V|Cl|Cb|Ca|Co|Mw|Mr}...\n");
+	printf("\tEnable logging of (K)eyboard, (S)peed, (V)ideo, (C)pu, (M)emory.\n");
 	printf("\tMultiple characters are possible, e.g. -log KS\n");
+	printf("\tCpu activity logging works with zones:\n");
+	printf("\t\t- Cl = Cpu activity logging in low ram,     from $0000 to $07FF.\n");
+	printf("\t\t- Cm = Cpu activity logging in main ram,    from $0800 to $9FFF.\n");
+	printf("\t\t- Ca = Cpu activity logging in banked ram,  from $A000 to $BFFF.\n");
+	printf("\t\t- Co = Cpu activity logging in banked rom,  from $C000 to $FFFF.\n");
+	printf("\tMemory activity logging works in two modes:\n");
+	printf("\t\t- Mr = Memory read activity logging.\n");
+	printf("\t\t- Mw = Memory write activity logging.\n");
+
+#else
+	printf("-log {K|S|V}...\n");
+	printf("\tEnable logging of (K)eyboard, (S)peed, (V)ideo, (C)pu.\n");
+	printf("\tMultiple characters are possible, e.g. -log KS\n");
+#endif
 
 	printf("-nobinds\n");
 	printf("\tDisable most emulator keyboard shortcuts.\n");
@@ -874,6 +889,38 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 					break;
 				case 'v':
 					opts.log_video = true;
+					break;
+				case 'c':
+					p++;
+					switch (tolower(*p)) {
+						case 'l':
+							opts.log_cpu_low = true;
+							break;
+						case 'm':
+							opts.log_cpu_main = true;
+							break;
+						case 'a':
+							opts.log_cpu_bram = true;
+							break;
+						case 'o':
+							opts.log_cpu_brom = true;
+							break;
+						default:
+							return "log";
+					}
+					break;
+				case 'm':
+					p++;
+					switch (tolower(*p)) {
+						case 'r':
+							opts.log_mem_read = true;
+							break;
+						case 'w':
+							opts.log_mem_write = true;
+							break;
+						default:
+							return "log";
+					}
 					break;
 				default:
 					return "log";

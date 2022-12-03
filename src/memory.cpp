@@ -382,7 +382,8 @@ uint8_t read6502(uint16_t address)
 
 	uint8_t value = real_read<memory_map_hi, 1>(address);
 #if defined(TRACE)
-	printf("%04X -> %02X\n", address, value);
+	if (Options.log_mem_read)
+		printf("%04X -> %02X\n", address, value);
 #endif
 	return value;
 }
@@ -397,7 +398,8 @@ void write6502(uint16_t address, uint8_t value)
 	debug6502 |= DEBUG6502_WRITE & debugger_get_flags(address, address >= 0xc000 ? memory_get_rom_bank() : memory_get_ram_bank());
 	if (~debug6502 & DEBUG6502_WRITE) {
 #if defined(TRACE)
-		printf("%02X -> %04X\n", value, address);
+		if (Options.log_mem_write)
+			printf("%02X -> %04X\n", value, address);
 #endif
 		real_write<memory_map_hi, 1>(address, value);
 	}
