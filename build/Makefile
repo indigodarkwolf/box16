@@ -110,6 +110,9 @@ default:
 debug:
 	$(MAKE) -j8 all DFLAGS="-g"
 
+trace:
+	$(MAKE) -j8 all DFLAGS="-O3 -DTRACE"
+	
 profiling:
 	$(MAKE) -j8 all DFLAGS="-g -O3 -pg"
 

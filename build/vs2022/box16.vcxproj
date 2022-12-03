@@ -5,6 +5,14 @@
       <Configuration>Debug</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Release (TRACE)|Win32">
+      <Configuration>Release (TRACE)</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release (TRACE)|x64">
+      <Configuration>Release (TRACE)</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
     <ProjectConfiguration Include="Release|Win32">
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
@@ -35,12 +43,22 @@
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
@@ -58,11 +76,19 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="box16.props" />
   </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="box16.props" />
+  </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="box16.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+    <Import Project="box16.props" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|x64'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="box16.props" />
   </ImportGroup>
@@ -81,6 +107,12 @@
     <OutDir>$(ProjectDir)\out\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)\intermediates\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <CustomBuildAfterTargets />
+    <OutDir>$(ProjectDir)\out\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)\intermediates\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
@@ -90,6 +122,11 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <CustomBuildAfterTargets>
     </CustomBuildAfterTargets>
+    <OutDir>$(ProjectDir)\out\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(ProjectDir)\intermediates\$(Platform)\$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|x64'">
+    <CustomBuildAfterTargets />
     <OutDir>$(ProjectDir)\out\$(Platform)\$(Configuration)\</OutDir>
     <IntDir>$(ProjectDir)\intermediates\$(Platform)\$(Configuration)\</IntDir>
   </PropertyGroup>
@@ -118,10 +155,13 @@
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
-xcopy $(ResourceDir)\r41\*.* $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Command>
+      <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
+
+xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll "$(OutDir)" /E /I /F /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -152,10 +192,50 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Com
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
-xcopy $(ResourceDir)\r41\*.* $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Command>
+      <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
+
+xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll "$(OutDir)" /E /I /F /Y</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|Win32'">
+    <ClCompile>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;TRACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+    </ClCompile>
+    <Link>
+      <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\glew-2.2.0\lib\Release\win32\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
+
+xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll "$(OutDir)" /E /I /F /Y</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -177,10 +257,13 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Com
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
-xcopy $(ResourceDir)\r41\*.* $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
+      <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
+
+xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll "$(OutDir)" /E /I /F /Y
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -205,10 +288,45 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
       </Command>
     </CustomBuildStep>
     <PostBuildEvent>
-      <Command>xcopy $(ResourceDir)\*.png $(OutDir) /E /I /F /Y
-xcopy $(ResourceDir)\r41\*.* $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll $(OutDir) /E /I /F /Y
-xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
+      <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
+
+xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll "$(OutDir)" /E /I /F /Y
+</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsError>true</TreatWarningAsError>
+      <WholeProgramOptimization>true</WholeProgramOptimization>
+      <PreprocessorDefinitions>TRACE</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\glew-2.2.0\lib\Release\x64\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <EntryPointSymbol>
+      </EntryPointSymbol>
+      <SubSystem>Console</SubSystem>
+      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+    </Link>
+    <CustomBuildStep>
+      <Command>
+      </Command>
+    </CustomBuildStep>
+    <PostBuildEvent>
+      <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
+
+xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
+
+xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll "$(OutDir)" /E /I /F /Y
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
