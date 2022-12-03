@@ -67,18 +67,20 @@ struct options {
 
 	bool load_standard_symbols = false;
 
-	bool log_verbose  = false;
-	bool log_keyboard = false;
-	bool log_speed    = false;
-	bool log_video    = false;
-	bool log_cpu_low  = false;
-	bool log_cpu_main = false;
-	bool log_cpu_bram = false;
-	bool log_cpu_brom = false;
-	bool dump_cpu     = true;
-	bool dump_ram     = true;
-	bool dump_bank    = true;
-	bool dump_vram    = true;
+	bool log_verbose   = false;
+	bool log_keyboard  = false;
+	bool log_speed     = false;
+	bool log_video     = false;
+	bool log_cpu_low   = false;
+	bool log_cpu_main  = false;
+	bool log_cpu_bram  = false;
+	bool log_cpu_brom  = false;
+	bool log_mem_read  = false;
+	bool log_mem_write = false;
+	bool dump_cpu      = true;
+	bool dump_ram      = true;
+	bool dump_bank     = true;
+	bool dump_vram     = true;
 
 	echo_mode_t echo_mode = echo_mode_t::ECHO_MODE_NONE;
 

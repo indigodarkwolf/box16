@@ -19,7 +19,6 @@ private:
 	int  memory_window = 1;
 
 public:
-	bool getShowHex();
 	void set_dump_start(uint16_t addr);
 	void set_ram_bank(uint8_t bank);
 	void set_rom_bank(uint8_t bank);

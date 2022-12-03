@@ -165,6 +165,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll $(OutDir) /E /I /F /Y</Com
       <LanguageStandard>stdcpp17</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>TRACE</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\glew-2.2.0\lib\Release\x64\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -192,6 +193,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll $(OutDir) /E /I /F /Y
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <WholeProgramOptimization>true</WholeProgramOptimization>
+      <PreprocessorDefinitions>TRACE</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\glew-2.2.0\lib\Release\x64\glew32.lib;%(AdditionalDependencies)</AdditionalDependencies>
