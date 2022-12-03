@@ -32,7 +32,7 @@ jobs:
       - name: Archive Ubuntu build
         uses: actions/upload-artifact@v3
         with:
-          name: Box16 (Ubuntu w/ Tracing)
+          name: Box16 (Ubuntu w Tracing)
           path: build/box16/
   build-ubuntu-debug:
     runs-on: ubuntu-latest
@@ -105,7 +105,7 @@ jobs:
       - name: Archive Win32-Release-Trace build
         uses: actions/upload-artifact@v3
         with:
-          name: Box16 (Win32 Release w/ Tracing)
+          name: Box16 (Win32 Release w Tracing)
           path: build/box16-Win32-Release-Trace/
   build-x64-debug:
     runs-on: windows-latest
@@ -167,6 +167,6 @@ jobs:
       - name: Archive x64-Release-Trace build
         uses: actions/upload-artifact@v3
         with:
-          name: Box16 (x64 Release w/ Tracing)
+          name: Box16 (x64 Release w Tracing)
           path: build/box16-x64-Release-Trace/
 

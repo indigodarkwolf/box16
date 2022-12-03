@@ -23,7 +23,7 @@ VENDOROBJ := $(OBJDIR)/vendor
 PKGCONFIG := pkg-config
 MKDIR := mkdir -p
 
-CFLAGS := --std=c++17 $(DFLAGS)
+CFLAGS := --std=c++17 -Werror $(DFLAGS)
 CWARNS := -Wformat -Wformat-security -Wpedantic
 
 #
@@ -112,7 +112,7 @@ debug:
 
 trace:
 	$(MAKE) -j8 all DFLAGS="-O3 -DTRACE"
-	
+
 profiling:
 	$(MAKE) -j8 all DFLAGS="-g -O3 -pg"
 
