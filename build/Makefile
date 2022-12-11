@@ -23,7 +23,7 @@ VENDOROBJ := $(OBJDIR)/vendor
 PKGCONFIG := pkg-config
 MKDIR := mkdir -p
 
-CFLAGS := --std=c++17 -Werror $(DFLAGS)
+CFLAGS := --std=c++20 -Werror $(DFLAGS)
 CWARNS := -Wformat -Wformat-security -Wpedantic
 
 #

@@ -139,7 +139,7 @@
       <Optimization>Disabled</Optimization>
       <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
@@ -172,7 +172,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll "$(OutDir)" /E /I /F /Y</C
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
       <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
@@ -209,7 +209,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll "$(OutDir)" /E /I /F /Y</C
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
       <WholeProgramOptimization>true</WholeProgramOptimization>
     </ClCompile>
@@ -242,7 +242,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\Win32\*.dll "$(OutDir)" /E /I /F /Y</C
     <ClCompile>
       <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
@@ -271,7 +271,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClCompile>
       <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <WholeProgramOptimization>true</WholeProgramOptimization>
@@ -302,7 +302,7 @@ xcopy $(VendorDir)\glew-2.2.0\bin\Release\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClCompile>
       <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\glew-2.2.0\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
-      <LanguageStandard>stdcpp17</LanguageStandard>
+      <LanguageStandard>stdcpp20</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <WholeProgramOptimization>true</WholeProgramOptimization>

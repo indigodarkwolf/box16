@@ -3,6 +3,7 @@
 #include <string.h>
 #include <algorithm>
 #include <functional>
+#include <atomic>
 
 template <typename T, int SIZE, bool ALLOW_OVERWRITE = true>
 class ring_buffer
@@ -265,7 +266,7 @@ public:
 	}
 
 private:
-	volatile size_t m_oldest;
-	volatile size_t m_count;
+	std::atomic<size_t> m_oldest;
+	std::atomic<size_t> m_count;
 	T      m_elems[SIZE];
 };
