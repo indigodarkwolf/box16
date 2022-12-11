@@ -210,7 +210,7 @@ void imgui_debugger_disasm::draw()
 						for (auto &sym : symbols) {
 							ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 							char addr_text[5];
-							sprintf(addr_text, "%04X", i);
+							sprintf(addr_text, "%04X", static_cast<uint16_t>(i));
 							if (ImGui::Selectable(addr_text, false, 0, ImGui::CalcTextSize(addr_text))) {
 								set_dump_start(i);
 							}
