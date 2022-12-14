@@ -102,21 +102,22 @@ BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs alsa sdl2 gl g
 #
 #-------------------------
 
-.PHONY: all
-
 default:
-	$(MAKE) -j8 all DFLAGS="-O3"
+	$(MAKE) all
 
 debug:
-	$(MAKE) -j8 all DFLAGS="-g"
+	$(MAKE) -j8 build DFLAGS="-g"
 
 trace:
-	$(MAKE) -j8 all DFLAGS="-O3 -DTRACE"
+	$(MAKE) -j8 build DFLAGS="-O3 -DTRACE"
 
 profiling:
-	$(MAKE) -j8 all DFLAGS="-g -O3 -pg"
+	$(MAKE) -j8 build DFLAGS="-g -O3 -pg"
 
-all: $(OUTDIR)/box16
+all:
+	$(MAKE) -j8 build DFLAGS="-O3"
+
+build: $(OUTDIR)/box16
 
 clean:
 	rm -rf $(OBJDIR)
