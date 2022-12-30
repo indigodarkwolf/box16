@@ -538,7 +538,9 @@ static void draw_debugger_vera_sprite()
 			} else {
 				for (int j = 0; j < width; j++) {
 					uint8_t val = buf_pixels[src++];
-					val += spr->prop.palette_offset << 4;
+					if (val) {
+						val += spr->prop.palette_offset;
+					}
 					dstpix[dst] = palette[val];
 					dst += dst_add;
 				}
