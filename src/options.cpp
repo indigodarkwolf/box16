@@ -19,7 +19,7 @@ mINI::INIStructure Cmdline_ini;
 mINI::INIStructure Inifile_ini;
 
 std::vector<uint32_t> Break_options;
-std::vector<std::pair<std::string, uint32_t>> Sym_options;
+std::vector<std::pair<std::string, symbol_bank_type>> Sym_options;
 
 static const char *token_or_empty(const std::string &str, const char *token)
 {
