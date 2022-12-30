@@ -18,6 +18,9 @@ std::filesystem::path Options_ini_path;
 mINI::INIStructure Cmdline_ini;
 mINI::INIStructure Inifile_ini;
 
+std::vector<uint32_t> Break_options;
+std::vector<std::pair<std::string, uint32_t>> Sym_options;
+
 static const char *token_or_empty(const std::string &str, const char *token)
 {
 	static char *str_buffer = nullptr;
@@ -398,7 +401,8 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 
 			// Add a breakpoint
 			uint32_t bp = strtol(argv[0], NULL, 16);
-			debugger_add_breakpoint((uint16_t)(bp & 0xffff), (uint8_t)(bp >> 16));
+			Break_options.push_back(bp);
+
 			argc--;
 			argv++;
 
@@ -678,7 +682,8 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			}
 
 			// Add a symbols file
-			symbols_load_file(argv[0]);
+			Sym_options.push_back({ argv[0], 0 });
+
 			argc--;
 			argv++;
 
@@ -981,13 +986,13 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	}
 
 	if (ini.has("stds")) {
-		symbols_load_file("kernal.sym", 0);
-		symbols_load_file("keymap.sym", 1);
-		symbols_load_file("dos.sym", 2);
-		symbols_load_file("geos.sym", 3);
-		symbols_load_file("basic.sym", 4);
-		symbols_load_file("monitor.sym", 5);
-		symbols_load_file("charset.sym");
+		Sym_options.push_back({ "kernal.sym", 0 });
+		Sym_options.push_back({ "keymap.sym", 1 });
+		Sym_options.push_back({ "dos.sym", 2 });
+		Sym_options.push_back({ "geos.sym", 3 });
+		Sym_options.push_back({ "basic.sym", 4 });
+		Sym_options.push_back({ "monitor.sym", 5 });
+		Sym_options.push_back({ "charset.sym", 0 });
 	}
 
 	if (ini.has("scale")) {
@@ -1502,6 +1507,17 @@ void save_options_on_close(bool all)
 	set_ini_panels(Inifile_ini["panels"], all);
 
 	file.generate(Inifile_ini);
+}
+
+void options_apply_debugger_opts()
+{
+	for (uint32_t bp : Break_options) {
+		debugger_add_breakpoint((uint16_t)(bp & 0xffff), (uint8_t)(bp >> 16));
+	}
+
+	for (auto &sym : Sym_options) {
+		symbols_load_file(sym.first, sym.second);
+	}
 }
 
 size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path)
