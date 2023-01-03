@@ -2214,7 +2214,7 @@ static void draw_menu_bar()
 				debugger_interrupt();
 			}
 			if (ImGui::MenuItem("Save Dump", Options.no_keybinds ? nullptr : "Ctrl-S")) {
-				machine_dump();
+				machine_dump("user menu request");
 			}
 			if (ImGui::BeginMenu("Controller Ports")) {
 				joystick_for_each_slot([](int slot, int instance_id, SDL_GameController *controller) {

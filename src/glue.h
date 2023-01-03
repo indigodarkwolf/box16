@@ -32,7 +32,7 @@ extern uint8_t  debug6502;
 
 extern bool save_on_exit;
 
-extern void machine_dump();
+extern void machine_dump(const char* reason);
 extern void machine_reset();
 extern void machine_toggle_warp();
 extern void init_audio();
