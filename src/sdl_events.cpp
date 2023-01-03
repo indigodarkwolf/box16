@@ -81,7 +81,7 @@ bool sdl_events_update()
 					if (cmd_down) {
 						switch (event.key.keysym.sym) {
 							case SDLK_s:
-								machine_dump();
+								machine_dump("user keyboard request");
 								consumed = true;
 								break;
 							case SDLK_r:

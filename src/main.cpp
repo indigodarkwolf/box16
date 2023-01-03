@@ -63,8 +63,9 @@ bool save_on_exit = true;
 bool       has_boot_tasks = false;
 SDL_RWops *prg_file       = nullptr;
 
-void machine_dump()
+void machine_dump(const char* reason)
 {
+	printf("Dumping system memory. Reason: %s\n", reason);
 	int  index = 0;
 	char filename[22];
 	for (;;) {
@@ -650,7 +651,7 @@ void emulator_loop()
 
 		if (state6502.pc == 0xffff) {
 			if (save_on_exit) {
-				machine_dump();
+				machine_dump("CPU program counter reached $ffff");
 			}
 			return;
 		}
