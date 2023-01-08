@@ -784,14 +784,7 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 
 	if (ini.has("ram")) {
 		int  kb    = atoi(ini["ram"].c_str());
-		bool found = false;
-		for (int cmp = 8; cmp <= 2048; cmp *= 2) {
-			if (kb == cmp) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
+		if (kb & 0x7) {
 			return "ram";
 		}
 		opts.num_ram_banks = kb / 8;
