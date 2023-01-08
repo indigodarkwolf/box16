@@ -97,6 +97,8 @@ void debugger_init(int max_ram_banks)
 
 	Breakpoint_flags = new uint8_t[breakpoint_flags_size];
 	memset(Breakpoint_flags, 0, breakpoint_flags_size);
+
+	options_apply_debugger_opts();
 }
 
 void debugger_shutdown()

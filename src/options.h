@@ -115,6 +115,8 @@ void load_options();
 void save_options(bool all);
 void save_options_on_close(bool all);
 
+void options_apply_debugger_opts();
+
 size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path);
 size_t options_get_prefs_path(std::filesystem::path &real_path, const std::filesystem::path &path);
 size_t options_get_hyper_path(std::filesystem::path &real_path, const std::filesystem::path &path);
