@@ -144,6 +144,12 @@ static uint8_t effective_ram_bank()
 	return RAM_BANK % Options.num_ram_banks;
 }
 
+static uint8_t effective_rom_bank()
+{
+	return ROM_BANK % TOTAL_ROM_BANKS;
+}
+
+
 static uint8_t debug_ram_read(uint16_t address, uint8_t bank)
 {
 	const int ramBank      = bank % Options.num_ram_banks;
@@ -184,13 +190,33 @@ static void real_ram_write(uint16_t address, uint8_t value)
 
 static uint8_t debug_rom_read(uint16_t address, uint8_t bank)
 {
-	const int romBank = bank % NUM_ROM_BANKS;
+	const int romBank = bank % TOTAL_ROM_BANKS;
 	return ROM[(romBank << 14) + address - 0xc000];
 }
 
 static uint8_t real_rom_read(uint16_t address)
 {
 	return ROM[(ROM_BANK << 14) + address - 0xc000];
+}
+
+static void debug_rom_write(uint16_t address, uint8_t bank, uint8_t value)
+{
+	if (bank >= NUM_ROM_BANKS) {
+		ROM[((uint32_t)bank << 14) + address - 0xc000] = value;
+	}
+}
+
+static void real_rom_write(uint16_t address, uint8_t value)
+{	
+	const int romBank = effective_rom_bank();
+	if (romBank >= NUM_ROM_BANKS) {
+		const int real_address = (romBank << 14) + address - 0xc000;
+
+		ROM[real_address] = value;
+
+		printf("Writing to hidden ram at addr: $%hx, bank $%hhx\n", address, romBank);
+	}
+	
 }
 
 //
@@ -333,7 +359,7 @@ static void debug_write(uint16_t address, uint8_t bank, uint8_t value)
 		case MEMMAP_NULL: break;
 		case MEMMAP_DIRECT: RAM[address] = value; break;
 		case MEMMAP_RAMBANK: debug_ram_write(address, bank, value); break;
-		case MEMMAP_ROMBANK: /* Lelz you can't do that. */ break;
+		case MEMMAP_ROMBANK: debug_rom_write(address, bank, value); break;
 		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
 		case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
 		case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
@@ -351,7 +377,7 @@ static void real_write(uint16_t address, uint8_t value)
 		case MEMMAP_NULL: break;
 		case MEMMAP_DIRECT: RAM[address] = value; break;
 		case MEMMAP_RAMBANK: real_ram_write(address, value); break;
-		case MEMMAP_ROMBANK: /* Lelz you can't do that. */ break;
+		case MEMMAP_ROMBANK: real_rom_write(address, value); break;
 		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
 		case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
 		case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;

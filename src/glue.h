@@ -20,7 +20,10 @@
 
 #define NUM_ROM_BANKS 32
 
-#define ROM_SIZE (NUM_ROM_BANKS * 16384) /* banks at $C000-$FFFF */
+#define HIDDEN_RAM_BANKS 32
+#define TOTAL_ROM_BANKS (NUM_ROM_BANKS + HIDDEN_RAM_BANKS)
+
+#define ROM_SIZE (TOTAL_ROM_BANKS * 16384) /* banks at $C000-$FFFF */
 
 extern _state6502 state6502;
 extern uint8_t    waiting;
