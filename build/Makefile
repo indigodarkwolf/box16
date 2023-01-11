@@ -88,10 +88,10 @@ R8BRAIN_OBJS := $(patsubst $(R8BRAIN_SRCDIR)/%.cpp,$(R8BRAIN_OBJDIR)/%.o,$(R8BRA
 BOX16_SRCDIR := $(REPODIR)/src
 BOX16_OBJDIR := $(OBJDIR)/box16/obj
 
-BOX16_OBJDIRS := $(BOX16_OBJDIR) $(BOX16_OBJDIR)/compat $(BOX16_OBJDIR)/cpu $(BOX16_OBJDIR)/gif $(BOX16_OBJDIR)/imgui $(BOX16_OBJDIR)/overlay $(BOX16_OBJDIR)/vera $(BOX16_OBJDIR)/ym2151
+BOX16_OBJDIRS := $(BOX16_OBJDIR) $(BOX16_OBJDIR)/boxmon $(BOX16_OBJDIR)/compat $(BOX16_OBJDIR)/cpu $(BOX16_OBJDIR)/gif $(BOX16_OBJDIR)/imgui $(BOX16_OBJDIR)/overlay $(BOX16_OBJDIR)/vera $(BOX16_OBJDIR)/ym2151
 BOX16_INCDIRS := -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORSRC)/mINI/src/mini -I$(LPNG_SRCDIR) -I$(VENDORSRC)/rtmidi -I$(VENDORSRC)/ymfm/src -I$(VENDORSRC)/r8brain-free-src
 
-BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
+BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(wildcard $(BOX16_SRCDIR)/boxmon/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
 BOX16_CFLAGS := $(shell $(PKGCONFIG) --cflags alsa sdl2 gl glew) $(CFLAGS) $(CWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h $(MYFLAGS)
 BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs alsa sdl2 gl glew) -lstdc++fs

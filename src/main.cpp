@@ -15,6 +15,7 @@
 #endif
 #include "SDL.h"
 #include "audio.h"
+#include "boxmon/boxmon.h"
 #include "cpu/fake6502.h"
 #include "debugger.h"
 #include "display.h"
@@ -137,6 +138,8 @@ static bool is_kernal()
 #undef main
 int main(int argc, char **argv)
 {
+	boxmon_system_init();
+
 	const char *base_path    = SDL_GetBasePath();
 	const char *private_path = SDL_GetPrefPath("Box16", "Box16");
 
@@ -320,6 +323,8 @@ int main(int argc, char **argv)
 		}
 		nvram_dirty = false;
 	}
+
+	boxmon_system_shutdown();
 
 	SDL_free(const_cast<char *>(private_path));
 	SDL_free(const_cast<char *>(base_path));

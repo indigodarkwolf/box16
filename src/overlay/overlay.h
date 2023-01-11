@@ -4,6 +4,7 @@
 
 #	define IMGUI_OVERLAY_MENU_BAR_HEIGHT (19)
 
+extern bool Show_monitor_console;
 extern bool Show_memory_dump_1;
 extern bool Show_memory_dump_2;
 extern bool Show_cpu_monitor;
