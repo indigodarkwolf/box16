@@ -349,8 +349,21 @@ bool display_init(const display_settings &settings)
 		glewExperimental = GL_TRUE;
 
 		GLenum result = glewInit();
+	#if defined(GLEW_ERROR_NO_GLX_DISPLAY)
+		if (result != GLEW_OK && result != GLEW_ERROR_NO_GLX_DISPLAY) {
+	#else
 		if (result != GLEW_OK) {
-			printf("Unable to initialize GL: %s\n", glewGetErrorString(result));
+	#endif
+			auto get_glew_error = [](auto error) -> char const * {
+				switch (error) {
+					case GLEW_ERROR_NO_GL_VERSION: return "GLEW_ERROR_NO_GL_VERSION (missing GL version)";
+					case GLEW_ERROR_GL_VERSION_10_ONLY: return "GLEW_ERROR_GL_VERSION_10_ONLY (Need at least OpenGL 1.1)";
+					case GLEW_ERROR_GLX_VERSION_11_ONLY: return "GLEW_ERROR_GLX_VERSION_11_ONLY (Need at least GLX 1.2)";
+					default: break;
+				}
+				return "(Unknown glewInit error code)";
+			};
+			printf("Unable to initialize GL: %s (0x%08X)\n", get_glew_error(result), result);
 			return false;
 		}
 	}

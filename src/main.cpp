@@ -256,7 +256,10 @@ int main(int argc, char **argv)
 		init_settings.window_rect.y = 0;
 		init_settings.window_rect.w = (int)(480 * Options.window_scale * init_settings.aspect_ratio);
 		init_settings.window_rect.h = (480 * Options.window_scale) + IMGUI_OVERLAY_MENU_BAR_HEIGHT;
-		display_init(init_settings);
+		if(const bool initd = display_init(init_settings); initd == false) {
+			printf("Could not initialize display, quitting.\n");
+			goto display_quit;
+		}
 	}
 
 	vera_video_reset();
@@ -329,6 +332,7 @@ int main(int argc, char **argv)
 	wav_recorder_shutdown();
 	gif_recorder_shutdown();
 	debugger_shutdown();
+display_quit:
 	display_shutdown();
 	SDL_Quit();
 
