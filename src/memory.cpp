@@ -461,7 +461,7 @@ uint8_t memory_get_ram_bank()
 
 void memory_set_rom_bank(uint8_t bank)
 {
-	ROM_BANK = bank & (NUM_ROM_BANKS - 1);
+	ROM_BANK = bank & (TOTAL_ROM_BANKS - 1);
 }
 
 uint8_t memory_get_rom_bank()

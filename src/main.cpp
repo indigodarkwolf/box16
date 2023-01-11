@@ -201,6 +201,7 @@ int main(int argc, char **argv)
 			error("ROM error", "Could not find ROM.");
 		}
 
+		// Could be changed to allow extended rom files
 		memset(ROM, 0, ROM_SIZE);
 		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
