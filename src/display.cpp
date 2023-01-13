@@ -25,12 +25,12 @@ SOFTWARE.
 
 */
 
-#include <GL/glew.h>
 #include <algorithm>
 #include <atomic>
 #include <thread>
 
 #include "display.h"
+#include "glad/glad.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_opengl2.h"
 #include "imgui/imgui_impl_sdl.h"
@@ -65,7 +65,7 @@ static std::string           Imgui_ini_path_str;
 static bool Initd_sdl_image           = false;
 static bool Initd_sdl_gl              = false;
 static bool Initd_display_context     = false;
-static bool Initd_glew                = false;
+static bool Initd_glad                = false;
 static bool Initd_display_framebuffer = false;
 static bool Initd_video_framebuffer   = false;
 static bool Initd_imgui               = false;
@@ -220,7 +220,7 @@ static void display_video()
 		}
 		GLenum result = glGetError();
 		if (result != GL_NO_ERROR) {
-			printf("GL error %s\n", glewGetErrorString(result));
+			printf("GL error %d\n", result);
 		}
 	}
 
@@ -344,33 +344,33 @@ bool display_init(const display_settings &settings)
 	}
 	Initd_display_context = true;
 
-	// Initialize GLEW
-	{
-		glewExperimental = GL_TRUE;
+	//// Get OpenGL information
+	//{
+	//	const char *version_string = reinterpret_cast<const char *>(glGetString(GL_VERSION));
+	//	printf("OpenGL version:\n%s\n", version_string);
 
-		GLenum result = glewInit();
-	#if defined(GLEW_ERROR_NO_GLX_DISPLAY)
-		if (result != GLEW_OK && result != GLEW_ERROR_NO_GLX_DISPLAY) {
-	#else
-		if (result != GLEW_OK) {
-	#endif
-			auto get_glew_error = [](auto error) -> char const * {
-				switch (error) {
-					case GLEW_ERROR_NO_GL_VERSION: return "GLEW_ERROR_NO_GL_VERSION (missing GL version)";
-					case GLEW_ERROR_GL_VERSION_10_ONLY: return "GLEW_ERROR_GL_VERSION_10_ONLY (Need at least OpenGL 1.1)";
-					case GLEW_ERROR_GLX_VERSION_11_ONLY: return "GLEW_ERROR_GLX_VERSION_11_ONLY (Need at least GLX 1.2)";
-					default: break;
-				}
-				return "(Unknown glewInit error code)";
-			};
-			printf("Unable to initialize GL: %s (0x%08X)\n", get_glew_error(result), result);
+	//	GLint num_extensions = 0;
+	//	glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+
+	//	printf("OpenGL extensions:\n");
+	//	for (GLint i = 1; i <= num_extensions; ++i) {
+	//		const char *extensions_string = reinterpret_cast<const char *>(glGetStringi(GL_EXTENSIONS, i));
+	//		printf("\t%s\n", extensions_string);
+	//	}
+	//}
+
+	// Initialize GLAD
+	{
+		int version = gladLoadGL();
+		if (version == 0) {
+			printf("Failed to initialize OpenGL context (`gladLoadGL()` returned 0)\n");
 			return false;
 		}
 	}
-	Initd_glew = true;
+	Initd_glad = true;
 
 #if defined(GL_EXT_texture_filter_anisotropic)
-	if (glewIsSupported("EXT_texture_filter_anisotropic")) {
+	if (GLAD_GL_EXT_texture_filter_anisotropic) {
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &Max_anisotropy);
 	} else {
 		Max_anisotropy = 0;
@@ -534,7 +534,7 @@ void display_shutdown()
 	Initd_sdl_image           = false;
 	Initd_sdl_gl              = false;
 	Initd_display_context     = false;
-	Initd_glew                = false;
+	Initd_glad                = false;
 	Initd_display_framebuffer = false;
 	Initd_imgui               = false;
 	Initd_imgui_sdl2          = false;
@@ -545,7 +545,7 @@ void display_process()
 {
 	auto video_timeout = [](uint32_t usec_limit) -> bool {
 		const uint32_t current_render_time = timing_total_microseconds_realtime();
-		const bool failed = current_render_time - Last_render_time > usec_limit;
+		const bool     failed              = current_render_time - Last_render_time > usec_limit;
 		if (failed) {
 			// Seems like vsync isn't working, let's disable it.
 			SDL_ShowSimpleMessageBox(SDL_MessageBoxFlags::SDL_MESSAGEBOX_WARNING, "V-Sync was automatically disabled", "Box16 has detected a problem with the current V-Sync settings.\nV-Sync has been disabled.", display_get_window());
@@ -570,7 +570,7 @@ void display_process()
 
 			case vsync_mode_t::VSYNC_MODE_GET_SYNC: {
 				GLsizei num_sync_values = 1;
-				GLint   sync_status = GL_UNSIGNALED;
+				GLint   sync_status     = GL_UNSIGNALED;
 				while (sync_status == GL_UNSIGNALED) {
 					glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
 
@@ -668,8 +668,8 @@ void display_toggle_fullscreen()
 
 float display_get_fps()
 {
-	const uint32_t cutoff_us = std::max((uint32_t)1000000, timing_total_microseconds_realtime()) - 1000000;
-	uint32_t framecount = 0;
+	const uint32_t cutoff_us  = std::max((uint32_t)1000000, timing_total_microseconds_realtime()) - 1000000;
+	uint32_t       framecount = 0;
 	Display_timing_history.for_until_reverse([&](const uint32_t &us) -> bool {
 		if (us > cutoff_us) {
 			++framecount;
@@ -680,8 +680,8 @@ float display_get_fps()
 
 	return (float)framecount;
 
-	//const uint32_t display_interval_us = Display_timing_history.get_newest() - Display_timing_history.get_oldest();
-	//return 60.0f / (((float)display_interval_us) / 1000000.0f);
+	// const uint32_t display_interval_us = Display_timing_history.get_newest() - Display_timing_history.get_oldest();
+	// return 60.0f / (((float)display_interval_us) / 1000000.0f);
 }
 
 void display_refund_render_time(uint32_t time_us)

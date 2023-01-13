@@ -41,6 +41,12 @@
     <Filter Include="Header Files">
       <UniqueIdentifier>{fe82bbb0-2a22-4543-a74d-8e837e76276e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\glad">
+      <UniqueIdentifier>{b275878e-1323-473f-a92d-49303b9917bc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\glad\KHR">
+      <UniqueIdentifier>{8ec75dad-d3fc-4b9d-a8de-95adbf536783}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\..\src\audio.cpp">
@@ -207,6 +213,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\hypercalls.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\glad\glad.cpp">
+      <Filter>Source Files\glad</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -464,6 +473,12 @@
     </ClInclude>
     <ClInclude Include="..\..\src\hypercalls.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\glad\KHR\khrplatform.h">
+      <Filter>Source Files\glad\KHR</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\glad\glad.h">
+      <Filter>Source Files\glad</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
