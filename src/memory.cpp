@@ -214,7 +214,7 @@ static void real_rom_write(uint16_t address, uint8_t value)
 
 		ROM[real_address] = value;
 
-		printf("Writing to hidden ram at addr: $%hx, bank $%hhx\n", address, romBank);
+		//printf("Writing to hidden ram at addr: $%hx, bank $%hhx\n", address, romBank);
 	}
 	
 }
