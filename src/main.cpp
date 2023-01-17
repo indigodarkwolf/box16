@@ -205,6 +205,14 @@ int main(int argc, char **argv)
 		memset(ROM, 0, ROM_SIZE);
 		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
+
+		if (strcmp(Options.cart_path.string().c_str(), "")) {
+			SDL_RWops *cf = open_file(Options.cart_path, "rom", "rb");
+			if (cf == nullptr) {
+				error("Cartridge / ROM error", "Could not find cartridge.");
+			}
+			SDL_RWread(cf, ROM + (0x4000 * 0x20), SDL_RWsize(cf), 1);
+		}
 	}
 
 	// Load NVRAM, if specified

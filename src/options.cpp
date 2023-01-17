@@ -157,6 +157,9 @@ static void usage()
 	printf("-rom <rom.bin>\n");
 	printf("\tOverride KERNAL/BASIC/* ROM file.\n");
 
+	printf("-romcart <cart.bin>\n");
+	printf("\tLoad a cartridge into ROM space starting at bank $20 (32)\n");
+
 	printf("-rtc\n");
 	printf("\tSet the real-time-clock to the current system time and date.\n");
 
@@ -387,8 +390,8 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			}
 
 			// Deprecated and ignored
-			//ini["create_patch"] = "true";
-			//ini["patch_target"] = argv[0];
+			// ini["create_patch"] = "true";
+			// ini["patch_target"] = argv[0];
 			argc--;
 			argv++;
 
@@ -471,7 +474,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			// Deprecated and ignored
-			//ini["ignore_patch"] = "true";
+			// ini["ignore_patch"] = "true";
 
 		} else if (!strcmp(argv[0], "-ini")) {
 			argc--;
@@ -536,7 +539,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			// Deprecated and ignored
-			//ini["ignore_patch"] = "true";
+			// ini["ignore_patch"] = "true";
 
 		} else if (!strcmp(argv[0], "-nosound")) {
 			argc--;
@@ -562,7 +565,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			}
 
 			// Deprecated and ignored
-			//ini["patch"] = argv[0];
+			// ini["patch"] = argv[0];
 			argc--;
 			argv++;
 
@@ -615,7 +618,17 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 
-		} else if (!strcmp(argv[0], "-rtc")) {
+		} else if (!strcmp(argv[0], "-romcart")) {
+			argc--;
+			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+			ini["cart"] = argv[0];
+			argc--;
+			argv++;
+
+		} else if (!strcmp(argv[0], " - rtc ")) {
 			argc--;
 			argv++;
 			ini["rtc"] = "true";
@@ -772,6 +785,10 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 {
 	if (ini.has("rom")) {
 		opts.rom_path = ini["rom"];
+	}
+
+	if (ini.has("cart")) {
+		opts.cart_path = ini["cart"];
 	}
 
 	// Deprecated and ignored
@@ -1252,6 +1269,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	};
 
 	set_option("rom", Options.rom_path, Default_options.rom_path);
+	set_option("cart", Options.cart_path, Default_options.cart_path);
 	// Deprecated and ignored
 	//set_option("patch", Options.patch_path, Default_options.patch_path);
 	//set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());
