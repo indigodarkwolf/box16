@@ -7,8 +7,8 @@ As of now, this area above is not technically rom so code here can be overwritte
 -------
 # Box16
 
-[![Build status](https://github.com/indigodarkwolf/box16/actions/workflows/build.yml/badge.svg)](https://github.com/indigodarkwolf/box16/actions/workflows/build.yml)<br/>
-[![Release](https://img.shields.io/github/v/release/indigodarkwolf/box16)](https://github.com/indigodarkwolf/box16/releases)
+[![Build status](https://github.com/cnelson20/box16/actions/workflows/build.yml/badge.svg)](https://github.com/cnelson20/box16/actions/workflows/build.yml)<br/>
+[![Release](https://img.shields.io/github/v/release/cnelson20/box16)](https://github.com/cnelson20/box16/releases)
 
 This is an emulator for the Commander X16 computer system. Unlike [the official emulator](https://github.com/commanderx16/x16-emulator), this has a few more dependencies, see the build instructions below. It compiles on Windows, Debian Linux, and Raspbian, and probably 
 other Linux-based platforms.
