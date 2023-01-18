@@ -24,10 +24,11 @@ enum class option_source {
 };
 
 enum class vsync_mode_t {
+	VSYNC_MODE_DISABLED = -1,
 	VSYNC_MODE_NONE = 0,
 	VSYNC_MODE_GET_SYNC,
 	VSYNC_MODE_WAIT_SYNC,
-	VSYNC_MODE_DEBUG,
+	VSYNC_MODE_DEBUG
 };
 
 enum class gif_recorder_start_t {
