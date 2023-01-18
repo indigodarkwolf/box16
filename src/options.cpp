@@ -637,8 +637,6 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 				bank = 32;				
 			}
 
-			printf("Loading from \"%s\" at ROM space bank %d\n", argv[0], bank);
-
 			if (bank == 32) {
 				ini["cart32"] = argv[0];
 			} else if (bank == 64) {
