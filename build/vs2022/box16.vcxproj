@@ -384,7 +384,6 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClCompile Include="..\..\src\wav_recorder.cpp" />
     <ClCompile Include="..\..\src\ym2151\ym2151.cpp" />
     <ClCompile Include="..\..\vendor\lodepng\lodepng.cpp" />
-    <ClCompile Include="..\..\vendor\r8brain-free-src\r8bbase.cpp" />
     <ClCompile Include="..\..\vendor\ymfm\src\ymfm_opm.cpp" />
     <ClCompile Include="..\..\src\overlay\psg_overlay.cpp" />
   </ItemGroup>
@@ -457,20 +456,6 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClInclude Include="..\..\src\wav_recorder.h" />
     <ClInclude Include="..\..\src\ym2151\ym2151.h" />
     <ClInclude Include="..\..\vendor\lodepng\lodepng.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPBlockConvolver.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPFIRFilter.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPFracInterpolator.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPHBDownsampler.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPHBUpsampler.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPProcessor.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPRealFFT.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPResampler.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\CDSPSincFilterGen.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\fft4g.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\pffft.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\r8bbase.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\r8bconf.h" />
-    <ClInclude Include="..\..\vendor\r8brain-free-src\r8butil.h" />
     <ClInclude Include="..\..\vendor\ymfm\src\ymfm.h" />
     <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.h" />
     <ClInclude Include="..\..\vendor\ymfm\src\ymfm_fm.ipp" />
@@ -482,8 +467,6 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <None Include="..\..\src\cpu\buildtables.py" />
     <None Include="..\..\src\cpu\extract.py" />
     <None Include="..\..\src\cpu\README" />
-    <None Include="..\..\vendor\r8brain-free-src\LICENSE" />
-    <None Include="..\..\vendor\r8brain-free-src\README.md" />
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\..\src\imgui\LICENSE.txt" />

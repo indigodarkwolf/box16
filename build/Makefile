@@ -72,24 +72,13 @@ YMFM_SRCS := $(YMFM_SRCDIR)/ymfm_opm.cpp
 YMFM_OBJS := $(patsubst $(YMFM_SRCDIR)/%.cpp,$(YMFM_OBJDIR)/%.o,$(YMFM_SRCS))
 
 #
-# r8brain-free-src
-#
-R8BRAIN_SRCDIR := $(VENDORSRC)/r8brain-free-src
-R8BRAIN_OBJDIR := $(OBJDIR)/r8brain-free-src
-
-R8BRAIN_CFLAGS := $(CFLAGS) $(CWARNS)
-R8BRAIN_LDFLAGS := -lpthread
-R8BRAIN_SRCS := $(R8BRAIN_SRCDIR)/r8bbase.cpp
-R8BRAIN_OBJS := $(patsubst $(R8BRAIN_SRCDIR)/%.cpp,$(R8BRAIN_OBJDIR)/%.o,$(R8BRAIN_SRCS))
-
-#
 # box16
 #
 BOX16_SRCDIR := $(REPODIR)/src
 BOX16_OBJDIR := $(OBJDIR)/box16/obj
 
 BOX16_OBJDIRS := $(BOX16_OBJDIR) $(BOX16_OBJDIR)/compat $(BOX16_OBJDIR)/cpu $(BOX16_OBJDIR)/gif $(BOX16_OBJDIR)/glad $(BOX16_OBJDIR)/imgui $(BOX16_OBJDIR)/overlay $(BOX16_OBJDIR)/vera $(BOX16_OBJDIR)/ym2151
-BOX16_INCDIRS := -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORSRC)/mINI/src/mini -I$(LPNG_SRCDIR) -I$(VENDORSRC)/rtmidi -I$(VENDORSRC)/ymfm/src -I$(VENDORSRC)/r8brain-free-src
+BOX16_INCDIRS := -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORSRC)/mINI/src/mini -I$(LPNG_SRCDIR) -I$(VENDORSRC)/rtmidi -I$(VENDORSRC)/ymfm/src
 
 BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/glad/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
@@ -116,6 +105,16 @@ profiling:
 
 all:
 	$(MAKE) -j8 build DFLAGS="-O3"
+
+verify:
+	$(MAKE) clean
+	$(MAKE) debug
+	$(MAKE) clean
+	$(MAKE) trace
+	$(MAKE) clean
+	$(MAKE) profiling
+	$(MAKE) clean
+	$(MAKE) all
 
 build: $(OUTDIR)/box16
 
@@ -189,16 +188,6 @@ $(YMFM_OBJDIR):
 	mkdir -p $@
 
 #
-# r8brain-free-src
-#
-
-$(R8BRAIN_OBJDIR)/%.o: $(R8BRAIN_SRCDIR)/%.cpp | $(R8BRAIN_OBJDIR)
-	g++ $(R8BRAIN_CFLAGS) -c $< -o $@
-
-$(R8BRAIN_OBJDIR):
-	mkdir -p $@
-
-#
 # box16
 #
 
@@ -208,8 +197,8 @@ $(BOX16_OBJDIR)/%.o: $(BOX16_SRCDIR)/%.cpp | $(BOX16_OBJDIRS)
 $(BOX16_OBJDIRS):
 	mkdir -p $@
 
-$(OUTDIR)/box16: $(BOX16_OBJS) $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(YMFM_OBJS) $(R8BRAIN_OBJS)
+$(OUTDIR)/box16: $(BOX16_OBJS) $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(YMFM_OBJS)
 	mkdir -p $(OUTDIR)
-	g++ $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS) $(R8BRAIN_LDFLAGS)
+	g++ $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS)
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
 	cp -r $(REPODIR)/resources/r41/* $(OUTDIR)/

@@ -9,8 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "CDSPResampler.h"
-
 #include "ring_buffer.h"
 #include "vera/vera_pcm.h"
 #include "vera/vera_psg.h"
