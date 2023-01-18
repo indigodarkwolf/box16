@@ -214,7 +214,7 @@
     <ClCompile Include="..\..\src\hypercalls.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\glad\glad.cpp">
+    <ClCompile Include="..\..\src\glad\gl.cpp">
       <Filter>Source Files\glad</Filter>
     </ClCompile>
   </ItemGroup>
@@ -477,7 +477,7 @@
     <ClInclude Include="..\..\src\glad\KHR\khrplatform.h">
       <Filter>Source Files\glad\KHR</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\glad\glad.h">
+    <ClInclude Include="..\..\src\glad\gl.h">
       <Filter>Source Files\glad</Filter>
     </ClInclude>
   </ItemGroup>

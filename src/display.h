@@ -2,7 +2,9 @@
 
 #include "imgui/imgui.h"
 
+#include <glad/gl.h>
 #include <SDL.h>
+#include <SDL_opengl.h>
 #include <filesystem>
 #include <tuple>
 

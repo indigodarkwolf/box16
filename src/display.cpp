@@ -30,7 +30,6 @@ SOFTWARE.
 #include <thread>
 
 #include "display.h"
-#include "glad/glad.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_opengl2.h"
 #include "imgui/imgui_impl_sdl.h"
@@ -151,7 +150,7 @@ bool icon_set::load_memory(const void *buffer, int texture_width, int texture_he
 void icon_set::update_memory(const void *buffer)
 {
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glTextureSubImage2D(texture, 0, 0, 0, texture_width, texture_height, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buffer);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texture_width, texture_height, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buffer);
 }
 
 void icon_set::unload()
@@ -214,9 +213,10 @@ static void display_video()
 {
 	if (!vera_video_is_cheat_frame()) {
 		const uint8_t *video_buffer = vera_video_get_framebuffer();
-		glTextureSubImage2D(Video_framebuffer_texture_handle, 0, 0, 0, Display.video_rect.w, Display.video_rect.h, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, video_buffer);
+		glBindTexture(GL_TEXTURE_2D, Video_framebuffer_texture_handle);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Display.video_rect.w, Display.video_rect.h, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, video_buffer);
 		if (Options.scale_quality == scale_quality_t::BEST) {
-			glGenerateTextureMipmap(Video_framebuffer_texture_handle);
+			glGenerateMipmap(GL_TEXTURE_2D);
 		}
 		GLenum result = glGetError();
 		if (result != GL_NO_ERROR) {
@@ -344,24 +344,17 @@ bool display_init(const display_settings &settings)
 	}
 	Initd_display_context = true;
 
-	//// Get OpenGL information
-	//{
-	//	const char *version_string = reinterpret_cast<const char *>(glGetString(GL_VERSION));
-	//	printf("OpenGL version:\n%s\n", version_string);
-
-	//	GLint num_extensions = 0;
-	//	glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
-
-	//	printf("OpenGL extensions:\n");
-	//	for (GLint i = 1; i <= num_extensions; ++i) {
-	//		const char *extensions_string = reinterpret_cast<const char *>(glGetStringi(GL_EXTENSIONS, i));
-	//		printf("\t%s\n", extensions_string);
-	//	}
-	//}
-
 	// Initialize GLAD
 	{
-		int version = gladLoadGL();
+		int version = gladLoadGLES2((GLADloadfunc)SDL_GL_GetProcAddress);
+		printf("GLES %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+		if (version == 0) {
+			printf("Failed to initialize OpenGL context (`gladLoadGLES2()` returned 0)\n");
+			return false;
+		}
+
+		version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
+		printf("GL %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
 		if (version == 0) {
 			printf("Failed to initialize OpenGL context (`gladLoadGL()` returned 0)\n");
 			return false;

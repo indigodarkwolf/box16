@@ -339,7 +339,7 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClCompile Include="..\..\src\debugger.cpp" />
     <ClCompile Include="..\..\src\display.cpp" />
     <ClCompile Include="..\..\src\gif_recorder.cpp" />
-    <ClCompile Include="..\..\src\glad\glad.cpp" />
+    <ClCompile Include="..\..\src\glad\gl.cpp" />
     <ClCompile Include="..\..\src\hypercalls.cpp" />
     <ClCompile Include="..\..\src\i2c.cpp" />
     <ClCompile Include="..\..\src\ieee.cpp" />
@@ -405,7 +405,7 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClInclude Include="..\..\src\display.h" />
     <ClInclude Include="..\..\src\gif\gif.h" />
     <ClInclude Include="..\..\src\gif_recorder.h" />
-    <ClInclude Include="..\..\src\glad\glad.h" />
+    <ClInclude Include="..\..\src\glad\gl.h" />
     <ClInclude Include="..\..\src\glad\KHR\khrplatform.h" />
     <ClInclude Include="..\..\src\glue.h" />
     <ClInclude Include="..\..\src\hypercalls.h" />
