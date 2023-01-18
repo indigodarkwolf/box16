@@ -206,12 +206,18 @@ int main(int argc, char **argv)
 		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
 
-		if (strcmp(Options.cart_path.string().c_str(), "")) {
-			SDL_RWops *cf = open_file(Options.cart_path, "rom", "rb");
-			if (cf == nullptr) {
-				error("Cartridge / ROM error", "Could not find cartridge.");
+		std::filesystem::path cart_paths[7] = {Options.cart32_path, Options.cart64_path, Options.cart96_path, Options.cart128_path, 
+			Options.cart160_path, Options.cart192_path, Options.cart224_path};
+
+		int path_array_no;
+		for (path_array_no = 0; path_array_no < 7; path_array_no++) {
+			if (strcmp(cart_paths[path_array_no].string().c_str(), "")) {
+				SDL_RWops *cf = open_file(cart_paths[path_array_no], "rom", "rb");
+				if (cf == nullptr) {
+					error("Cartridge / ROM error", "Could not find cartridge.");
+				}
+				SDL_RWread(cf, ROM + (0x4000 * (0x20 * (path_array_no + 1))), SDL_RWsize(cf), 1);
 			}
-			SDL_RWread(cf, ROM + (0x4000 * 0x20), SDL_RWsize(cf), 1);
 		}
 	}
 

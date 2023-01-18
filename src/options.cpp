@@ -157,8 +157,8 @@ static void usage()
 	printf("-rom <rom.bin>\n");
 	printf("\tOverride KERNAL/BASIC/* ROM file.\n");
 
-	printf("-romcart <cart.bin>\n");
-	printf("\tLoad a cartridge into ROM space starting at bank $20 (32)\n");
+	printf("-romcart [bank] <cart.bin>\n");
+	printf("\tLoad a cartridge into ROM space starting at the bank specified in decimal, otherwise default to bank 32.\n");
 
 	printf("-rtc\n");
 	printf("\tSet the real-time-clock to the current system time and date.\n");
@@ -624,7 +624,39 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			if (!argc || argv[0][0] == '-') {
 				usage();
 			}
-			ini["cart"] = argv[0];
+
+			int bank;
+			// If first argument after flag is a number, use that as the bank (multiple of 32) to load to
+			if (sscanf(argv[0], "%d", &bank) == 1) {
+				argc--;
+				argv++;
+				if (!argc || argv[0][0] == '-') {
+					usage();	
+				}
+			} else {
+				bank = 32;				
+			}
+
+			printf("Loading from \"%s\" at ROM space bank %d\n", argv[0], bank);
+
+			if (bank == 32) {
+				ini["cart32"] = argv[0];
+			} else if (bank == 64) {
+				ini["cart64"] = argv[0];
+			} else if (bank == 96) {
+				ini["cart96"] = argv[0];
+			} else if (bank == 128) {
+				ini["cart128"] = argv[0];
+			} else if (bank == 160) {
+				ini["cart160"] = argv[0];
+			} else if (bank == 192) {
+				ini["cart192"] = argv[0];
+			} else if (bank == 224) {
+				ini["cart224"] = argv[0];
+			} else {
+				printf("bank must be a positive multiple of 32 between 32 and 224!\n");
+				exit(1);
+			}
 			argc--;
 			argv++;
 
@@ -787,8 +819,26 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.rom_path = ini["rom"];
 	}
 
-	if (ini.has("cart")) {
-		opts.cart_path = ini["cart"];
+	if (ini.has("cart32")) {
+		opts.cart32_path = ini["cart32"];
+	}
+	if (ini.has("cart64")) {
+		opts.cart64_path = ini["cart64"];
+	}
+	if (ini.has("cart96")) {
+		opts.cart96_path = ini["cart96"];
+	}
+	if (ini.has("cart128")) {
+		opts.cart128_path = ini["cart128"];
+	}
+	if (ini.has("cart160")) {
+		opts.cart160_path = ini["cart160"];
+	}
+	if (ini.has("cart192")) {
+		opts.cart192_path = ini["cart192"];
+	}
+	if (ini.has("cart224")) {
+		opts.cart224_path = ini["cart224"];
 	}
 
 	// Deprecated and ignored
@@ -1269,7 +1319,13 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	};
 
 	set_option("rom", Options.rom_path, Default_options.rom_path);
-	set_option("cart", Options.cart_path, Default_options.cart_path);
+	set_option("cart32", Options.cart32_path, Default_options.cart32_path);
+	set_option("cart64", Options.cart64_path, Default_options.cart64_path);
+	set_option("cart96", Options.cart96_path, Default_options.cart96_path);
+	set_option("cart128", Options.cart128_path, Default_options.cart128_path);
+	set_option("cart160", Options.cart160_path, Default_options.cart160_path);
+	set_option("cart192", Options.cart192_path, Default_options.cart192_path);
+	set_option("cart224", Options.cart224_path, Default_options.cart224_path);
 	// Deprecated and ignored
 	//set_option("patch", Options.patch_path, Default_options.patch_path);
 	//set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());

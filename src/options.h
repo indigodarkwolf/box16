@@ -44,7 +44,13 @@ enum class wav_recorder_start_t {
 
 struct options {
 	std::filesystem::path rom_path     = "rom.bin";
-	std::filesystem::path cart_path    = "";
+	std::filesystem::path cart32_path  = "";
+	std::filesystem::path cart64_path  = "";
+	std::filesystem::path cart96_path  = "";
+	std::filesystem::path cart128_path = "";
+	std::filesystem::path cart160_path = "";
+	std::filesystem::path cart192_path = "";
+	std::filesystem::path cart224_path = "";
 	std::filesystem::path nvram_path   = "";
 	std::filesystem::path hyper_path   = ".";
 	std::filesystem::path prg_path     = "";
