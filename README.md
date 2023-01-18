@@ -1,5 +1,5 @@
 ## Explaining -romcart option
-When loading a rom file using the -romcart, it is placed in the memory space above ram starting at bank $20, and at addr $c000.  
+When loading a rom file using the -romcart flag, it is placed in the memory space above ROM starting at a bank multiple of 32 if it is specified before the filename, otherwise at bank 32, and at addr $c000.  
 To actually run said code, one must set $01 to the correct bank and jump to your entry point.  
 
 As of now, this area above is not technically rom so code here can be overwritten.
