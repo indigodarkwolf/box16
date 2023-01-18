@@ -81,7 +81,6 @@ void draw_options_menu()
 	}
 
 	file_option("bin", Options.rom_path, "ROM path", "Location of the emulator ROM file.\nCommand line: -rom <path>");
-	file_option("bpf", Options.patch_path, "Patch path", "Location of a Box16 patch file to apply to the ROM.\nCommand line: -patch <path>");
 	file_option("bin;nvram", Options.nvram_path, "NVRAM path", "Location of NVRAM image file, if any.\nCommand line: -nvram <path>");
 	file_option("bin;img;sdcard", Options.sdcard_path, "SD Card path", "Location of SD card image file, if any.\nCommand line: -sdcard <path>");
 
@@ -94,8 +93,6 @@ void draw_options_menu()
 
 	ImGui::TextDisabled("Boot Options");
 	ImGui::Separator();
-	bool_option(Options.apply_patch, "Ignore patch", "Ignore the patch file, if any.\nCommand line: -nopatch");
-
 	file_option("prg", Options.prg_path, "PRG path", "PRG file to LOAD after boot, if any.\nCommand line: -prg <path>");
 	ImGui::InputHexLabel("Load address override", Options.prg_override_start);
 	if (ImGui::IsItemHovered()) {
@@ -255,6 +252,7 @@ void draw_options_menu()
 
 	static auto vsync_name = [](vsync_mode_t vsync_mode) {
 		switch (vsync_mode) {
+			case vsync_mode_t::VSYNC_MODE_DISABLED: return "Disabled";
 			case vsync_mode_t::VSYNC_MODE_NONE: return "None";
 			case vsync_mode_t::VSYNC_MODE_GET_SYNC: return "Get";
 			case vsync_mode_t::VSYNC_MODE_WAIT_SYNC: return "Wait";
@@ -265,7 +263,9 @@ void draw_options_menu()
 	if (ImGui::BeginCombo("Vsync Mode", vsync_name(Options.vsync_mode))) {
 		static auto selection = [](vsync_mode_t vsync_mode) {
 			if (ImGui::Selectable(vsync_name(vsync_mode), Options.vsync_mode == vsync_mode)) {
-				Options.vsync_mode = vsync_mode;
+				if (Options.vsync_mode != vsync_mode_t::VSYNC_MODE_DISABLED) {
+					Options.vsync_mode = vsync_mode;
+				}
 			}
 		};
 
@@ -276,7 +276,7 @@ void draw_options_menu()
 		ImGui::EndCombo();
 	}
 	if (ImGui::IsItemHovered()) {
-		ImGui::SetTooltip("Set vsync mode:\nNone: Do not wait for vsync.\nGet: Check vsync asynchronously.\nWait: Wait for vsync.\nCommand line: -vsync {none|get|wait}");
+		ImGui::SetTooltip("Set vsync mode:\nNone: Do not wait for vsync.\nGet: Check vsync asynchronously.\nWait: Wait for vsync.\nCommand line: -vsync {none|get|wait}\n\nIf this reads \"Disabled\", then Box16 has detected this PC\ncannot perform vsync logic and automatically disabled vsync.");
 	}
 
 	file_option("gif", Options.gif_path, "GIF path", "Location to save gifs\nCommand line: -gif <path>[,wait]");

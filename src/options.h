@@ -24,10 +24,11 @@ enum class option_source {
 };
 
 enum class vsync_mode_t {
+	VSYNC_MODE_DISABLED = -1,
 	VSYNC_MODE_NONE = 0,
 	VSYNC_MODE_GET_SYNC,
 	VSYNC_MODE_WAIT_SYNC,
-	VSYNC_MODE_DEBUG,
+	VSYNC_MODE_DEBUG
 };
 
 enum class gif_recorder_start_t {
@@ -44,8 +45,6 @@ enum class wav_recorder_start_t {
 struct options {
 	std::filesystem::path rom_path     = "rom.bin";
 	std::filesystem::path cart_path    = "";
-	std::filesystem::path patch_path   = "";
-	std::filesystem::path patch_target = "";
 	std::filesystem::path nvram_path   = "";
 	std::filesystem::path hyper_path   = ".";
 	std::filesystem::path prg_path     = "";
@@ -53,9 +52,6 @@ struct options {
 	std::filesystem::path sdcard_path  = "";
 	std::filesystem::path gif_path     = "";
 	std::filesystem::path wav_path     = "";
-
-	bool create_patch = false;
-	bool apply_patch  = false;
 
 	uint16_t prg_override_start = 0;
 
