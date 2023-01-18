@@ -77,6 +77,16 @@ static bool Initd_icons               = false;
 static float Max_anisotropy = 1.0f;
 #endif
 
+static bool vsync_is_enabled()
+{
+	return static_cast<int>(Options.vsync_mode) > static_cast<int>(vsync_mode_t::VSYNC_MODE_DISABLED);
+}
+
+static bool vsync_is_disabled()
+{
+	return static_cast<int>(Options.vsync_mode) < static_cast<int>(vsync_mode_t::VSYNC_MODE_DISABLED);
+}
+
 bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 {
 	if (texture != 0) {
@@ -499,7 +509,11 @@ bool display_init(const display_settings &settings)
 	SDL_ShowCursor(SDL_DISABLE);
 
 	if (Options.vsync_mode == vsync_mode_t::VSYNC_MODE_GET_SYNC || Options.vsync_mode == vsync_mode_t::VSYNC_MODE_WAIT_SYNC) {
-		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		if(glFenceSync == nullptr) {
+			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_DISABLED;
+		} else {
+			Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		}
 	}
 
 	Display_timing_history.add(0);
@@ -542,19 +556,20 @@ void display_process()
 		if (failed) {
 			// Seems like vsync isn't working, let's disable it.
 			SDL_ShowSimpleMessageBox(SDL_MessageBoxFlags::SDL_MESSAGEBOX_WARNING, "V-Sync was automatically disabled", "Box16 has detected a problem with the current V-Sync settings.\nV-Sync has been disabled.", display_get_window());
-			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_NONE;
+			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_DISABLED;
 			return true;
 		}
 
 		return false;
 	};
 
-	if (Options.vsync_mode != vsync_mode_t::VSYNC_MODE_NONE) {
+	if (vsync_is_enabled()) {
 		video_timeout(5000000);
 	}
 
 	if (Render_complete != 0) {
 		switch (Options.vsync_mode) {
+			case vsync_mode_t::VSYNC_MODE_DISABLED: [[fallthrough]];
 			case vsync_mode_t::VSYNC_MODE_NONE:
 				// Handle asynchronous vsync disable
 				glDeleteSync(Render_complete);
@@ -631,7 +646,7 @@ void display_process()
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 	SDL_GL_SwapWindow(Display_window);
 
-	if (Options.vsync_mode != vsync_mode_t::VSYNC_MODE_NONE) {
+	if (vsync_is_enabled()) {
 		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		if (Render_complete == 0) {
 			printf("Error: glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0) returned 0, V-Sync is probably not supported by this system's drivers.\n");
