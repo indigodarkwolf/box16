@@ -81,7 +81,6 @@ void draw_options_menu()
 	}
 
 	file_option("bin", Options.rom_path, "ROM path", "Location of the emulator ROM file.\nCommand line: -rom <path>");
-	file_option("bpf", Options.patch_path, "Patch path", "Location of a Box16 patch file to apply to the ROM.\nCommand line: -patch <path>");
 	file_option("bin;nvram", Options.nvram_path, "NVRAM path", "Location of NVRAM image file, if any.\nCommand line: -nvram <path>");
 	file_option("bin;img;sdcard", Options.sdcard_path, "SD Card path", "Location of SD card image file, if any.\nCommand line: -sdcard <path>");
 
@@ -94,8 +93,6 @@ void draw_options_menu()
 
 	ImGui::TextDisabled("Boot Options");
 	ImGui::Separator();
-	bool_option(Options.apply_patch, "Ignore patch", "Ignore the patch file, if any.\nCommand line: -nopatch");
-
 	file_option("prg", Options.prg_path, "PRG path", "PRG file to LOAD after boot, if any.\nCommand line: -prg <path>");
 	ImGui::InputHexLabel("Load address override", Options.prg_override_start);
 	if (ImGui::IsItemHovered()) {
