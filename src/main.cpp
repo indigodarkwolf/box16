@@ -205,12 +205,13 @@ int main(int argc, char **argv)
 		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
 
-		if (strcmp(Options.cart_path.string().c_str(), "")) {
-			SDL_RWops *cf = open_file(Options.cart_path, "rom", "rb");
+		if (!Options.cart_path.empty()) {
+			SDL_RWops *cf = open_file(Options.cart_path, "romcart", "rb");
 			if (cf == nullptr) {
 				error("Cartridge / ROM error", "Could not find cartridge.");
 			}
-			SDL_RWread(cf, ROM + (0x4000 * Options.cart_bank), SDL_RWsize(cf), 1);
+			const size_t cart_size = static_cast<size_t>(SDL_RWsize(cf));
+			SDL_RWread(cf, ROM + (0x4000 * Options.cart_bank), cart_size, 1);
 		}
 	}
 

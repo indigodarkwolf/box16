@@ -157,8 +157,8 @@ static void usage()
 	printf("-rom <rom.bin>\n");
 	printf("\tOverride KERNAL/BASIC/* ROM file.\n");
 
-	printf("-romcart <cart.bin>\n");
-	printf("\tLoad a cartridge into ROM space starting at bank $20 (32)\n");
+	printf("-romcart [banknum] <cart.bin>\n");
+	printf("\tLoad a cartridge into ROM space starting at the specified bank, or bank 32 if omitted.\n");
 
 	printf("-rtc\n");
 	printf("\tSet the real-time-clock to the current system time and date.\n");
