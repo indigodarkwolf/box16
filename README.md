@@ -1,14 +1,7 @@
-## Explaining -romcart option
-When loading a rom file using the -romcart flag, it is placed in the memory space above ROM starting at a bank multiple of 32 if it is specified before the filename, otherwise at bank 32, and at addr $c000.  
-To actually run said code, one must set $01 to the correct bank and jump to your entry point.  
-
-As of now, this area above is not technically rom so code here can be overwritten.
-
--------
 # Box16
 
-[![Build status](https://github.com/cnelson20/box16/actions/workflows/build.yml/badge.svg)](https://github.com/cnelson20/box16/actions/workflows/build.yml)<br/>
-[![Release](https://img.shields.io/github/v/release/cnelson20/box16)](https://github.com/cnelson20/box16/releases)
+[![Build status](https://github.com/indigodarkwolf/box16/actions/workflows/build.yml/badge.svg)](https://github.com/indigodarkwolf/box16/actions/workflows/build.yml)<br/>
+[![Release](https://img.shields.io/github/v/release/indigodarkwolf/box16)](https://github.com/indigodarkwolf/box16/releases)
 
 This is an emulator for the Commander X16 computer system. Unlike [the official emulator](https://github.com/commanderx16/x16-emulator), this has a few more dependencies, see the build instructions below. It compiles on Windows, Debian Linux, and Raspbian, and probably 
 other Linux-based platforms.
