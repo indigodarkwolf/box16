@@ -55,7 +55,7 @@ static void usage()
 
 	printf("-abufs <number of audio buffers>\n");
 	printf("\tIs provided for backward-compatibility with x16emu toolchains,\n");
-	printf("\tbut is non-functional in Box16.\n ");
+	printf("\tbut is non-functional in Box16.\n");
 
 	printf("-bas <app.txt>\n");
 	printf("\tInject a BASIC program in ASCII encoding through the\n");
@@ -157,8 +157,10 @@ static void usage()
 	printf("-rom <rom.bin>\n");
 	printf("\tOverride KERNAL/BASIC/* ROM file.\n");
 
-	printf("-romcart [banknum] <cart.bin>\n");
-	printf("\tLoad a cartridge into ROM space starting at the specified bank, or bank 32 if omitted.\n");
+	printf("-romcart <cart.bin>[,<banknum>]\n");
+	printf("\tLoad a cartridge into ROM space starting at the specified banknum, or bank 32 if omitted.\n");
+	printf("\t-romcart can be specified multiple times, or its arguments can be specified as a comma-separated list.\n");
+	printf("\t(example: `-romcart cart0.bin,32,cart1.bin,36,cart2.bin,40`)\n");
 
 	printf("-rtc\n");
 	printf("\tSet the real-time-clock to the current system time and date.\n");
@@ -621,34 +623,39 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 		} else if (!strcmp(argv[0], "-romcart")) {
 			argc--;
 			argv++;
-			
-			int bank;
-			
+
+			int bank = 32;
+
 			if (!argc || argv[0][0] == '-') {
 				usage();
 			}
 
-			if (sscanf(argv[0], "%d", &bank) == 1) {
-				if (bank < 32 || bank > 224) {
-					printf("bank must be between 32 and 224!\n");
-					exit(1);
-				}
-				ini["cart_bank"] = argv[0];
+			std::stringstream new_carts;
+			std::string      &carts = ini["carts"];
 
-				argc--;
-				argv++;
-				if (!argc || argv[0][0] == '-') {
-					usage();
+			const char *path_str = token_or_empty(argv[0], ",");
+			const char *bank_str = token_or_empty(nullptr, ",");
+			const char *prefix   = carts.empty() ? "" : ",";
+			while (path_str[0] != '\0') {
+				int bank;
+				if (sscanf(bank_str, "%d", &bank) != 1) {
+					new_carts << prefix << path_str << "," << 32;
+					path_str = bank_str;
+					bank_str = token_or_empty(nullptr, ",");
+				} else {
+					new_carts << prefix << path_str << "," << bank;
+					path_str = token_or_empty(nullptr, ",");
+					bank_str = token_or_empty(nullptr, ",");
 				}
-			} else {
-				ini["cart_bank"] = "32";
+				prefix = ",";
 			}
-			
-			ini["cart"] = argv[0];
+
+			carts.append(new_carts.str());
+
 			argc--;
 			argv++;
 
-		} else if (!strcmp(argv[0], " - rtc ")) {
+		} else if (!strcmp(argv[0], "-rtc")) {
 			argc--;
 			argv++;
 			ini["rtc"] = "true";
@@ -807,11 +814,15 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.rom_path = ini["rom"];
 	}
 
-	if (ini.has("cart")) {
-		opts.cart_path = ini["cart"];
-		
-		int bank = atoi(ini["cart_bank"].c_str());
-		opts.cart_bank = bank;
+	if (ini.has("carts")) {
+		const char *path_str = token_or_empty(ini["carts"], ",");
+		const char *bank_str = token_or_empty(nullptr, ",");
+
+		while (path_str[0] != '\0' && bank_str[0] != '\0') {
+			opts.rom_carts.push_back({ path_str, (uint8_t)strtol(bank_str, nullptr, 10) });
+			path_str = token_or_empty(nullptr, ",");
+			bank_str = token_or_empty(nullptr, ",");
+		}
 	}
 
 	// Deprecated and ignored
@@ -1181,6 +1192,23 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 			if (all || option_value != default_value) {
 				ini_main[name] = option_value.generic_string();
 			}
+		} else if constexpr (std::is_same<decltype(option_value), decltype(options::rom_carts)>::value) {
+			auto stringify = [](auto &value) -> std::string {
+				std::stringstream value_string;
+				const char       *prefix = "";
+				for (auto &[path, bank] : value) {
+					value_string << prefix << path.generic_string() << "," << bank;
+					prefix = ",";
+				}
+				return value_string.str();
+			};
+
+			std::string option_value_string  = stringify(option_value);
+			std::string default_value_string = stringify(default_value);
+
+			if (all || option_value_string != default_value_string) {
+				ini_main[name] = option_value_string;
+			}
 		} else {
 			if (all || option_value != default_value) {
 				value << option_value;
@@ -1292,8 +1320,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	};
 
 	set_option("rom", Options.rom_path, Default_options.rom_path);
-	set_option("cart", Options.cart_path, Default_options.cart_path);
-	set_option("cart_bank", Options.cart_bank, Default_options.cart_bank);
+	set_option("carts", Options.rom_carts, Default_options.rom_carts);
 	// Deprecated and ignored
 	// set_option("patch", Options.patch_path, Default_options.patch_path);
 	// set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());

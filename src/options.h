@@ -3,6 +3,7 @@
 #	define OPTIONS_H
 
 #	include <filesystem>
+#	include <list>
 
 enum class echo_mode_t {
 	ECHO_MODE_NONE = 0,
@@ -44,8 +45,7 @@ enum class wav_recorder_start_t {
 
 struct options {
 	std::filesystem::path rom_path    = "rom.bin";
-	std::filesystem::path cart_path   = "";
-	uint8_t               cart_bank   = 32;
+	std::list<std::tuple<std::filesystem::path, uint8_t>> rom_carts;
 	std::filesystem::path nvram_path  = "";
 	std::filesystem::path hyper_path  = ".";
 	std::filesystem::path prg_path    = "";

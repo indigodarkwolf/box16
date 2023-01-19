@@ -178,7 +178,7 @@ int main(int argc, char **argv)
 			f = SDL_RWFromFile(real_path_string.c_str(), mode);
 			printf("Using %s at %s\n", cmdline_option, real_path_string.c_str());
 		}
-		printf("\t-%s sourced from: %s\n ", cmdline_option, srcname);
+		printf("\t-%s sourced from: %s\n", cmdline_option, srcname);
 		return f;
 	};
 
@@ -205,13 +205,16 @@ int main(int argc, char **argv)
 		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
 
-		if (!Options.cart_path.empty()) {
-			SDL_RWops *cf = open_file(Options.cart_path, "romcart", "rb");
-			if (cf == nullptr) {
-				error("Cartridge / ROM error", "Could not find cartridge.");
+		if (!Options.rom_carts.empty()) {
+			for (auto &[path, bank] : Options.rom_carts) {
+				SDL_RWops *cf = open_file(path, "romcart", "rb");
+				if (cf == nullptr) {
+					error("Cartridge / ROM error", "Could not find cartridge.");
+				}
+				const size_t cart_size = static_cast<size_t>(SDL_RWsize(cf));
+				SDL_RWread(cf, ROM + (0x4000 * bank), cart_size, 1);
+				SDL_RWclose(cf);
 			}
-			const size_t cart_size = static_cast<size_t>(SDL_RWsize(cf));
-			SDL_RWread(cf, ROM + (0x4000 * Options.cart_bank), cart_size, 1);
 		}
 	}
 
