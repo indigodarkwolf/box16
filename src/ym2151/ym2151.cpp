@@ -9,19 +9,6 @@
 #include "audio.h"
 #include "bitutils.h"
 
-//#define YM2151_USE_PICK 1
-//#define YM2151_USE_LINEAR_INTERPOLATION 1
-//#define YM2151_USE_R8BRAIN_RESAMPLING 1
-//#define YM2151_USE_LOWPASS_FILTER_RESAMPLING 1
-
-#if !defined(YM2151_USE_PICK) && !defined(YM2151_USE_LINEAR_INTERPOLATION) && !defined(YM2151_USE_R8BRAIN_RESAMPLING) && !defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
-#	define YM2151_USE_LOWPASS_FILTER_RESAMPLING 1
-#endif
-
-#if defined(YM2151_USE_R8BRAIN_RESAMPLING)
-#	include "CDSPResampler.h"
-#endif
-
 class ym2151_interface : public ymfm::ymfm_interface
 {
 public:
@@ -199,114 +186,6 @@ public:
 
 		uint32_t samples_used = 0;
 
-#if defined(YM2151_USE_PICK)
-		auto     pick         = [&samples_used, this](ymfm::ym2151::output_data &ym) {
-            if (samples_used >= m_backbuffer_used) {
-                pregenerate(1);
-            }
-
-            ym = m_backbuffer[samples_used];
-            ++samples_used;
-		};
-
-		const uint64_t generation_step = 0x100000000ULL / m_chip_sample_rate;
-		const uint64_t sample_step     = 0x100000000ULL / sample_rate;
-
-		ymfm::ym2151::output_data ym0 = m_previous_samples[0];
-		ymfm::ym2151::output_data ym1 = m_previous_samples[1];
-
-		for (uint32_t s = 0; s < samples; ++s) {
-			while (m_generation_time < sample_step) {
-				ym0 = ym1;
-				pick(ym1);
-				m_generation_time += generation_step;
-			}
-			m_generation_time -= sample_step;
-
-			*buffers = ym1.data[0];
-			++buffers;
-			*buffers = ym1.data[1];
-			++buffers;
-		}
-
-		m_previous_samples[0] = ym0;
-		m_previous_samples[1] = ym1;
-#elif defined(YM2151_USE_LINEAR_INTERPOLATION)
-		auto     pick         = [&samples_used, this](ymfm::ym2151::output_data &ym) {
-            if (samples_used >= m_backbuffer_used) {
-                pregenerate(1);
-            }
-
-            ym = m_backbuffer[samples_used];
-            ++samples_used;
-		};
-
-		auto lerp = [](double v0, double v1, double x, double x_min, double x_max) -> double {
-			const double ratio = (x - x_min) / (x_max - x_min);
-			return v0 + (v1 - v0) * ratio;
-		};
-
-		const uint64_t generation_step = 0x100000000ULL / m_chip_sample_rate;
-		const uint64_t sample_step     = 0x100000000ULL / sample_rate;
-
-		ymfm::ym2151::output_data ym0 = m_previous_samples[0];
-		ymfm::ym2151::output_data ym1 = m_previous_samples[1];
-
-		for (uint32_t s = 0; s < samples; ++s) {
-			while (m_generation_time < sample_step) {
-				ym0 = ym1;
-				pick(ym1);
-				m_generation_time += generation_step;
-			}
-			m_generation_time -= sample_step;
-
-			*buffers = (int16_t)lerp(ym0.data[0], ym1.data[0], (double)m_generation_time, 0, (double)m_chip_sample_rate);
-			++buffers;
-			*buffers = (int16_t)lerp(ym0.data[1], ym1.data[1], (double)m_generation_time, 0, (double)m_chip_sample_rate);
-			++buffers;
-		}
-
-		m_previous_samples[0] = ym0;
-		m_previous_samples[1] = ym1;
-
-#elif defined(YM2151_USE_R8BRAIN_RESAMPLING)
-		r8b::CDSPResampler16 resampler[2]{
-			r8b::CDSPResampler16(m_chip_sample_rate, sample_rate, m_chip_sample_rate),
-			r8b::CDSPResampler16(m_chip_sample_rate, sample_rate, m_chip_sample_rate)
-		};
-
-		for (int i = 0; i < 2; ++i) {
-			double *input = static_cast<double *>(alloca(sizeof(double) * samples_needed));
-			for (uint32_t s = 0; s < samples_needed; ++s) {
-				input[s] = m_backbuffer[s].data[i];
-			}
-
-			double * output;
-			int16_t *out_stream = &buffers[i];
-			int      out_needed = samples;
-
-			int out_written = resampler[i].process(input, samples_needed, output);
-			out_written     = std::min(out_written, out_needed);
-			for (int o = 0; o < out_written; ++o) {
-				*out_stream = (int16_t)output[o];
-				out_stream += 2;
-			}
-			out_needed -= out_written;
-
-			memset(input, 0, sizeof(double) * samples_needed);
-			while (out_needed > 0) {
-				out_written = resampler[i].process(input, samples_needed, output);
-				out_written = std::min(out_written, out_needed);
-				for (int o = 0; o < out_written; ++o) {
-					*out_stream = (int16_t)output[o];
-					out_stream += 2;
-				}
-				out_needed -= out_written;
-			}
-		}
-
-		samples_used = samples_needed;
-#elif defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
 		// iterate over output samples
 		int16_t *out_streams[2] = {&buffers[0], &buffers[1]};
 		for (uint32_t s = 0; s < samples; s++) {
@@ -336,7 +215,6 @@ public:
 		}
 
 		samples_used = samples_needed;
-#endif
 
 		if (samples_used < m_backbuffer_used) {
 			memmove(&m_backbuffer[0], &m_backbuffer[samples_used], sizeof(ymfm::ym2151::output_data) * (m_backbuffer_used - samples_used));
@@ -464,14 +342,12 @@ private:
 
 	bool m_irq_status;
 
-#if defined(YM2151_USE_LOWPASS_FILTER_RESAMPLING)
 	static constexpr int upsampling_factor = 8;
 
 #include "resampling_filter_kernel.inl"
 	
 	static constexpr int filter_memory_length = filter_kernel_length / upsampling_factor + 1;
 	ymfm::ym2151::output_data m_filter_memory[filter_kernel_length];
-#endif
 };
 
 static ym2151_interface Ym_interface;
