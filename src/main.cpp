@@ -16,6 +16,7 @@
 #include "SDL.h"
 #include "audio.h"
 #include "cpu/fake6502.h"
+#include "cpu/mnemonics.h"
 #include "debugger.h"
 #include "display.h"
 #include "gif_recorder.h"
@@ -29,6 +30,7 @@
 #include "midi.h"
 #include "options.h"
 #include "overlay/cpu_visualization.h"
+#include "overlay/disasm.h"
 #include "overlay/overlay.h"
 #include "ring_buffer.h"
 #include "rtc.h"
@@ -45,9 +47,6 @@
 #include "via.h"
 #include "wav_recorder.h"
 #include "ym2151/ym2151.h"
-#include "cpu/mnemonics.h"
-#include "overlay/disasm.h"
-
 
 #ifdef __EMSCRIPTEN__
 #	include <emscripten.h>
@@ -63,7 +62,7 @@ bool save_on_exit = true;
 bool       has_boot_tasks = false;
 SDL_RWops *prg_file       = nullptr;
 
-void machine_dump(const char* reason)
+void machine_dump(const char *reason)
 {
 	printf("Dumping system memory. Reason: %s\n", reason);
 	int  index = 0;
@@ -206,18 +205,12 @@ int main(int argc, char **argv)
 		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
 
-		std::filesystem::path cart_paths[7] = {Options.cart32_path, Options.cart64_path, Options.cart96_path, Options.cart128_path, 
-			Options.cart160_path, Options.cart192_path, Options.cart224_path};
-
-		int path_array_no;
-		for (path_array_no = 0; path_array_no < 7; path_array_no++) {
-			if (strcmp(cart_paths[path_array_no].string().c_str(), "")) {
-				SDL_RWops *cf = open_file(cart_paths[path_array_no], "rom", "rb");
-				if (cf == nullptr) {
-					error("Cartridge / ROM error", "Could not find cartridge.");
-				}
-				SDL_RWread(cf, ROM + (0x4000 * (0x20 * (path_array_no + 1))), SDL_RWsize(cf), 1);
+		if (strcmp(Options.cart_path.string().c_str(), "")) {
+			SDL_RWops *cf = open_file(Options.cart_path, "rom", "rb");
+			if (cf == nullptr) {
+				error("Cartridge / ROM error", "Could not find cartridge.");
 			}
+			SDL_RWread(cf, ROM + (0x4000 * Options.cart_bank), SDL_RWsize(cf), 1);
 		}
 	}
 
@@ -271,7 +264,7 @@ int main(int argc, char **argv)
 		init_settings.window_rect.y = 0;
 		init_settings.window_rect.w = (int)(480 * Options.window_scale * init_settings.aspect_ratio);
 		init_settings.window_rect.h = (480 * Options.window_scale) + IMGUI_OVERLAY_MENU_BAR_HEIGHT;
-		if(const bool initd = display_init(init_settings); initd == false) {
+		if (const bool initd = display_init(init_settings); initd == false) {
 			printf("Could not initialize display, quitting.\n");
 			goto display_quit;
 		}
@@ -414,12 +407,12 @@ void sncatf(char *&buffer_start, size_t &size_remaining, char const *fmt, ...)
 	va_list arglist;
 	va_start(arglist, fmt);
 	size_t printed = vsnprintf(buffer_start, size_remaining, fmt, arglist);
-    va_end(arglist);
+	va_end(arglist);
 	buffer_start += printed;
 	size_remaining -= printed;
 }
 
-size_t disasm_code(char* buffer, size_t buffer_size, uint16_t pc, /*char *line, unsigned int max_line,*/ uint8_t bank)
+size_t disasm_code(char *buffer, size_t buffer_size, uint16_t pc, /*char *line, unsigned int max_line,*/ uint8_t bank)
 {
 
 	uint8_t     opcode   = debug_read6502(pc, bank);
@@ -436,9 +429,8 @@ size_t disasm_code(char* buffer, size_t buffer_size, uint16_t pc, /*char *line, 
 	//
 	bool is_zprel = (opcode & 0x0F) == 0x0F;
 
-	is_branch = is_branch || is_zprel;
-	char* buffer_beg = buffer;
-
+	is_branch        = is_branch || is_zprel;
+	char *buffer_beg = buffer;
 
 	switch (mode) {
 		case op_mode::MODE_ZPREL: {
@@ -446,9 +438,9 @@ size_t disasm_code(char* buffer, size_t buffer_size, uint16_t pc, /*char *line, 
 			uint16_t target = pc + 3 + (int8_t)debug_read6502(pc + 2, bank);
 
 			sncatf(buffer, buffer_size, "%s", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label(zp, is_branch, "$%02X") );
+			sncatf(buffer, buffer_size, "%s", disasm_label(zp, is_branch, "$%02X"));
 			sncatf(buffer, buffer_size, ", ");
-			sncatf(buffer, buffer_size, "%s", disasm_label(target, is_branch, "$%04X") );
+			sncatf(buffer, buffer_size, "%s", disasm_label(target, is_branch, "$%04X"));
 		} break;
 
 		case op_mode::MODE_IMP:
@@ -571,45 +563,43 @@ void emulator_loop()
 		//
 #if defined(TRACE)
 		{
-			uint16_t pc = state6502.pc;
-			uint8_t  x  = state6502.x;
-			uint8_t  y  = state6502.y;
-			uint8_t  a  = state6502.a;
-			uint8_t  status  = state6502.status;
-			uint8_t  sp      = state6502.sp;
-			uint8_t  ram     = memory_get_ram_bank();	
-			uint8_t  rom     = memory_get_rom_bank();	
-			uint8_t  cur     = memory_get_current_bank(pc);	
+			uint16_t pc     = state6502.pc;
+			uint8_t  x      = state6502.x;
+			uint8_t  y      = state6502.y;
+			uint8_t  a      = state6502.a;
+			uint8_t  status = state6502.status;
+			uint8_t  sp     = state6502.sp;
+			uint8_t  ram    = memory_get_ram_bank();
+			uint8_t  rom    = memory_get_rom_bank();
+			uint8_t  cur    = memory_get_current_bank(pc);
 			char     buffer[1024];
 			uint8_t  pos = 0;
 
-			if ( (Options.log_cpu_main && (pc >= 0x0800 && pc <= 0x9FFF ) ) ||
-			     (Options.log_cpu_bram && (pc >= 0xA000 && pc <= 0xBFFF ) ) ||
-			     (Options.log_cpu_low  && (pc >= 0x0000 && pc <= 0x07FF ) ) ||
- 			     (Options.log_cpu_brom && (pc >= 0xC000 && pc <= 0xFFFF ) )
-				) {
+			if ((Options.log_cpu_main && (pc >= 0x0800 && pc <= 0x9FFF)) ||
+			    (Options.log_cpu_bram && (pc >= 0xA000 && pc <= 0xBFFF)) ||
+			    (Options.log_cpu_low && (pc >= 0x0000 && pc <= 0x07FF)) ||
+			    (Options.log_cpu_brom && (pc >= 0xC000 && pc <= 0xFFFF))) {
 
-				 printf("a:$%02x x:$%02x y:$%02x s:$%02x p:", a, x, y, sp);
-				 for (int i = 7; i >= 0; i--) {
-					 printf("%c", (status & (1 << i)) ? "czidb.vn"[i] : '-');
-				 }
+				printf("a:$%02x x:$%02x y:$%02x s:$%02x p:", a, x, y, sp);
+				for (int i = 7; i >= 0; i--) {
+					printf("%c", (status & (1 << i)) ? "czidb.vn"[i] : '-');
+				}
 
-				 printf(" ram=$%02x rom=$%02x ", ram, rom);
-				 const char *label     = disasm_get_label(pc);
-				 size_t      label_len = label ? strlen(label) : 0;
-				 if (label) {
-					 printf("%s", label);
-				 }
-				 label_len = (label_len <= 25) ? label_len : 25;
-				 for (size_t i = 0; i < 25 - label_len; i++) {
-					 printf(" ");
-				 }
-				 printf("$%02x:$%04x ", cur, pc);
-				 disasm_code(buffer, sizeof(buffer), pc, cur);
-				 printf("%s", buffer);
+				printf(" ram=$%02x rom=$%02x ", ram, rom);
+				const char *label     = disasm_get_label(pc);
+				size_t      label_len = label ? strlen(label) : 0;
+				if (label) {
+					printf("%s", label);
+				}
+				label_len = (label_len <= 25) ? label_len : 25;
+				for (size_t i = 0; i < 25 - label_len; i++) {
+					printf(" ");
+				}
+				printf("$%02x:$%04x ", cur, pc);
+				disasm_code(buffer, sizeof(buffer), pc, cur);
+				printf("%s", buffer);
 
-
-				 printf("\n");
+				printf("\n");
 			}
 		}
 #endif
