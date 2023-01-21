@@ -360,8 +360,8 @@ Wiki
 License
 -------
 
-Copyright (c) 2019-2020 Michael Steil &lt;mist64@mac.com&gt;, [www.pagetable.com](https://www.pagetable.com/), et al.<br>
-Portions copyright (c) 2021-2022 Stephen Horn, et al.<br>
+Copyright (c) 2019-2023 Michael Steil &lt;mist64@mac.com&gt;, [www.pagetable.com](https://www.pagetable.com/), et al.<br>
+Portions copyright (c) 2021-2023 Stephen Horn, et al.<br>
 All rights reserved. License: 2-clause BSD
 
 

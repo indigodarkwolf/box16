@@ -1,6 +1,6 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
-// Copyright (c) 2021-2022 Stephen Horn, et al.
+// Copyright (c) 2021-2023 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #ifndef VIA_H

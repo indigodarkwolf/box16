@@ -46,9 +46,9 @@ static const char *token_or_empty(char *str, const char *token)
 static void usage()
 {
 	printf("%s %s (%s)\n", VER_TITLE, VER_NUM, VER_NAME);
-	printf("Copyright (c) 2019-2022 Michael Steil,\n");
+	printf("Copyright (c) 2019-2023 Michael Steil,\n");
 	printf("              2020 Frank van den Hoen,\n");
-	printf("              2021-2022 Stephen Horn, et al.\n");
+	printf("              2021-2023 Stephen Horn, et al.\n");
 	printf("All rights reserved. License: 2-clause BSD\n\n");
 
 	printf("Usage: box16 [option] ...\n\n");
