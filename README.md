@@ -57,7 +57,7 @@ Read `resources/r41/README.box16` and build or acquire the necessary files.
 
 The needed development packages are available as a distribution package with most major versions of Linux:
 - Debian: `sudo apt-get install libgtk-3-dev libsdl2-dev`
-- Fedora 33: `sudo dnf install SDL2-devel`
+- Fedora 37: `sudo dnf install gtk3-devel SDL2-devel alsa-lib-devel`
 - Raspbian: `sudo apt-get install libgtk-3-dev libsdl2-dev`
 
 Type `make` to build the source. The output will be `box16` in the output directory. Remember you will also need a `rom.bin` as described above.
