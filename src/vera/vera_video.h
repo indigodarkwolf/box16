@@ -152,8 +152,8 @@ const uint8_t *                    vera_video_get_layer_data(int layer);
 const vera_video_sprite_properties *vera_video_get_sprite_properties(int sprite);
 const uint8_t *                     vera_video_get_sprite_data(int sprite);
 
-void vera_video_enable_safety_frame(bool enable);
-bool vera_video_safety_frame_is_enabled();
+void vera_video_enable_safety_frame(uint8_t video_mode, bool enable);
+bool vera_video_safety_frame_is_enabled(uint8_t video_mode);
 
 float    vera_video_get_scan_pos_x();
 uint16_t vera_video_get_scan_pos_y();

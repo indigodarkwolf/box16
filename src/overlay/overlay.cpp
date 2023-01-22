@@ -2339,9 +2339,17 @@ static void draw_menu_bar()
 			ImGui::Checkbox("YM2151 Monitor", &Show_YM2151_monitor);
 			ImGui::Separator();
 
-			bool safety_frame = vera_video_safety_frame_is_enabled();
-			if (ImGui::Checkbox("Show Safety Frame", &safety_frame)) {
-				vera_video_enable_safety_frame(safety_frame);
+			if (ImGui::BeginMenu("Safety Frame")) {
+				static constexpr const char *modes[] = { "Disabled", "VGA", "NTSC", "RGB interlaced, composite, via VGA connector" };
+				static constexpr const uint8_t num_modes = sizeof(modes) / sizeof(modes[0]);
+
+				for (uint8_t i = 0; i < num_modes; ++i) {
+					bool safety_frame = vera_video_safety_frame_is_enabled(i);
+					if (ImGui::Checkbox(modes[i], &safety_frame)) {
+						vera_video_enable_safety_frame(i, safety_frame);
+					}					
+				}
+				ImGui::EndMenu();
 			}
 
 			ImGui::Checkbox("MIDI Control", &Show_midi_overlay);
