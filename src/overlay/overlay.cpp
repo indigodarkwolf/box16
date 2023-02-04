@@ -20,6 +20,7 @@
 #include "audio.h"
 #include "bitutils.h"
 #include "cpu/fake6502.h"
+#include "cpu/mnemonics.h"
 #include "debugger.h"
 #include "display.h"
 #include "glue.h"
@@ -59,22 +60,42 @@ bool Show_midi_overlay     = false;
 
 imgui_vram_dump vram_dump;
 
+static char const *get_disasm_label(uint16_t address)
+{
+	static char label[256];
+
+	const symbol_list_type &symbols = symbols_find(address);
+	if (symbols.size() > 0) {
+		strncpy(label, symbols.front().c_str(), 256);
+		label[255] = '\0';
+		return label;
+	}
+
+	for (uint16_t i = 1; i < 3; ++i) {
+		const symbol_list_type &symbols = symbols_find(address - i);
+		if (symbols.size() > 0) {
+			snprintf(label, 256, "%s+%d", symbols.front().c_str(), i);
+			label[255] = '\0';
+			return label;
+		}
+	}
+
+	return nullptr;
+}
+
 static void draw_debugger_cpu_status()
 {
-	ImGui::BeginTable("cpu status", 2);
+	ImGui::BeginTable("cpu status", 3, ImGuiTableFlags_Borders);
 	{
-		ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 160);
+		ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 140);
+		ImGui::TableSetupColumn("CPU Stack", ImGuiTableColumnFlags_WidthFixed, 63);
+		ImGui::TableSetupColumn("Smart Stack", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
 
 		ImGui::TableNextColumn();
 		ImGui::BeginTable("cpu regs", 1);
 		{
 			ImGui::TableNextColumn();
-			ImGui::TextDisabled("Status");
-			ImGui::NewLine();
-
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 3));
 
 			char const *names[] = { "N", "V", "-", "B", "D", "I", "Z", "C" };
@@ -155,19 +176,98 @@ static void draw_debugger_cpu_status()
 		ImGui::EndTable();
 
 		ImGui::TableNextColumn();
-		ImGui::TextDisabled("CPU Stack");
-		ImGui::NewLine();
 
-		ImGui::BeginChild("cpu stack", ImVec2(44, 460));
-		{
+		if (ImGui::BeginTable("cpu stack", 1, ImGuiTableFlags_ScrollY)) {
 			for (uint16_t i = (uint16_t)state6502.sp + 0x100; i < 0x200; ++i) {
 				uint8_t value = debug_read6502(i);
+				ImGui::TableNextColumn();
 				if (ImGui::InputHex(i, value)) {
 					debug_write6502(i, 0, value);
 				}
 			}
+			ImGui::EndTable();
 		}
-		ImGui::EndChild();
+
+		ImGui::TableNextColumn();
+
+		if (ImGui::BeginTable("smart stack", 1, ImGuiTableFlags_ScrollY)) {
+			for (uint16_t i = state6502.sp_depth - 1; i < state6502.sp_depth; --i) {
+				ImGui::TableNextColumn();
+				auto do_label = [](uint16_t pc, bool allow_disabled) {
+					const char *label = get_disasm_label(pc);
+					if (label == nullptr) {
+						if (allow_disabled) {
+							ImGui::TextDisabled("%04X", pc);
+						} else {
+							ImGui::Text("%04X", pc);
+						}
+					} else {
+						ImGui::Text("%04X: %s", pc, label);
+					}
+				};
+				switch (stack6502[i].op_type) {
+					case _stack_op_type::nmi:
+						ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF003388);
+						ImGui::PushStyleColor(ImGuiCol_Text, 0xFF0077FF);
+						break;
+					case _stack_op_type::irq:
+						ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF007788);
+						ImGui::PushStyleColor(ImGuiCol_Text, 0xFF00FFFF);
+						break;
+					case _stack_op_type::op:
+						ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+						ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
+						break;
+					default:
+						break;
+				}
+				do_label(stack6502[i].dest_pc, true);
+				ImGui::PopStyleColor(2);
+
+				if (ImGui::IsItemHovered()) {
+					ImGui::BeginTooltip();
+
+					if (ImGui::BeginTable("additional info table", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX)) {
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextDisabled("%s", "Source address:");
+						ImGui::TableSetColumnIndex(1);
+						do_label(stack6502[i].source_pc, false);
+
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextDisabled("%s", "Destination address:");
+						ImGui::TableSetColumnIndex(1);
+						do_label(stack6502[i].dest_pc, false);
+
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextDisabled("%s", "Cause:");
+						ImGui::TableSetColumnIndex(1);
+
+						switch (stack6502[i].op_type) {
+							case _stack_op_type::nmi:
+								ImGui::Text("%s", "NMI");
+								break;
+							case _stack_op_type::irq:
+								ImGui::Text("%s", "IRQ");
+								break;
+							case _stack_op_type::op:
+								ImGui::Text("%s", mnemonics[stack6502[i].opcode]);
+								break;
+							default:
+								break;
+						}
+
+						ImGui::EndTable();
+					}
+
+
+					ImGui::EndTooltip();
+				}
+			}
+			ImGui::EndTable();
+		}
 	}
 	ImGui::EndTable();
 }
@@ -2436,7 +2536,7 @@ void overlay_draw()
 	}
 
 	if (Show_cpu_monitor) {
-		if (ImGui::Begin("CPU Monitor", &Show_cpu_monitor)) {
+		if (ImGui::Begin("CPU Monitor", &Show_cpu_monitor, ImGuiWindowFlags_NoScrollbar)) {
 			draw_debugger_cpu_status();
 		}
 		ImGui::End();

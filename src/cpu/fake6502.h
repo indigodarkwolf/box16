@@ -13,7 +13,21 @@
 
 struct _state6502 {
 	uint16_t pc;
+	uint16_t sp_depth;
 	uint8_t  sp, a, x, y, status;
+};
+
+enum class _stack_op_type : uint8_t {
+	op,
+	nmi,
+	irq,
+};
+
+struct _smart_stack {
+	uint16_t source_pc;
+	uint16_t dest_pc;
+	_stack_op_type op_type;
+	uint8_t  opcode;
 };
 
 extern void     reset6502();

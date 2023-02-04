@@ -371,8 +371,15 @@ jmp()
 static void
 jsr()
 {
+	auto &ss = stack6502[state6502.sp_depth++];
+	ss.source_pc = state6502.pc;
+
 	push16(state6502.pc - 1);
 	state6502.pc = ea;
+
+	ss.dest_pc = state6502.pc;
+	ss.op_type = _stack_op_type::op;
+	ss.opcode  = opcode;
 }
 
 static void
@@ -514,6 +521,7 @@ rti()
 	state6502.status = pull8();
 	value  = pull16();
 	state6502.pc     = value;
+	--state6502.sp_depth;
 }
 
 static void
@@ -521,6 +529,7 @@ rts()
 {
 	value = pull16();
 	state6502.pc    = value + 1;
+	--state6502.sp_depth;
 }
 
 static void

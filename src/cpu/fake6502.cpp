@@ -94,6 +94,8 @@ uint8_t  debug6502 = 0;
 uint8_t penaltyop, penaltyaddr;
 uint8_t waiting = 0;
 
+_smart_stack stack6502[256];
+
 // externally supplied functions
 extern uint8_t read6502(uint16_t address);
 extern void    write6502(uint16_t address, uint8_t value);
@@ -124,22 +126,36 @@ static void putvalue(uint16_t saveval)
 
 void nmi6502()
 {
+	auto &ss     = stack6502[state6502.sp_depth++];
+	ss.source_pc = state6502.pc;
+
 	push16(state6502.pc);
 	push8(state6502.status & ~FLAG_BREAK);
 	setinterrupt();
 	cleardecimal();
 	state6502.pc = (uint16_t)read6502(0xFFFA) | ((uint16_t)read6502(0xFFFB) << 8);
 	waiting      = 0;
+
+	ss.dest_pc   = state6502.pc;
+	ss.op_type   = _stack_op_type::nmi;
+	ss.opcode    = 0;
 }
 
 void irq6502()
 {
 	if (!(state6502.status & FLAG_INTERRUPT)) {
+		auto &ss     = stack6502[state6502.sp_depth++];
+		ss.source_pc = state6502.pc;
+
 		push16(state6502.pc);
 		push8(state6502.status & ~FLAG_BREAK);
 		setinterrupt();
 		cleardecimal();
 		state6502.pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
+
+		ss.dest_pc = state6502.pc;
+		ss.op_type = _stack_op_type::irq;
+		ss.opcode  = 0;
 	}
 	waiting = 0;
 }
