@@ -12,7 +12,7 @@
 #include "imgui/imgui_impl_sdl.h"
 
 #include "cpu_visualization.h"
-#include "disasm.h"
+#include "disasm_overlay.h"
 #include "ram_dump.h"
 #include "util.h"
 #include "vram_dump.h"
@@ -22,6 +22,7 @@
 #include "cpu/fake6502.h"
 #include "cpu/mnemonics.h"
 #include "debugger.h"
+#include "disasm.h"
 #include "display.h"
 #include "glue.h"
 #include "joystick.h"
@@ -59,29 +60,6 @@ bool Show_YM2151_monitor   = false;
 bool Show_midi_overlay     = false;
 
 imgui_vram_dump vram_dump;
-
-static char const *get_disasm_label(uint16_t address)
-{
-	static char label[256];
-
-	const symbol_list_type &symbols = symbols_find(address);
-	if (symbols.size() > 0) {
-		strncpy(label, symbols.front().c_str(), 256);
-		label[255] = '\0';
-		return label;
-	}
-
-	for (uint16_t i = 1; i < 3; ++i) {
-		const symbol_list_type &symbols = symbols_find(address - i);
-		if (symbols.size() > 0) {
-			snprintf(label, 256, "%s+%d", symbols.front().c_str(), i);
-			label[255] = '\0';
-			return label;
-		}
-	}
-
-	return nullptr;
-}
 
 static void draw_debugger_cpu_status()
 {
@@ -194,15 +172,23 @@ static void draw_debugger_cpu_status()
 			for (uint16_t i = state6502.sp_depth - 1; i < state6502.sp_depth; --i) {
 				ImGui::TableNextColumn();
 				auto do_label = [](uint16_t pc, bool allow_disabled) {
-					const char *label = get_disasm_label(pc);
+					char const *label = disasm_get_label(pc);
+					bool        pushed = false;
+
 					if (label == nullptr) {
-						if (allow_disabled) {
-							ImGui::TextDisabled("%04X", pc);
-						} else {
-							ImGui::Text("%04X", pc);
-						}
+						ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+						char stack_line[256];
+						snprintf(stack_line, sizeof(stack_line), "$%04X", pc);
+						pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+						ImGui::PopStyleColor();
 					} else {
-						ImGui::Text("%04X: %s", pc, label);
+						char stack_line[256];
+						snprintf(stack_line, sizeof(stack_line), "$%04X: %s", pc, label);
+						pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+					}
+
+					if (pushed) {
+						disasm.set_dump_start(pc);
 					}
 				};
 				switch (stack6502[i].op_type) {
@@ -221,7 +207,9 @@ static void draw_debugger_cpu_status()
 					default:
 						break;
 				}
+				ImGui::PushID(i);
 				do_label(stack6502[i].dest_pc, true);
+				ImGui::PopID();
 				ImGui::PopStyleColor(2);
 
 				if (ImGui::IsItemHovered()) {
@@ -261,7 +249,6 @@ static void draw_debugger_cpu_status()
 
 						ImGui::EndTable();
 					}
-
 
 					ImGui::EndTooltip();
 				}
@@ -605,10 +592,10 @@ static void draw_debugger_vera_sprite()
 		const bool    hflip  = spr->prop.hflip;
 		const bool    vflip  = spr->prop.vflip;
 		uint16_t      box[4]{
-            (uint16_t)((spr->prop.sprite_x) & 0x3FF),
-            (uint16_t)((spr->prop.sprite_x + width) & 0x3FF),
-            (uint16_t)((spr->prop.sprite_y) & 0x3FF),
-            (uint16_t)((spr->prop.sprite_y + height) & 0x3FF),
+			     (uint16_t)((spr->prop.sprite_x) & 0x3FF),
+			     (uint16_t)((spr->prop.sprite_x + width) & 0x3FF),
+			     (uint16_t)((spr->prop.sprite_y) & 0x3FF),
+			     (uint16_t)((spr->prop.sprite_y + height) & 0x3FF),
 		}; // l, r, t, b
 		// this might sounds hacky but it works
 		if (box[1] < box[0])
@@ -2440,14 +2427,14 @@ static void draw_menu_bar()
 			ImGui::Separator();
 
 			if (ImGui::BeginMenu("Safety Frame")) {
-				static constexpr const char *modes[] = { "Disabled", "VGA", "NTSC", "RGB interlaced, composite, via VGA connector" };
+				static constexpr const char   *modes[]   = { "Disabled", "VGA", "NTSC", "RGB interlaced, composite, via VGA connector" };
 				static constexpr const uint8_t num_modes = sizeof(modes) / sizeof(modes[0]);
 
 				for (uint8_t i = 0; i < num_modes; ++i) {
 					bool safety_frame = vera_video_safety_frame_is_enabled(i);
 					if (ImGui::Checkbox(modes[i], &safety_frame)) {
 						vera_video_enable_safety_frame(i, safety_frame);
-					}					
+					}
 				}
 				ImGui::EndMenu();
 			}
