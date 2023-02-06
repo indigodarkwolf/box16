@@ -18,6 +18,7 @@
 #include "cpu/fake6502.h"
 #include "cpu/mnemonics.h"
 #include "debugger.h"
+#include "disasm.h"
 #include "display.h"
 #include "gif_recorder.h"
 #include "glue.h"
@@ -203,6 +204,17 @@ int main(int argc, char **argv)
 		memset(ROM, 0, ROM_SIZE);
 		SDL_RWread(f, ROM, ROM_SIZE, 1);
 		SDL_RWclose(f);
+
+		// Look for ROM symbols?
+		if (Options.load_standard_symbols) {
+			symbols_load_file((Options.rom_path.parent_path() / "kernal.sym").generic_string(), 0);
+			symbols_load_file((Options.rom_path.parent_path() / "keymap.sym").generic_string(), 1);
+			symbols_load_file((Options.rom_path.parent_path() / "dos.sym").generic_string(), 2);
+			symbols_load_file((Options.rom_path.parent_path() / "geos.sym").generic_string(), 3);
+			symbols_load_file((Options.rom_path.parent_path() / "basic.sym").generic_string(), 4);
+			symbols_load_file((Options.rom_path.parent_path() / "monitor.sym").generic_string(), 5);
+			symbols_load_file((Options.rom_path.parent_path() / "charset.sym").generic_string(), 0);
+		}
 
 		if (!Options.rom_carts.empty()) {
 			for (auto &[path, bank] : Options.rom_carts) {

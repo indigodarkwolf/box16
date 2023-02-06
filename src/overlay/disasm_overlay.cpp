@@ -1,8 +1,8 @@
 #include "disasm_overlay.h"
 
 #include "cpu/mnemonics.h"
-#include "disasm.h"
 #include "debugger.h"
+#include "disasm.h"
 #include "display.h"
 #include "glue.h"
 #include "imgui/imgui.h"
@@ -58,6 +58,17 @@ static int disasm_len(uint16_t pc, uint8_t bank)
 *
 --------------------- */
 
+uint8_t imgui_debugger_disasm::get_current_bank(uint16_t address)
+{
+	if (address >= 0xc000) {
+		return rom_bank;
+	} else if (address >= 0xa000) {
+		return ram_bank;
+	} else {
+		return 0;
+	}
+}
+
 bool imgui_debugger_disasm::get_hex_flag()
 {
 	return show_hex;
@@ -94,7 +105,7 @@ void imgui_debugger_disasm::follow_pc()
 
 void imgui_debugger_disasm::draw()
 {
-	ImGui::BeginChild("disasm", ImVec2(397.0f, 518.0f));
+	ImGui::BeginChild("disasm", ImVec2(397.0f, ImGui::GetContentRegionAvail().y));
 	{
 		bool paused = debugger_is_paused();
 
@@ -161,7 +172,7 @@ void imgui_debugger_disasm::draw()
 
 		ImGui::Separator();
 
-		ImGui::BeginChild("memory dump", ImVec2(382.0, 458.0f));
+		ImGui::BeginChild("memory dump", ImVec2(382.0, ImGui::GetContentRegionAvail().y), false);
 		{
 			float line_height = ImGui::CalcTextSize("0xFFFF").y;
 
@@ -194,7 +205,7 @@ void imgui_debugger_disasm::draw()
 					}
 
 					for (uint32_t i = addr; i < addr + len; ++i) {
-						const symbol_list_type &symbols = symbols_find(i, memory_get_current_bank(i));
+						const symbol_list_type &symbols = symbols_find(i, get_current_bank(i));
 						for (auto &sym : symbols) {
 							ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 							char addr_text[5];
@@ -266,10 +277,10 @@ void imgui_debugger_disasm::draw()
 	ImGui::EndChild();
 }
 
-void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigned int max_line,*/ uint8_t bank)
+void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, uint8_t bank)
 {
-	const uint8_t     opcode   = debug_read6502(pc, bank);
-	char const *mnemonic = mnemonics[opcode];
+	const uint8_t opcode   = debug_read6502(pc, bank);
+	char const   *mnemonic = mnemonics[opcode];
 
 	//		Test bbr and bbs, the "zero-page, relative" ops. These all count as branch ops.
 	//		$0F,$1F,$2F,$3F,$4F,$5F,$6F,$7F,$8F,$9F,$AF,$BF,$CF,$DF,$EF,$FF
@@ -325,13 +336,13 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label(zp, false, "$%02X");
+			ImGui::disasm_label(zp, bank, false, "$%02X");
 
 			ImGui::SameLine();
 			ImGui::Text(", ");
 			ImGui::SameLine();
 
-			ImGui::disasm_label(target, is_branch, "$%04X");
+			ImGui::disasm_label(target, bank, is_branch, "$%04X");
 		} break;
 
 		case op_mode::MODE_IMP:
@@ -370,7 +381,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label(target, is_branch, "$%04X");
+			ImGui::disasm_label(target, bank, is_branch, "$%04X");
 		} break;
 
 		case op_mode::MODE_ZPX: {
@@ -379,7 +390,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(value, is_branch, "$%02X", "%s,x");
+			ImGui::disasm_label_wrap(value, bank, is_branch, "$%02X", "%s,x");
 		} break;
 
 		case op_mode::MODE_ZPY: {
@@ -388,7 +399,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(value, is_branch, "$%02X", "%s,y");
+			ImGui::disasm_label_wrap(value, bank, is_branch, "$%02X", "%s,y");
 		} break;
 
 		case op_mode::MODE_ABSO: {
@@ -397,7 +408,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label(target, is_branch, "$%04X");
+			ImGui::disasm_label(target, bank, is_branch, "$%04X");
 		} break;
 
 		case op_mode::MODE_ABSX: {
@@ -406,7 +417,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, is_branch, "$%04X", "%s,x");
+			ImGui::disasm_label_wrap(target, bank, is_branch, "$%04X", "%s,x");
 		} break;
 
 		case op_mode::MODE_ABSY: {
@@ -415,7 +426,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, is_branch, "$%04X", "%s,y");
+			ImGui::disasm_label_wrap(target, bank, is_branch, "$%04X", "%s,y");
 		} break;
 
 		case op_mode::MODE_AINX: {
@@ -424,7 +435,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, is_branch, "$%04X", "(%s,x)");
+			ImGui::disasm_label_wrap(target, bank, is_branch, "$%04X", "(%s,x)");
 		} break;
 
 		case op_mode::MODE_INDY: {
@@ -433,7 +444,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, is_branch, "$%02X", "(%s),y");
+			ImGui::disasm_label_wrap(target, bank, is_branch, "$%02X", "(%s),y");
 		} break;
 
 		case op_mode::MODE_INDX: {
@@ -442,7 +453,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, is_branch, "$%02X", "(%s,x)");
+			ImGui::disasm_label_wrap(target, bank, is_branch, "$%02X", "(%s,x)");
 		} break;
 
 		case op_mode::MODE_IND: {
@@ -451,7 +462,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, is_branch, "$%04X", "(%s)");
+			ImGui::disasm_label_wrap(target, bank, is_branch, "$%04X", "(%s)");
 		} break;
 
 		case op_mode::MODE_IND0: {
@@ -460,7 +471,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, is_branch, "$%02X", "(%s)");
+			ImGui::disasm_label_wrap(target, bank, is_branch, "$%02X", "(%s)");
 		} break;
 
 		case op_mode::MODE_A:
@@ -473,9 +484,9 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, /*char *line, unsigne
 
 namespace ImGui
 {
-	void disasm_label(uint16_t target, bool branch_target, const char *hex_format)
+	void disasm_label(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format)
 	{
-		const char *symbol = disasm_get_label(target);
+		const char *symbol = disasm_get_label(target, bank);
 
 		char inner[256];
 		if (symbol != nullptr) {
@@ -500,9 +511,9 @@ namespace ImGui
 		}
 	}
 
-	void disasm_label_wrap(uint16_t target, bool branch_target, const char *hex_format, const char *wrapper_format)
+	void disasm_label_wrap(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format, const char *wrapper_format)
 	{
-		const char *symbol = disasm_get_label(target);
+		const char *symbol = disasm_get_label(target, bank);
 
 		char inner[256];
 		if (symbol != nullptr) {

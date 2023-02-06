@@ -18,6 +18,8 @@ private:
 	bool show_hex      = true;
 	int  memory_window = 1;
 
+	uint8_t get_current_bank(uint16_t address);
+
 public:
 	bool get_hex_flag();
 	int  get_memory_window();
@@ -37,8 +39,8 @@ extern imgui_debugger_disasm disasm;
 
 namespace ImGui
 {
-	void disasm_label(uint16_t target, bool branch_target, const char *hex_format);
-	void disasm_label_wrap(uint16_t target, bool branch_target, const char *hex_format, const char *wrapper_format);
+	void disasm_label(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format);
+	void disasm_label_wrap(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format, const char *wrapper_format);
 } // namespace ImGui
 
 #endif // DISASM_OVERLAY_H

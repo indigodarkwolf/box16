@@ -1,11 +1,11 @@
 #if !defined(INSTRUCTIONS_6502_H)
 #	define INSTRUCTIONS_6502_H
 
-#include "support.h"
+#	include "support.h"
 
 /*
 
-						Extracted from original single fake6502.c file
+                        Extracted from original single fake6502.c file
 
 */
 //
@@ -94,7 +94,7 @@ bcc()
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
 		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
-			clockticks6502 += 2; //check if jump crossed a page boundary
+			clockticks6502 += 2; // check if jump crossed a page boundary
 		else
 			clockticks6502++;
 	}
@@ -107,7 +107,7 @@ bcs()
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
 		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
-			clockticks6502 += 2; //check if jump crossed a page boundary
+			clockticks6502 += 2; // check if jump crossed a page boundary
 		else
 			clockticks6502++;
 	}
@@ -120,7 +120,7 @@ beq()
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
 		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
-			clockticks6502 += 2; //check if jump crossed a page boundary
+			clockticks6502 += 2; // check if jump crossed a page boundary
 		else
 			clockticks6502++;
 	}
@@ -143,7 +143,7 @@ bmi()
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
 		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
-			clockticks6502 += 2; //check if jump crossed a page boundary
+			clockticks6502 += 2; // check if jump crossed a page boundary
 		else
 			clockticks6502++;
 	}
@@ -156,7 +156,7 @@ bne()
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
 		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
-			clockticks6502 += 2; //check if jump crossed a page boundary
+			clockticks6502 += 2; // check if jump crossed a page boundary
 		else
 			clockticks6502++;
 	}
@@ -169,7 +169,7 @@ bpl()
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
 		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
-			clockticks6502 += 2; //check if jump crossed a page boundary
+			clockticks6502 += 2; // check if jump crossed a page boundary
 		else
 			clockticks6502++;
 	}
@@ -180,10 +180,10 @@ brk()
 {
 	state6502.pc++;
 
-	push16(state6502.pc);                 //push next instruction address onto stack
+	push16(state6502.pc);                 // push next instruction address onto stack
 	push8(state6502.status | FLAG_BREAK); // push CPU status to stack
-	setinterrupt();             //set interrupt flag
-	cleardecimal();             // clear decimal flag (65C02 change)
+	setinterrupt();                       // set interrupt flag
+	cleardecimal();                       // clear decimal flag (65C02 change)
 	state6502.pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
 }
 
@@ -194,7 +194,7 @@ bvc()
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
 		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
-			clockticks6502 += 2; //check if jump crossed a page boundary
+			clockticks6502 += 2; // check if jump crossed a page boundary
 		else
 			clockticks6502++;
 	}
@@ -207,7 +207,7 @@ bvs()
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
 		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
-			clockticks6502 += 2; //check if jump crossed a page boundary
+			clockticks6502 += 2; // check if jump crossed a page boundary
 		else
 			clockticks6502++;
 	}
@@ -371,22 +371,24 @@ jmp()
 static void
 jsr()
 {
-	auto &ss = stack6502[state6502.sp_depth++];
-	ss.source_pc = state6502.pc;
+	auto &ss       = stack6502[state6502.sp_depth++];
+	ss.source_pc   = state6502.pc;
+	ss.source_bank = bank6502(state6502.pc);
 
 	push16(state6502.pc - 1);
 	state6502.pc = ea;
 
-	ss.dest_pc = state6502.pc;
-	ss.op_type = _stack_op_type::op;
-	ss.opcode  = opcode;
+	ss.dest_pc   = state6502.pc;
+	ss.dest_bank = bank6502(state6502.pc);
+	ss.op_type   = _stack_op_type::op;
+	ss.opcode    = opcode;
 }
 
 static void
 lda()
 {
-	penaltyop = 1;
-	value     = getvalue();
+	penaltyop   = 1;
+	value       = getvalue();
 	state6502.a = (uint8_t)(value & 0x00FF);
 
 	zerocalc(state6502.a);
@@ -396,8 +398,8 @@ lda()
 static void
 ldx()
 {
-	penaltyop = 1;
-	value     = getvalue();
+	penaltyop   = 1;
+	value       = getvalue();
 	state6502.x = (uint8_t)(value & 0x00FF);
 
 	zerocalc(state6502.x);
@@ -407,8 +409,8 @@ ldx()
 static void
 ldy()
 {
-	penaltyop = 1;
-	value     = getvalue();
+	penaltyop   = 1;
+	value       = getvalue();
 	state6502.y = (uint8_t)(value & 0x00FF);
 
 	zerocalc(state6502.y);
@@ -519,7 +521,7 @@ static void
 rti()
 {
 	state6502.status = pull8();
-	value  = pull16();
+	value            = pull16();
 	state6502.pc     = value;
 	--state6502.sp_depth;
 }
@@ -527,8 +529,8 @@ rti()
 static void
 rts()
 {
-	value = pull16();
-	state6502.pc    = value + 1;
+	value        = pull16();
+	state6502.pc = value + 1;
 	--state6502.sp_depth;
 }
 

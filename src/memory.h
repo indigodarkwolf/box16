@@ -15,8 +15,8 @@
 
 struct memory_init_params {
 	uint16_t num_banks;
-	bool randomize;
-	bool enable_uninitialized_access_warning;
+	bool     randomize;
+	bool     enable_uninitialized_access_warning;
 };
 
 void memory_init(const memory_init_params &params);
@@ -27,8 +27,8 @@ uint8_t debug_read6502(uint16_t address, uint8_t bank);
 uint8_t read6502(uint16_t address);
 void    debug_write6502(uint16_t address, uint8_t bank, uint8_t value);
 void    write6502(uint16_t address, uint8_t value);
-
-void memory_save(SDL_RWops *f, bool dump_ram, bool dump_bank);
+uint8_t bank6502(uint16_t address);
+void    memory_save(SDL_RWops *f, bool dump_ram, bool dump_bank);
 
 void memory_set_ram_bank(uint8_t bank);
 void memory_set_rom_bank(uint8_t bank);

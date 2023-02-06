@@ -1030,13 +1030,7 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	}
 
 	if (ini.has("stds")) {
-		Sym_options.push_back({ "kernal.sym", 0 });
-		Sym_options.push_back({ "keymap.sym", 1 });
-		Sym_options.push_back({ "dos.sym", 2 });
-		Sym_options.push_back({ "geos.sym", 3 });
-		Sym_options.push_back({ "basic.sym", 4 });
-		Sym_options.push_back({ "monitor.sym", 5 });
-		Sym_options.push_back({ "charset.sym", 0 });
+		opts.load_standard_symbols = true;
 	}
 
 	if (ini.has("scale")) {

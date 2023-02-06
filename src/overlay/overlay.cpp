@@ -171,24 +171,43 @@ static void draw_debugger_cpu_status()
 		if (ImGui::BeginTable("smart stack", 1, ImGuiTableFlags_ScrollY)) {
 			for (uint16_t i = state6502.sp_depth - 1; i < state6502.sp_depth; --i) {
 				ImGui::TableNextColumn();
-				auto do_label = [](uint16_t pc, bool allow_disabled) {
+				auto do_label = [](uint16_t pc, uint8_t bank, bool allow_disabled) {
 					char const *label = disasm_get_label(pc);
 					bool        pushed = false;
 
-					if (label == nullptr) {
-						ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-						char stack_line[256];
-						snprintf(stack_line, sizeof(stack_line), "$%04X", pc);
-						pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
-						ImGui::PopStyleColor();
+					if (pc >= 0xa000) {
+						if (label == nullptr) {
+							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+							char stack_line[256];
+							snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X", bank, pc);
+							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+							ImGui::PopStyleColor();
+						} else {
+							char stack_line[256];
+							snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X: %s", bank, pc, label);
+							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+						}
 					} else {
-						char stack_line[256];
-						snprintf(stack_line, sizeof(stack_line), "$%04X: %s", pc, label);
-						pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+						if (label == nullptr) {
+							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+							char stack_line[256];
+							snprintf(stack_line, sizeof(stack_line), "$%04X", pc);
+							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+							ImGui::PopStyleColor();
+						} else {
+							char stack_line[256];
+							snprintf(stack_line, sizeof(stack_line), "$%04X: %s", pc, label);
+							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+						}					
 					}
 
 					if (pushed) {
 						disasm.set_dump_start(pc);
+						if (pc >= 0xc000) {
+							disasm.set_rom_bank(bank);
+						} else if (pc >= 0xa000) {
+							disasm.set_ram_bank(bank);
+						}
 					}
 				};
 				switch (stack6502[i].op_type) {
@@ -208,7 +227,7 @@ static void draw_debugger_cpu_status()
 						break;
 				}
 				ImGui::PushID(i);
-				do_label(stack6502[i].dest_pc, true);
+				do_label(stack6502[i].dest_pc, stack6502[i].dest_bank, true);
 				ImGui::PopID();
 				ImGui::PopStyleColor(2);
 
@@ -220,13 +239,13 @@ static void draw_debugger_cpu_status()
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Source address:");
 						ImGui::TableSetColumnIndex(1);
-						do_label(stack6502[i].source_pc, false);
+						do_label(stack6502[i].source_pc, stack6502[i].source_bank, false);
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Destination address:");
 						ImGui::TableSetColumnIndex(1);
-						do_label(stack6502[i].dest_pc, false);
+						do_label(stack6502[i].dest_pc, stack6502[i].dest_bank, false);
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
@@ -2064,6 +2083,7 @@ static void draw_symbols_list()
 
 							if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
 								disasm.set_dump_start(address);
+								disasm.set_rom_bank(bank);
 							}
 						}
 						any_selected_visible = any_selected_visible || is_selected;

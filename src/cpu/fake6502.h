@@ -24,10 +24,12 @@ enum class _stack_op_type : uint8_t {
 };
 
 struct _smart_stack {
-	uint16_t source_pc;
-	uint16_t dest_pc;
+	uint16_t       source_pc;
+	uint16_t       dest_pc;
+	uint8_t        source_bank;
+	uint8_t        dest_bank;
 	_stack_op_type op_type;
-	uint8_t  opcode;
+	uint8_t        opcode;
 };
 
 extern void     reset6502();
