@@ -11,6 +11,7 @@
 #include "memory.h"
 #include "options.h"
 #include "rom_symbols.h"
+#include "symbols.h"
 #include "unicode.h"
 #include "vera/sdcard.h"
 
@@ -258,6 +259,9 @@ void hypercalls_update()
 					RAM[VARTAB]     = end & 0xff;
 					RAM[VARTAB + 1] = end >> 8;
 				}
+
+				// Now look for and load symbols, if applicable.
+				symbols_load_file(prg_path.replace_extension(".sym").generic_string(), 0);
 
 				if (Options.run_after_load) {
 					if (start == 0x0801) {
