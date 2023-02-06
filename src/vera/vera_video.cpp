@@ -415,8 +415,8 @@ static void render_sprite_line(const uint16_t y)
 		}
 
 		const int32_t scale          = reg_composer[1];
-		const int16_t scaled_x_start = ((int32_t)props->sprite_x << 7) / scale;
-		const int16_t scaled_x_end   = scaled_x_start + (((int32_t)width << 7) / scale);
+		const int16_t scaled_x_start = scale ? ((int32_t)props->sprite_x << 7) / scale : (props->sprite_x ? SCREEN_WIDTH : 0);
+		const int16_t scaled_x_end   = scale ? scaled_x_start + (((int32_t)width << 7) / scale) : SCREEN_WIDTH;
 		const bool    hflip          = props->hflip;
 		for (int16_t sx = scaled_x_start; sx < scaled_x_end; sx += 1) {
 			if ((uint16_t)sx >= SCREEN_WIDTH) {
