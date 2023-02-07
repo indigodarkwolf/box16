@@ -319,7 +319,7 @@ static void draw_debugger_cpu_visualizer()
 	vis.load_memory(cpu_visualization_get_framebuffer(), SCAN_WIDTH, SCAN_HEIGHT, SCAN_WIDTH, SCAN_HEIGHT);
 
 	ImVec2 vis_imsize(SCAN_WIDTH, SCAN_HEIGHT);
-	ImGui::Image((void *)(intptr_t)vis.get_texture_id(), vis_imsize, vis.get_top_left(0), vis.get_bottom_right(0));
+	ImGui::Image((void *)(intptr_t)vis.get_texture_id(), ImGui::GetContentRegionAvail(), vis.get_top_left(0), vis.get_bottom_right(0));
 }
 
 static void draw_debugger_vera_status()
@@ -2586,6 +2586,7 @@ void overlay_draw()
 	}
 
 	if (Show_cpu_visualizer) {
+		ImGui::SetNextWindowSize(ImVec2(816, 607), ImGuiCond_Once);
 		if (ImGui::Begin("CPU Visualizer", &Show_cpu_visualizer)) {
 			cpu_visualization_enable(Show_cpu_visualizer);
 			draw_debugger_cpu_visualizer();
