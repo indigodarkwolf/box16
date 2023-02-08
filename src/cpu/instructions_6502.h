@@ -523,7 +523,7 @@ rti()
 	state6502.status = pull8();
 	value            = pull16();
 	state6502.pc     = value;
-	--state6502.sp_depth;
+	state6502.sp_depth -= !!state6502.sp_depth;
 }
 
 static void
@@ -531,7 +531,7 @@ rts()
 {
 	value        = pull16();
 	state6502.pc = value + 1;
-	--state6502.sp_depth;
+	state6502.sp_depth -= !!state6502.sp_depth;
 }
 
 static void
