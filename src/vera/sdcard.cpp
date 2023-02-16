@@ -130,6 +130,10 @@ void sdcard_detach()
 			gzwrite(f, sdcard_data, static_cast<unsigned int>(sdcard_size));
 			gzclose(f);
 		}
+		
+		delete[] sdcard_data;
+		sdcard_data = nullptr;
+		sdcard_size = 0;
 
 		hypercalls_update();
 	}
