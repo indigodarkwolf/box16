@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "files.h"
 #include "glue.h"
 #include "memory.h"
 #include "options.h"
@@ -148,26 +149,29 @@ void LOAD()
 
 		std::filesystem::path filepath = Options.hyper_path / filename;
 
-		SDL_RWops *f = SDL_RWFromFile(filepath.generic_string().c_str(), "rb");
-		if (!f) {
+		gzFile f = gzopen(filepath.generic_string().c_str(), "rb");
+		if (f == Z_NULL) {
 			state6502.a = 4; // FNF
 			RAM[STATUS] = state6502.a;
 			state6502.status |= 1;
 			return;
 		}
-		const uint8_t sa       = RAM[SA];
-		const uint8_t start_lo = SDL_ReadU8(f);
-		const uint8_t start_hi = SDL_ReadU8(f);
-		uint16_t      start    = [override_start, sa, start_lo, start_hi]() -> uint16_t {
-            if (sa & 1) {
-                return start_hi << 8 | start_lo;
-            } else {
-                return override_start;
-            }
+		const uint8_t sa = RAM[SA];
+		uint8_t       start_lo;
+		uint8_t       start_hi;
+		gzread(f, &start_lo, 1);
+		gzread(f, &start_hi, 1);
+
+		uint16_t start = [override_start, sa, start_lo, start_hi]() -> uint16_t {
+			if (sa & 1) {
+				return start_hi << 8 | start_lo;
+			} else {
+				return override_start;
+			}
 		}();
 
 		if (sa & 0x2) {
-			SDL_RWseek(f, -2, RW_SEEK_CUR);
+			gzseek(f, -2, SEEK_CUR);
 		}
 
 		uint16_t bytes_read = 0;
@@ -178,7 +182,7 @@ void LOAD()
 			vera_video_write(2, ((state6502.a - 2) & 0xf) | 0x10);
 			uint8_t buf[2048];
 			while (1) {
-				uint16_t n = (uint16_t)SDL_RWread(f, buf, 1, sizeof buf);
+				uint16_t n = (uint16_t)gzread(f, buf, sizeof(buf));
 				if (n == 0) {
 					break;
 				}
@@ -189,14 +193,14 @@ void LOAD()
 			}
 		} else if (start < 0x9f00) {
 			// Fixed RAM
-			bytes_read = (uint16_t)SDL_RWread(f, RAM + start, 1, 0x9f00 - start);
+			bytes_read = (uint16_t)gzread(f, RAM + start, 0x9f00 - start);
 		} else if (start < 0xa000) {
 			// IO addresses
 		} else if (start < 0xc000) {
 			// banked RAM
 			while (1) {
 				size_t len = 0xc000 - start;
-				bytes_read = (uint16_t)SDL_RWread(f, RAM + (((memory_get_ram_bank() % (uint16_t)Options.num_ram_banks) << 13) & 0xffffff) + start, 1, len);
+				bytes_read = (uint16_t)gzread(f, RAM + (((memory_get_ram_bank() % (uint16_t)Options.num_ram_banks) << 13) & 0xffffff) + start, static_cast<unsigned int>(len));
 				if (bytes_read < len)
 					break;
 
@@ -208,7 +212,7 @@ void LOAD()
 			// ROM
 		}
 
-		SDL_RWclose(f);
+		gzclose(f);
 
 		uint16_t end = start + bytes_read;
 		state6502.x  = end & 0xff;
@@ -237,20 +241,23 @@ void SAVE()
 		state6502.a = 0;
 		return;
 	}
-
-	SDL_RWops *f = SDL_RWFromFile(filepath.generic_string().c_str(), "wb");
-	if (!f) {
+	char const *flags = "wb0";
+	if (filepath.extension().generic_string() == ".gz") {
+		flags = "wb9";
+	}
+	gzFile f = gzopen(filepath.generic_string().c_str(), flags);
+	if (f == Z_NULL) {
 		state6502.a = 4; // FNF
 		RAM[STATUS] = state6502.a;
 		state6502.status |= 1;
 		return;
 	}
 
-	SDL_WriteU8(f, start & 0xff);
-	SDL_WriteU8(f, start >> 8);
+	gzwrite8(f, start & 0xff);
+	gzwrite8(f, start >> 8);
 
-	SDL_RWwrite(f, RAM + start, 1, end - start);
-	SDL_RWclose(f);
+	gzwrite(f, RAM + start, end - start);
+	gzclose(f);
 
 	state6502.status &= 0xfe;
 	RAM[STATUS] = 0;

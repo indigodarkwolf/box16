@@ -20,6 +20,7 @@
 #include "debugger.h"
 #include "disasm.h"
 #include "display.h"
+#include "files.h"
 #include "gif_recorder.h"
 #include "glue.h"
 #include "hypercalls.h"
@@ -59,8 +60,8 @@ bool debugger_enabled = true;
 
 bool save_on_exit = true;
 
-bool       has_boot_tasks = false;
-SDL_RWops *prg_file       = nullptr;
+bool   has_boot_tasks = false;
+gzFile prg_file       = nullptr;
 
 void machine_dump(const char *reason)
 {
@@ -165,8 +166,8 @@ int main(int argc, char **argv)
 		debugger_init(Options.num_ram_banks);
 	}
 
-	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
-		SDL_RWops *f = nullptr;
+	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> gzFile {
+		gzFile f = Z_NULL;
 
 		option_source optsrc  = option_get_source(cmdline_option);
 		char const   *srcname = option_get_source_name(optsrc);
@@ -175,7 +176,7 @@ int main(int argc, char **argv)
 		if (options_find_file(real_path, path)) {
 			const std::string &real_path_string = real_path.generic_string();
 
-			f = SDL_RWFromFile(real_path_string.c_str(), mode);
+			f = gzopen(real_path_string.c_str(), mode);
 			printf("Using %s at %s\n", cmdline_option, real_path_string.c_str());
 		}
 		printf("\t-%s sourced from: %s\n", cmdline_option, srcname);
@@ -195,15 +196,15 @@ int main(int argc, char **argv)
 
 	// Load ROM
 	{
-		SDL_RWops *f = open_file(Options.rom_path, "rom", "rb");
+		gzFile f = open_file(Options.rom_path, "rom", "rb");
 		if (f == nullptr) {
 			error("ROM error", "Could not find ROM.");
 		}
 
 		// Could be changed to allow extended rom files
 		memset(ROM, 0, ROM_SIZE);
-		SDL_RWread(f, ROM, ROM_SIZE, 1);
-		SDL_RWclose(f);
+		gzread(f, ROM, ROM_SIZE);
+		gzclose(f);
 
 		// Look for ROM symbols?
 		if (Options.load_standard_symbols) {
@@ -218,23 +219,23 @@ int main(int argc, char **argv)
 
 		if (!Options.rom_carts.empty()) {
 			for (auto &[path, bank] : Options.rom_carts) {
-				SDL_RWops *cf = open_file(path, "romcart", "rb");
-				if (cf == nullptr) {
+				gzFile cf = open_file(path, "romcart", "rb");
+				if (cf == Z_NULL) {
 					error("Cartridge / ROM error", "Could not find cartridge.");
 				}
-				const size_t cart_size = static_cast<size_t>(SDL_RWsize(cf));
-				SDL_RWread(cf, ROM + (0x4000 * bank), cart_size, 1);
-				SDL_RWclose(cf);
+				const size_t cart_size = gzsize(cf);
+				gzread(cf, ROM + (0x4000 * bank), static_cast<unsigned int>(cart_size));
+				gzclose(cf);
 			}
 		}
 	}
 
 	// Load NVRAM, if specified
 	if (!Options.nvram_path.empty()) {
-		SDL_RWops *f = open_file(Options.nvram_path, "nvram", "rb");
-		if (f) {
-			SDL_RWread(f, nvram, sizeof(nvram), 1);
-			SDL_RWclose(f);
+		gzFile f = open_file(Options.nvram_path, "nvram", "rb");
+		if (f != Z_NULL) {
+			gzread(f, nvram, sizeof(nvram));
+			gzclose(f);
 		}
 	}
 
@@ -347,6 +348,8 @@ int main(int argc, char **argv)
 		}
 		nvram_dirty = false;
 	}
+
+	sdcard_shutdown();
 
 	SDL_free(const_cast<char *>(private_path));
 	SDL_free(const_cast<char *>(base_path));

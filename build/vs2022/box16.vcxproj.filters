@@ -214,6 +214,9 @@
     <ClCompile Include="..\..\src\disasm.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\files.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\compat\compat.h">
@@ -436,6 +439,9 @@
       <Filter>Source Files\glad</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src\disasm.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\files.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

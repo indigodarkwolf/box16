@@ -1490,7 +1490,7 @@ void options_init(const char *base_path, const char *prefs_path, int argc, char 
 			mINI::INIFile file(Options_ini_path.generic_string());
 			file.read(Inifile_ini);
 		} else {
-			options_get_prefs_path(Options_ini_path, "box16.ini");
+			Options_ini_path = Options_prefs_path / "box16.ini";
 		}
 	}
 
@@ -1576,24 +1576,6 @@ void options_apply_debugger_opts()
 	}
 }
 
-size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path)
-{
-	real_path = Options_base_path / path;
-	return real_path.generic_string().length();
-}
-
-size_t options_get_prefs_path(std::filesystem::path &real_path, const std::filesystem::path &path)
-{
-	real_path = Options_prefs_path / path;
-	return real_path.generic_string().length();
-}
-
-size_t options_get_hyper_path(std::filesystem::path &real_path, const std::filesystem::path &path)
-{
-	real_path = Options.hyper_path / path;
-	return real_path.generic_string().length();
-}
-
 bool option_cmdline_option_was_set(char const *cmdline_option)
 {
 	return Cmdline_ini["main"].has(cmdline_option);
@@ -1671,4 +1653,19 @@ int options_log_verbose(const char *format, ...)
 		return result;
 	}
 	return 0;
+}
+
+const std::filesystem::path &options_get_base_path()
+{
+	return Options_base_path;
+}
+
+const std::filesystem::path &options_get_prefs_path()
+{
+	return Options_prefs_path;
+}
+
+const std::filesystem::path &options_get_hyper_path()
+{
+	return Options.hyper_path;
 }

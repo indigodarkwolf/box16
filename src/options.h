@@ -44,15 +44,15 @@ enum class wav_recorder_start_t {
 };
 
 struct options {
-	std::filesystem::path rom_path    = "rom.bin";
+	std::filesystem::path                                 rom_path = "rom.bin";
 	std::list<std::tuple<std::filesystem::path, uint8_t>> rom_carts;
-	std::filesystem::path nvram_path  = "";
-	std::filesystem::path hyper_path  = ".";
-	std::filesystem::path prg_path    = "";
-	std::filesystem::path bas_path    = "";
-	std::filesystem::path sdcard_path = "";
-	std::filesystem::path gif_path    = "";
-	std::filesystem::path wav_path    = "";
+	std::filesystem::path                                 nvram_path  = "";
+	std::filesystem::path                                 hyper_path  = ".";
+	std::filesystem::path                                 prg_path    = "";
+	std::filesystem::path                                 bas_path    = "";
+	std::filesystem::path                                 sdcard_path = "";
+	std::filesystem::path                                 gif_path    = "";
+	std::filesystem::path                                 wav_path    = "";
 
 	uint16_t prg_override_start = 0;
 
@@ -115,9 +115,9 @@ void save_options_on_close(bool all);
 
 void options_apply_debugger_opts();
 
-size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path);
-size_t options_get_prefs_path(std::filesystem::path &real_path, const std::filesystem::path &path);
-size_t options_get_hyper_path(std::filesystem::path &real_path, const std::filesystem::path &path);
+const std::filesystem::path &options_get_base_path();
+const std::filesystem::path &options_get_prefs_path();
+const std::filesystem::path &options_get_hyper_path();
 
 bool option_cmdline_option_was_set(char const *cmdline_option);
 bool option_inifile_option_was_set(char const *cmdline_option);

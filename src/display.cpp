@@ -460,8 +460,7 @@ bool display_init(const display_settings &settings)
 		unsigned                   icons_w;
 		unsigned                   icons_h;
 
-		std::filesystem::path icons_path;
-		options_get_base_path(icons_path, "box16-icon56-24.png");
+		std::filesystem::path icons_path = options_get_base_path() / "box16-icon56-24.png";
 
 		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path.generic_string(), LCT_RGB) != 0) {
 			printf("Unable to load icon resources from %s\n", icons_path.generic_string().c_str());
@@ -479,8 +478,7 @@ bool display_init(const display_settings &settings)
 		unsigned                   icons_w;
 		unsigned                   icons_h;
 
-		std::filesystem::path icons_path;
-		options_get_base_path(icons_path, "icons.png");
+		std::filesystem::path icons_path = options_get_base_path() / "icons.png";
 
 		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path.generic_string(), LCT_RGBA) != 0) {
 			printf("Unable to load icon resources from %s\n", icons_path.generic_string().c_str());
