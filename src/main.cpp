@@ -196,6 +196,16 @@ int main(int argc, char **argv)
 		exit(1);
 	};
 
+	auto warn = [](const char *title, const char *format, ...) {
+		char    message_buffer[1024];
+		va_list list;
+		va_start(list, format);
+		vsprintf(message_buffer, format, list);
+		va_end(list);
+
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message_buffer, display_get_window());
+	};
+
 	// Load ROM
 	{
 		SDL_RWops *f = open_file(Options.rom_path, "rom", "rb");
@@ -227,7 +237,7 @@ int main(int argc, char **argv)
 
 	if (!Options.no_hypercalls) {
 		if (!hypercalls_init()) {
-			error("Boot error", "Could not initialize hypercalls. Disable hypercalls to boot with this ROM.");
+			warn("Boot error", "Could not initialize hypercalls. Launch with -nohypercalls to silence this message.");
 		}
 	}
 
