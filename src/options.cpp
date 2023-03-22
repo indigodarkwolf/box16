@@ -47,7 +47,7 @@ static void usage()
 {
 	printf("%s %s (%s)\n", VER_TITLE, VER_NUM, VER_NAME);
 	printf("Copyright (c) 2019-2023 Michael Steil,\n");
-	printf("              2020 Frank van den Hoen,\n");
+	printf("              2020 Frank van den Hoef,\n");
 	printf("              2021-2023 Stephen Horn, et al.\n");
 	printf("All rights reserved. License: 2-clause BSD\n\n");
 
@@ -166,7 +166,9 @@ static void usage()
 	printf("\tSet the real-time-clock to the current system time and date.\n");
 
 	printf("-randram\n");
-	printf("\tRandomize the byte contents of memory on first boot.\n");
+	printf("\t(deprecated, no effect)\n");
+	printf("-zeroram\n");
+	printf("\tSet all RAM to zero instead of uninitialized random values at boot.\n");
 
 	printf("-run\n");
 	printf("\tStart the -prg/-bas program using RUN or SYS, depending\n");
@@ -605,9 +607,13 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argv++;
 
 		} else if (!strcmp(argv[0], "-randram")) {
+		    /* this operation has no effect anymore, randomizing the Ram is now default */
 			argc--;
 			argv++;
-			ini["randram"] = "true";
+		} else if (!strcmp(argv[0], "-zeroram")) {
+			argc--;
+			argv++;
+			ini["zeroram"] = "true";
 
 		} else if (!strcmp(argv[0], "-rom")) {
 			argc--;
@@ -1127,8 +1133,8 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.widescreen = true;
 	}
 
-	if (ini.has("randram") && ini["randram"] == "true") {
-		opts.memory_randomize = true;
+	if (ini.has("zeroram") && ini["zeroram"] == "true") {
+		opts.memory_randomize = false;
 	}
 
 	if (ini.has("wuninit") && ini["wuninit"] == "true") {
@@ -1379,7 +1385,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
 	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
 	set_option("widescreen", Options.widescreen, Default_options.widescreen);
-	set_option("randram", Options.memory_randomize, Default_options.memory_randomize);
+	set_option("zeroram", Options.memory_randomize, Default_options.memory_randomize);
 	set_option("wuninit", Options.memory_uninit_warn, Default_options.memory_uninit_warn);
 }
 
