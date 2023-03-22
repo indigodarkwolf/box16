@@ -18,7 +18,9 @@
 #include "cpu/fake6502.h"
 #include "cpu/mnemonics.h"
 #include "debugger.h"
+#include "disasm.h"
 #include "display.h"
+#include "files.h"
 #include "gif_recorder.h"
 #include "glue.h"
 #include "hypercalls.h"
@@ -30,7 +32,6 @@
 #include "midi.h"
 #include "options.h"
 #include "overlay/cpu_visualization.h"
-#include "overlay/disasm.h"
 #include "overlay/overlay.h"
 #include "ring_buffer.h"
 #include "rtc.h"
@@ -59,8 +60,8 @@ bool debugger_enabled = true;
 
 bool save_on_exit = true;
 
-bool       has_boot_tasks = false;
-SDL_RWops *prg_file       = nullptr;
+bool   has_boot_tasks = false;
+gzFile prg_file       = nullptr;
 
 void machine_dump(const char *reason)
 {
@@ -165,8 +166,8 @@ int main(int argc, char **argv)
 		debugger_init(Options.num_ram_banks);
 	}
 
-	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
-		SDL_RWops *f = nullptr;
+	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> gzFile {
+		gzFile f = Z_NULL;
 
 		option_source optsrc  = option_get_source(cmdline_option);
 		char const   *srcname = option_get_source_name(optsrc);
@@ -175,7 +176,7 @@ int main(int argc, char **argv)
 		if (options_find_file(real_path, path)) {
 			const std::string &real_path_string = real_path.generic_string();
 
-			f = SDL_RWFromFile(real_path_string.c_str(), mode);
+			f = gzopen(real_path_string.c_str(), mode);
 			printf("Using %s at %s\n", cmdline_option, real_path_string.c_str());
 		}
 		printf("\t-%s sourced from: %s\n", cmdline_option, srcname);
@@ -195,35 +196,46 @@ int main(int argc, char **argv)
 
 	// Load ROM
 	{
-		SDL_RWops *f = open_file(Options.rom_path, "rom", "rb");
+		gzFile f = open_file(Options.rom_path, "rom", "rb");
 		if (f == nullptr) {
 			error("ROM error", "Could not find ROM.");
 		}
 
 		// Could be changed to allow extended rom files
 		memset(ROM, 0, ROM_SIZE);
-		SDL_RWread(f, ROM, ROM_SIZE, 1);
-		SDL_RWclose(f);
+		gzread(f, ROM, ROM_SIZE);
+		gzclose(f);
+
+		// Look for ROM symbols?
+		if (Options.load_standard_symbols) {
+			symbols_load_file((Options.rom_path.parent_path() / "kernal.sym").generic_string(), 0);
+			symbols_load_file((Options.rom_path.parent_path() / "keymap.sym").generic_string(), 1);
+			symbols_load_file((Options.rom_path.parent_path() / "dos.sym").generic_string(), 2);
+			symbols_load_file((Options.rom_path.parent_path() / "geos.sym").generic_string(), 3);
+			symbols_load_file((Options.rom_path.parent_path() / "basic.sym").generic_string(), 4);
+			symbols_load_file((Options.rom_path.parent_path() / "monitor.sym").generic_string(), 5);
+			symbols_load_file((Options.rom_path.parent_path() / "charset.sym").generic_string(), 0);
+		}
 
 		if (!Options.rom_carts.empty()) {
 			for (auto &[path, bank] : Options.rom_carts) {
-				SDL_RWops *cf = open_file(path, "romcart", "rb");
-				if (cf == nullptr) {
+				gzFile cf = open_file(path, "romcart", "rb");
+				if (cf == Z_NULL) {
 					error("Cartridge / ROM error", "Could not find cartridge.");
 				}
-				const size_t cart_size = static_cast<size_t>(SDL_RWsize(cf));
-				SDL_RWread(cf, ROM + (0x4000 * bank), cart_size, 1);
-				SDL_RWclose(cf);
+				const size_t cart_size = gzsize(cf);
+				gzread(cf, ROM + (0x4000 * bank), static_cast<unsigned int>(cart_size));
+				gzclose(cf);
 			}
 		}
 	}
 
 	// Load NVRAM, if specified
 	if (!Options.nvram_path.empty()) {
-		SDL_RWops *f = open_file(Options.nvram_path, "nvram", "rb");
-		if (f) {
-			SDL_RWread(f, nvram, sizeof(nvram), 1);
-			SDL_RWclose(f);
+		gzFile f = open_file(Options.nvram_path, "nvram", "rb");
+		if (f != Z_NULL) {
+			gzread(f, nvram, sizeof(nvram));
+			gzclose(f);
 		}
 	}
 
@@ -337,6 +349,8 @@ int main(int argc, char **argv)
 		nvram_dirty = false;
 	}
 
+	sdcard_shutdown();
+
 	SDL_free(const_cast<char *>(private_path));
 	SDL_free(const_cast<char *>(base_path));
 
@@ -349,204 +363,6 @@ display_quit:
 	SDL_Quit();
 
 	return 0;
-}
-
-static char const *disasm_get_label(uint16_t address)
-{
-	static char label[256];
-
-	const symbol_list_type &symbols = symbols_find(address);
-	if (symbols.size() > 0) {
-		strncpy(label, symbols.front().c_str(), 256);
-		label[255] = '\0';
-		return label;
-	}
-
-	for (uint16_t i = 1; i < 3; ++i) {
-		const symbol_list_type &symbols = symbols_find(address - i);
-		if (symbols.size() > 0) {
-			snprintf(label, 256, "%s+%d", symbols.front().c_str(), i);
-			label[255] = '\0';
-			return label;
-		}
-	}
-
-	return nullptr;
-}
-
-static char const *disasm_label(uint16_t target, bool branch_target, const char *hex_format)
-{
-	const char *symbol = disasm_get_label(target);
-
-	static char inner[256];
-	if (symbol != nullptr) {
-		snprintf(inner, 256, "%s", symbol);
-	} else {
-		snprintf(inner, 256, hex_format, target);
-	}
-	inner[255] = '\0';
-	return inner;
-}
-
-static char const *disasm_label_wrap(uint16_t target, bool branch_target, const char *hex_format, const char *wrapper_format)
-{
-	const char *symbol = disasm_get_label(target);
-
-	char inner[256];
-	if (symbol != nullptr) {
-		snprintf(inner, 256, "%s", symbol);
-	} else {
-		snprintf(inner, 256, hex_format, target);
-	}
-	inner[255] = '\0';
-
-	static char wrapped[512];
-	snprintf(wrapped, 512, wrapper_format, inner);
-	wrapped[511] = '\0';
-	return wrapped;
-}
-
-void sncatf(char *&buffer_start, size_t &size_remaining, char const *fmt, ...)
-{
-	va_list arglist;
-	va_start(arglist, fmt);
-	size_t printed = vsnprintf(buffer_start, size_remaining, fmt, arglist);
-	va_end(arglist);
-	buffer_start += printed;
-	size_remaining -= printed;
-}
-
-size_t disasm_code(char *buffer, size_t buffer_size, uint16_t pc, /*char *line, unsigned int max_line,*/ uint8_t bank)
-{
-
-	uint8_t     opcode   = debug_read6502(pc, bank);
-	char const *mnemonic = mnemonics[opcode];
-	op_mode     mode     = mnemonics_mode[opcode];
-
-	//		Test for branches. These are BRA ($80) and
-	//		$10,$30,$50,$70,$90,$B0,$D0,$F0.
-	//
-	bool is_branch = (opcode == 0x80) || ((opcode & 0x1F) == 0x10) || (opcode == 0x20);
-
-	//		Ditto bbr and bbs, the "zero-page, relative" ops.
-	//		$0F,$1F,$2F,$3F,$4F,$5F,$6F,$7F,$8F,$9F,$AF,$BF,$CF,$DF,$EF,$FF
-	//
-	bool is_zprel = (opcode & 0x0F) == 0x0F;
-
-	is_branch        = is_branch || is_zprel;
-	char *buffer_beg = buffer;
-
-	switch (mode) {
-		case op_mode::MODE_ZPREL: {
-			uint8_t  zp     = debug_read6502(pc + 1, bank);
-			uint16_t target = pc + 3 + (int8_t)debug_read6502(pc + 2, bank);
-
-			sncatf(buffer, buffer_size, "%s", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label(zp, is_branch, "$%02X"));
-			sncatf(buffer, buffer_size, ", ");
-			sncatf(buffer, buffer_size, "%s", disasm_label(target, is_branch, "$%04X"));
-		} break;
-
-		case op_mode::MODE_IMP:
-			sncatf(buffer, buffer_size, "%s", mnemonic);
-			break;
-
-		case op_mode::MODE_IMM: {
-			uint16_t value = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "#$%02X", value);
-		} break;
-
-		case op_mode::MODE_ZP: {
-			uint8_t value = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "$%02X", value);
-		} break;
-
-		case op_mode::MODE_REL: {
-			uint16_t target = pc + 2 + (int8_t)debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label(target, is_branch, "$%04X"));
-		} break;
-
-		case op_mode::MODE_ZPX: {
-			uint8_t value = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(value, is_branch, "$%02X", "%s,x"));
-		} break;
-
-		case op_mode::MODE_ZPY: {
-			uint8_t value = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(value, is_branch, "$%02X", "%s,y"));
-		} break;
-
-		case op_mode::MODE_ABSO: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label(target, is_branch, "$%04X"));
-		} break;
-
-		case op_mode::MODE_ABSX: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%04X", "%s,x"));
-		} break;
-
-		case op_mode::MODE_ABSY: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%04X", "%s,y"));
-		} break;
-
-		case op_mode::MODE_AINX: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%04X", "(%s,x)"));
-		} break;
-
-		case op_mode::MODE_INDY: {
-			uint8_t target = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%02X", "(%s),y"));
-		} break;
-
-		case op_mode::MODE_INDX: {
-			uint8_t target = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%02X", "(%s,x)"));
-		} break;
-
-		case op_mode::MODE_IND: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%04X", "(%s)"));
-		} break;
-
-		case op_mode::MODE_IND0: {
-			uint8_t target = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%02X", "(%s)"));
-		} break;
-
-		case op_mode::MODE_A:
-			sncatf(buffer, buffer_size, "%s a", mnemonic);
-			break;
-	}
-	return (size_t)(buffer - buffer_beg);
 }
 
 void emulator_loop()

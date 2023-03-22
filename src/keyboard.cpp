@@ -14,6 +14,7 @@
 #include "rom_symbols.h"
 #include "unicode.h"
 #include "utf8.h"
+#include "files.h"
 
 #define EXTENDED_FLAG 0x100
 #define ESC_IS_BREAK /* if enabled, Esc sends Break/Pause key instead of Esc */
@@ -199,18 +200,18 @@ void keyboard_add_text(char const *const text)
 
 void keyboard_add_file(char const *const path)
 {
-	SDL_RWops *file = SDL_RWFromFile(path, "r");
-	if (file == nullptr) {
+	gzFile file = gzopen(path, "r");
+	if (file == Z_NULL) {
 		printf("Cannot open text file %s!\n", path);
 		return;
 	}
 
-	const size_t file_size   = (size_t)SDL_RWsize(file);
+	const size_t file_size   = (size_t)gzsize(file);
 	const size_t buffer_size = file_size + 1;
 
 	char *const file_text = new char[buffer_size];
 
-	const size_t read_size = SDL_RWread(file, file_text, 1, file_size);
+	const size_t read_size = gzread(file, file_text, static_cast<unsigned int>(file_size));
 	if (read_size != file_size) {
 		printf("File read error on %s\n", path);
 		delete[] file_text;
@@ -226,7 +227,7 @@ void keyboard_add_file(char const *const path)
 		Keyboard_event_list.push_back(evt);
 	}
 
-	SDL_RWclose(file);
+	gzclose(file);
 }
 
 uint8_t keyboard_get_next_byte()

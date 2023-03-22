@@ -10,6 +10,7 @@
 // * main.c: IEEE KERNAL call hooks (high level)
 
 #include "ieee.h"
+#include "files.h"
 #include "loadsave.h"
 #include "memory.h"
 #include <SDL.h>
@@ -18,7 +19,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
-extern SDL_RWops *prg_file;
 
 #define UNIT_NO 8
 
@@ -41,11 +41,11 @@ int     dirlist_len = 0;
 int     dirlist_pos = 0;
 
 struct channel_t {
-	char       name[80];
-	bool       write;
-	int        pos;
-	int        size;
-	SDL_RWops *f;
+	char   name[80];
+	bool   write;
+	int    pos;
+	int    size;
+	gzFile f;
 };
 
 channel_t channels[16];
@@ -175,12 +175,10 @@ static int copen(int channel)
 		dirlist_len = create_directory_listing(dirlist);
 		dirlist_pos = 0;
 	} else {
-		if (!strcmp(channels[channel].name, ":*")) {
-			channels[channel].f = prg_file;
-		} else {
-			channels[channel].f = SDL_RWFromFile(channels[channel].name, channels[channel].write ? "wb" : "rb");
+		if (strcmp(channels[channel].name, ":*") != 0) {
+			channels[channel].f = gzopen(channels[channel].name, channels[channel].write ? "wb9" : "rb");
 		}
-		if (!channels[channel].f) {
+		if (channels[channel].f == Z_NULL) {
 			if (log_ieee) {
 				printf("  FILE NOT FOUND\n");
 			}
@@ -188,12 +186,12 @@ static int copen(int channel)
 			ret = 2; // FNF
 		} else {
 			if (!channels[channel].write) {
-				SDL_RWseek(channels[channel].f, 0, RW_SEEK_END);
-				channels[channel].size = (int)SDL_RWtell(channels[channel].f);
-				SDL_RWseek(channels[channel].f, 0, RW_SEEK_SET);
+				channels[channel].size = (int)gzsize(channels[channel].f);
 				channels[channel].pos = 0;
 			} else if (append) {
-				SDL_RWseek(channels[channel].f, 0, RW_SEEK_END);
+				channels[channel].size = (int)gzsize(channels[channel].f);
+				gzseek(channels[channel].f, channels[channel].size, SEEK_SET);
+				channels[channel].pos = channels[channel].size;
 			}
 			clear_error();
 		}
@@ -208,8 +206,8 @@ static void cclose(int channel)
 	}
 	channels[channel].name[0] = 0;
 	if (channels[channel].f) {
-		SDL_RWclose(channels[channel].f);
-		channels[channel].f = NULL;
+		gzclose(channels[channel].f);
+		channels[channel].f = Z_NULL;
 	}
 }
 
@@ -273,7 +271,7 @@ int ACPTR(uint8_t *a)
 				ret = 0x40;
 			}
 		} else if (channels[channel].f) {
-			*a = SDL_ReadU8(channels[channel].f);
+			*a = gzread8(channels[channel].f);
 			if (channels[channel].pos == channels[channel].size - 1) {
 				ret = 0x40;
 			} else {
@@ -312,7 +310,7 @@ int CIOUT(uint8_t a)
 					}
 				}
 			} else if (channels[channel].write && channels[channel].f) {
-				SDL_WriteU8(channels[channel].f, a);
+				gzwrite8(channels[channel].f, a);
 			} else {
 				ret = 2; // FNF
 			}

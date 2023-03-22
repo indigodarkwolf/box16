@@ -123,9 +123,7 @@ void wav_recorder_init()
 
 void wav_recorder_shutdown()
 {
-	if (Wav_record_state == RECORD_WAV_RECORDING) {
-		Wav_recorder.end();
-	}
+	Wav_recorder.end();
 }
 
 void wav_recorder_process(const int16_t *samples, const int num_samples)

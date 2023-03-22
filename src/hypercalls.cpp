@@ -11,8 +11,10 @@
 #include "memory.h"
 #include "options.h"
 #include "rom_symbols.h"
+#include "symbols.h"
 #include "unicode.h"
 #include "vera/sdcard.h"
+#include "zlib.h"
 
 #define KERNAL_MACPTR (0xff44)
 #define KERNAL_SECOND (0xff93)
@@ -232,32 +234,38 @@ void hypercalls_update()
 		Hypercall_table[KERNAL_CHRIN & 0xff] = []() -> bool {
 			// as soon as BASIC starts reading a line...
 			if (!Options.prg_path.empty()) {
-				std::filesystem::path prg_path;
-				options_get_hyper_path(prg_path, Options.prg_path);
+				std::filesystem::path prg_path = options_get_hyper_path() / Options.prg_path;
 
-				SDL_RWops *prg_file = SDL_RWFromFile(prg_path.generic_string().c_str(), "rb");
-				if (!prg_file) {
+				auto prg_file = gzopen(prg_path.generic_string().c_str(), "rb");
+				if (prg_file == Z_NULL) {
 					printf("Cannot open PRG file %s (%s)!\n", prg_path.generic_string().c_str(), std::filesystem::absolute(prg_path).generic_string().c_str());
 					exit(1);
 				}
 
 				// ...inject the app into RAM
-				uint8_t  start_lo = SDL_ReadU8(prg_file);
-				uint8_t  start_hi = SDL_ReadU8(prg_file);
+				uint8_t start_lo;
+				uint8_t start_hi;
+				gzread(prg_file, &start_lo, 1);
+				gzread(prg_file, &start_hi, 1);
+
 				uint16_t start;
 				if (Options.prg_override_start > 0) {
 					start = Options.prg_override_start;
 				} else {
 					start = start_hi << 8 | start_lo;
 				}
-				uint16_t end = start + (uint16_t)SDL_RWread(prg_file, RAM + start, 1, 65536 - (int)start);
-				SDL_RWclose(prg_file);
-				prg_file = nullptr;
+				uint16_t end = start + (uint16_t)gzread(prg_file, RAM + start, 65536 - (int)start);
+				gzclose(prg_file);
+				prg_file = Z_NULL;
+
 				if (start == 0x0801) {
 					// set start of variables
 					RAM[VARTAB]     = end & 0xff;
 					RAM[VARTAB + 1] = end >> 8;
 				}
+
+				// Now look for and load symbols, if applicable.
+				symbols_load_file(prg_path.replace_extension(".sym").generic_string(), 0);
 
 				if (Options.run_after_load) {
 					if (start == 0x0801) {

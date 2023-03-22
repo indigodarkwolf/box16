@@ -132,12 +132,12 @@
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\zlib-1.2.13\include;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -146,7 +146,7 @@
       <TargetMachine>MachineX86</TargetMachine>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\zlib-1.2.13\lib\x86\zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
     </Link>
@@ -157,20 +157,27 @@
     <PostBuildEvent>
       <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
 
+
 xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
 
+
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
+
+
+
+
+xcopy $(VendorDir)\zlib-1.2.13\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
 
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\zlib-1.2.13\include;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -182,7 +189,7 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\zlib-1.2.13\lib\x86\zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
@@ -194,20 +201,27 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
     <PostBuildEvent>
       <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
 
+
 xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
 
+
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
+
+
+
+
+xcopy $(VendorDir)\zlib-1.2.13\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
 
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|Win32'">
     <ClCompile>
-      <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;TRACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_WINAPI;WIN32;NDEBUG;_WINDOWS;TRACE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <WarningLevel>Level3</WarningLevel>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\zlib-1.2.13\include;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <TreatWarningAsError>true</TreatWarningAsError>
@@ -219,7 +233,7 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x86\SDL2.lib;$(VendorDir)\zlib-1.2.13\lib\x86\zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
       <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
@@ -231,23 +245,31 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
     <PostBuildEvent>
       <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
 
+
 xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
 
+
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
+
+
+
+
+xcopy $(VendorDir)\zlib-1.2.13\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
 
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\zlib-1.2.13\include;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>ZLIB_WINAPI;</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\zlib-1.2.13\lib\x64\zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
       <SubSystem>Console</SubSystem>
@@ -260,24 +282,28 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
       <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
 
 
+
 xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
 
 
+
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
+xcopy $(VendorDir)\zlib-1.2.13\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\zlib-1.2.13\include;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <WholeProgramOptimization>true</WholeProgramOptimization>
+      <PreprocessorDefinitions>ZLIB_WINAPI;</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\zlib-1.2.13\lib\x64\zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
       <SubSystem>Console</SubSystem>
@@ -291,25 +317,28 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
       <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
 
 
+
 xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
 
 
+
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
+xcopy $(VendorDir)\zlib-1.2.13\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release (TRACE)|x64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\r8brain-free-src;$(SrcDir)\compat</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SrcDir);$(VendorDir)\SDL2-2.0.10\include;$(VendorDir)\nativefiledialog\src\include;$(VendorDir)\mINI\src\mini;$(VendorDir)\lodepng;$(VendorDir)\rtmidi;$(VendorDir)\ymfm\src;$(VendorDir)\zlib-1.2.13\include;$(SrcDir)\compat</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>$(SrcDir)\compat\compat.h</ForcedIncludeFiles>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <WholeProgramOptimization>true</WholeProgramOptimization>
-      <PreprocessorDefinitions>TRACE</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ZLIB_WINAPI;TRACE</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\zlib-1.2.13\lib\x64\zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <EntryPointSymbol>
       </EntryPointSymbol>
       <SubSystem>Console</SubSystem>
@@ -323,10 +352,13 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
       <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
 
 
+
 xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
 
 
+
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
+xcopy $(VendorDir)\zlib-1.2.13\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
 </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -337,7 +369,9 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClCompile Include="..\..\src\compat\getopt.cpp" />
     <ClCompile Include="..\..\src\cpu\fake6502.cpp" />
     <ClCompile Include="..\..\src\debugger.cpp" />
+    <ClCompile Include="..\..\src\disasm.cpp" />
     <ClCompile Include="..\..\src\display.cpp" />
+    <ClCompile Include="..\..\src\files.cpp" />
     <ClCompile Include="..\..\src\gif_recorder.cpp" />
     <ClCompile Include="..\..\src\glad\gl.cpp" />
     <ClCompile Include="..\..\src\hypercalls.cpp" />
@@ -359,7 +393,7 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClCompile Include="..\..\src\midi.cpp" />
     <ClCompile Include="..\..\src\options.cpp" />
     <ClCompile Include="..\..\src\overlay\cpu_visualization.cpp" />
-    <ClCompile Include="..\..\src\overlay\disasm.cpp" />
+    <ClCompile Include="..\..\src\overlay\disasm_overlay.cpp" />
     <ClCompile Include="..\..\src\overlay\memory_dump.cpp" />
     <ClCompile Include="..\..\src\overlay\midi_overlay.cpp" />
     <ClCompile Include="..\..\src\overlay\options_menu.cpp" />
@@ -401,7 +435,9 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClInclude Include="..\..\src\cpu\support.h" />
     <ClInclude Include="..\..\src\cpu\tables.h" />
     <ClInclude Include="..\..\src\debugger.h" />
+    <ClInclude Include="..\..\src\disasm.h" />
     <ClInclude Include="..\..\src\display.h" />
+    <ClInclude Include="..\..\src\files.h" />
     <ClInclude Include="..\..\src\gif\gif.h" />
     <ClInclude Include="..\..\src\gif_recorder.h" />
     <ClInclude Include="..\..\src\glad\gl.h" />
@@ -425,7 +461,7 @@ xcopy $(VendorDir)\SDL2-2.0.10\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClInclude Include="..\..\src\midi.h" />
     <ClInclude Include="..\..\src\options.h" />
     <ClInclude Include="..\..\src\overlay\cpu_visualization.h" />
-    <ClInclude Include="..\..\src\overlay\disasm.h" />
+    <ClInclude Include="..\..\src\overlay\disasm_overlay.h" />
     <ClInclude Include="..\..\src\overlay\memory_dump.h" />
     <ClInclude Include="..\..\src\overlay\midi_overlay.h" />
     <ClInclude Include="..\..\src\overlay\options_menu.h" />

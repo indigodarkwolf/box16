@@ -47,7 +47,7 @@ static void usage()
 {
 	printf("%s %s (%s)\n", VER_TITLE, VER_NUM, VER_NAME);
 	printf("Copyright (c) 2019-2023 Michael Steil,\n");
-	printf("              2020 Frank van den Hoen,\n");
+	printf("              2020 Frank van den Hoef,\n");
 	printf("              2021-2023 Stephen Horn, et al.\n");
 	printf("All rights reserved. License: 2-clause BSD\n\n");
 
@@ -166,7 +166,9 @@ static void usage()
 	printf("\tSet the real-time-clock to the current system time and date.\n");
 
 	printf("-randram\n");
-	printf("\tRandomize the byte contents of memory on first boot.\n");
+	printf("\t(deprecated, no effect)\n");
+	printf("-zeroram\n");
+	printf("\tSet all RAM to zero instead of uninitialized random values at boot.\n");
 
 	printf("-run\n");
 	printf("\tStart the -prg/-bas program using RUN or SYS, depending\n");
@@ -605,9 +607,13 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argv++;
 
 		} else if (!strcmp(argv[0], "-randram")) {
+		    /* this operation has no effect anymore, randomizing the Ram is now default */
 			argc--;
 			argv++;
-			ini["randram"] = "true";
+		} else if (!strcmp(argv[0], "-zeroram")) {
+			argc--;
+			argv++;
+			ini["zeroram"] = "true";
 
 		} else if (!strcmp(argv[0], "-rom")) {
 			argc--;
@@ -1030,13 +1036,7 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	}
 
 	if (ini.has("stds")) {
-		Sym_options.push_back({ "kernal.sym", 0 });
-		Sym_options.push_back({ "keymap.sym", 1 });
-		Sym_options.push_back({ "dos.sym", 2 });
-		Sym_options.push_back({ "geos.sym", 3 });
-		Sym_options.push_back({ "basic.sym", 4 });
-		Sym_options.push_back({ "monitor.sym", 5 });
-		Sym_options.push_back({ "charset.sym", 0 });
+		opts.load_standard_symbols = true;
 	}
 
 	if (ini.has("scale")) {
@@ -1133,8 +1133,8 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.widescreen = true;
 	}
 
-	if (ini.has("randram") && ini["randram"] == "true") {
-		opts.memory_randomize = true;
+	if (ini.has("zeroram") && ini["zeroram"] == "true") {
+		opts.memory_randomize = false;
 	}
 
 	if (ini.has("wuninit") && ini["wuninit"] == "true") {
@@ -1385,7 +1385,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
 	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
 	set_option("widescreen", Options.widescreen, Default_options.widescreen);
-	set_option("randram", Options.memory_randomize, Default_options.memory_randomize);
+	set_option("zeroram", Options.memory_randomize, Default_options.memory_randomize);
 	set_option("wuninit", Options.memory_uninit_warn, Default_options.memory_uninit_warn);
 }
 
@@ -1496,7 +1496,7 @@ void options_init(const char *base_path, const char *prefs_path, int argc, char 
 			mINI::INIFile file(Options_ini_path.generic_string());
 			file.read(Inifile_ini);
 		} else {
-			options_get_prefs_path(Options_ini_path, "box16.ini");
+			Options_ini_path = Options_prefs_path / "box16.ini";
 		}
 	}
 
@@ -1582,24 +1582,6 @@ void options_apply_debugger_opts()
 	}
 }
 
-size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path)
-{
-	real_path = Options_base_path / path;
-	return real_path.generic_string().length();
-}
-
-size_t options_get_prefs_path(std::filesystem::path &real_path, const std::filesystem::path &path)
-{
-	real_path = Options_prefs_path / path;
-	return real_path.generic_string().length();
-}
-
-size_t options_get_hyper_path(std::filesystem::path &real_path, const std::filesystem::path &path)
-{
-	real_path = Options.hyper_path / path;
-	return real_path.generic_string().length();
-}
-
 bool option_cmdline_option_was_set(char const *cmdline_option)
 {
 	return Cmdline_ini["main"].has(cmdline_option);
@@ -1677,4 +1659,19 @@ int options_log_verbose(const char *format, ...)
 		return result;
 	}
 	return 0;
+}
+
+const std::filesystem::path &options_get_base_path()
+{
+	return Options_base_path;
+}
+
+const std::filesystem::path &options_get_prefs_path()
+{
+	return Options_prefs_path;
+}
+
+const std::filesystem::path &options_get_hyper_path()
+{
+	return Options.hyper_path;
 }
