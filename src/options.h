@@ -102,7 +102,7 @@ struct options {
 	bool enable_serial      = false;
 	bool ym_irq             = false;
 	bool ym_strict          = false;
-	bool memory_randomize   = false;
+	bool memory_randomize   = true;
 	bool memory_uninit_warn = false;
 };
 
