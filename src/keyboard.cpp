@@ -200,18 +200,18 @@ void keyboard_add_text(char const *const text)
 
 void keyboard_add_file(char const *const path)
 {
-	gzFile file = gzopen(path, "r");
+	struct x16file *file = x16open(path, "r");
 	if (file == Z_NULL) {
 		printf("Cannot open text file %s!\n", path);
 		return;
 	}
 
-	const size_t file_size   = (size_t)gzsize(file);
+	const size_t file_size   = (size_t)x16size(file);
 	const size_t buffer_size = file_size + 1;
 
 	char *const file_text = new char[buffer_size];
 
-	const size_t read_size = gzread(file, file_text, static_cast<unsigned int>(file_size));
+	const size_t read_size = x16read(file, file_text, sizeof(uint8_t), static_cast<unsigned int>(file_size));
 	if (read_size != file_size) {
 		printf("File read error on %s\n", path);
 		delete[] file_text;
@@ -227,7 +227,7 @@ void keyboard_add_file(char const *const path)
 		Keyboard_event_list.push_back(evt);
 	}
 
-	gzclose(file);
+	x16close(file);
 }
 
 uint8_t keyboard_get_next_byte()

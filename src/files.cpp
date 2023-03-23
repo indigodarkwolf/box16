@@ -252,7 +252,7 @@ x16open(const char *path, const char *attribs)
 
 		f->file = SDL_RWFromFile(tmp_path, attribs);
 		if (f->file == NULL) {
-			unlink(tmp_path);
+			_unlink(tmp_path);
 			goto error;
 		}
 		f->size = total_read;
@@ -287,24 +287,76 @@ void x16close(struct x16file *f)
 		char tmp_path[PATH_MAX];
 		if (!get_tmp_name(tmp_path, f->path, ".tmp")) {
 			printf("Path too long, cannot create temp file: %s\n", f->path);
-			goto tmp_path_error;
+			
+			if (f == open_files) {
+				open_files = f->next;
+			} else {
+				for (struct x16file *fi = open_files; fi != NULL; fi = fi->next) {
+					if (fi->next == f) {
+						fi->next = f->next;
+						break;
+					}
+				}
+			}
+			free(f);
+			return;
 		}
 
 		if (f->modified == false) {
-			goto zfile_clean;
+			_unlink(tmp_path);
+			if (f == open_files) {
+				open_files = f->next;
+			} else {
+				for (struct x16file *fi = open_files; fi != NULL; fi = fi->next) {
+					if (fi->next == f) {
+						fi->next = f->next;
+						break;
+					}
+				}
+			}
+			free(f);
+			return;
 		}
 
 		gzFile zfile = gzopen(f->path, "wb6");
 		if (zfile == Z_NULL) {
 			printf("Could not open file for compression: %s\n", f->path);
-			goto zfile_error;
+			_unlink(tmp_path);
+			if (f == open_files) {
+				open_files = f->next;
+			} else {
+				for (struct x16file *fi = open_files; fi != NULL; fi = fi->next) {
+					if (fi->next == f) {
+						fi->next = f->next;
+						break;
+					}
+				}
+			}
+			free(f);
+			return;
 		}
 
 		SDL_RWops *tfile = SDL_RWFromFile(tmp_path, "rb");
 		if (tfile == NULL) {
 			gzclose(zfile);
 			printf("Could not open file for read: %s\n", tmp_path);
-			goto tfile_error;
+
+			if (zfile != Z_NULL) {
+				gzclose(zfile);
+			}
+			_unlink(tmp_path);
+			if (f == open_files) {
+				open_files = f->next;
+			} else {
+				for (struct x16file *fi = open_files; fi != NULL; fi = fi->next) {
+					if (fi->next == f) {
+						fi->next = f->next;
+						break;
+					}
+				}
+			}
+			free(f);
+			return;
 		}
 
 		printf("Recompressing %s\n", f->path);
@@ -321,7 +373,7 @@ void x16close(struct x16file *f)
 				printf("%d%%\n", (int)(total_read * 100 / f->size));
 				progress_threshold += progress_increment;
 			}
-			gzwrite(zfile, buffer, read);
+			gzwrite(zfile, buffer, (unsigned int)read);
 			read = SDL_RWread(tfile, buffer, 1, buffer_size);
 			total_read += read;
 		}
@@ -332,16 +384,13 @@ void x16close(struct x16file *f)
 			SDL_RWclose(tfile);
 		}
 
-	tfile_error:
 		if (zfile != Z_NULL) {
 			gzclose(zfile);
 		}
 
-	zfile_error: // fall-through
-	zfile_clean:
-		unlink(tmp_path);
+		_unlink(tmp_path);
 	}
-tmp_path_error:
+
 	if (f == open_files) {
 		open_files = f->next;
 	} else {
@@ -386,7 +435,7 @@ int x16seek(struct x16file *f, int64_t pos, int origin)
 				f->pos = f->size;
 			}
 	}
-	return SDL_RWseek(f->file, f->pos, SEEK_SET);
+	return (int)SDL_RWseek(f->file, f->pos, SEEK_SET);
 }
 
 int64_t
@@ -403,7 +452,7 @@ int x16write8(struct x16file *f, uint8_t val)
 	if (f == NULL) {
 		return 0;
 	}
-	int written = SDL_RWwrite(f->file, &val, 1, 1);
+	int written = (int)SDL_RWwrite(f->file, &val, 1, 1);
 	f->pos += written;
 	return written;
 }
@@ -415,7 +464,7 @@ x16read8(struct x16file *f)
 		return 0;
 	}
 	uint8_t val;
-	int     read = SDL_RWread(f->file, &val, 1, 1);
+	int     read = (int)SDL_RWread(f->file, &val, 1, 1);
 	f->pos += read;
 	return read;
 }

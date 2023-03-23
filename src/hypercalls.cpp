@@ -236,7 +236,7 @@ void hypercalls_update()
 			if (!Options.prg_path.empty()) {
 				std::filesystem::path prg_path = options_get_hyper_path() / Options.prg_path;
 
-				auto prg_file = gzopen(prg_path.generic_string().c_str(), "rb");
+				auto prg_file = x16open(prg_path.generic_string().c_str(), "rb");
 				if (prg_file == Z_NULL) {
 					printf("Cannot open PRG file %s (%s)!\n", prg_path.generic_string().c_str(), std::filesystem::absolute(prg_path).generic_string().c_str());
 					exit(1);
@@ -245,8 +245,8 @@ void hypercalls_update()
 				// ...inject the app into RAM
 				uint8_t start_lo;
 				uint8_t start_hi;
-				gzread(prg_file, &start_lo, 1);
-				gzread(prg_file, &start_hi, 1);
+				x16read(prg_file, &start_lo, sizeof(uint8_t), 1);
+				x16read(prg_file, &start_hi, sizeof(uint8_t), 1);
 
 				uint16_t start;
 				if (Options.prg_override_start > 0) {
@@ -254,8 +254,8 @@ void hypercalls_update()
 				} else {
 					start = start_hi << 8 | start_lo;
 				}
-				uint16_t end = start + (uint16_t)gzread(prg_file, RAM + start, 65536 - (int)start);
-				gzclose(prg_file);
+				uint16_t end = start + (uint16_t)x16read(prg_file, RAM + start, sizeof(uint8_t), 65536 - (int)start);
+				x16close(prg_file);
 				prg_file = Z_NULL;
 
 				if (start == 0x0801) {

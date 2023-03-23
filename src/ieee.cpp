@@ -45,7 +45,7 @@ struct channel_t {
 	bool   write;
 	int    pos;
 	int    size;
-	gzFile f;
+	struct x16file *f;
 };
 
 channel_t channels[16];
@@ -176,7 +176,7 @@ static int copen(int channel)
 		dirlist_pos = 0;
 	} else {
 		if (strcmp(channels[channel].name, ":*") != 0) {
-			channels[channel].f = gzopen(channels[channel].name, channels[channel].write ? "wb9" : "rb");
+			channels[channel].f = x16open(channels[channel].name, channels[channel].write ? "wb9" : "rb");
 		}
 		if (channels[channel].f == Z_NULL) {
 			if (log_ieee) {
@@ -186,11 +186,11 @@ static int copen(int channel)
 			ret = 2; // FNF
 		} else {
 			if (!channels[channel].write) {
-				channels[channel].size = (int)gzsize(channels[channel].f);
+				channels[channel].size = (int)x16size(channels[channel].f);
 				channels[channel].pos = 0;
 			} else if (append) {
-				channels[channel].size = (int)gzsize(channels[channel].f);
-				gzseek(channels[channel].f, channels[channel].size, SEEK_SET);
+				channels[channel].size = (int)x16size(channels[channel].f);
+				x16seek(channels[channel].f, channels[channel].size, SEEK_SET);
 				channels[channel].pos = channels[channel].size;
 			}
 			clear_error();
@@ -206,7 +206,7 @@ static void cclose(int channel)
 	}
 	channels[channel].name[0] = 0;
 	if (channels[channel].f) {
-		gzclose(channels[channel].f);
+		x16close(channels[channel].f);
 		channels[channel].f = Z_NULL;
 	}
 }
@@ -271,7 +271,7 @@ int ACPTR(uint8_t *a)
 				ret = 0x40;
 			}
 		} else if (channels[channel].f) {
-			*a = gzread8(channels[channel].f);
+			*a = x16read8(channels[channel].f);
 			if (channels[channel].pos == channels[channel].size - 1) {
 				ret = 0x40;
 			} else {
@@ -310,7 +310,7 @@ int CIOUT(uint8_t a)
 					}
 				}
 			} else if (channels[channel].write && channels[channel].f) {
-				gzwrite8(channels[channel].f, a);
+				x16write8(channels[channel].f, a);
 			} else {
 				ret = 2; // FNF
 			}
