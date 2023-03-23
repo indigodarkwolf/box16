@@ -10,6 +10,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "files.h"
 
 #define NUM_MAX_RAM_BANKS 256
 
@@ -28,7 +29,7 @@ uint8_t read6502(uint16_t address);
 void    debug_write6502(uint16_t address, uint8_t bank, uint8_t value);
 void    write6502(uint16_t address, uint8_t value);
 uint8_t bank6502(uint16_t address);
-void    memory_save(SDL_RWops *f, bool dump_ram, bool dump_bank);
+void    memory_save(struct x16file *f, bool dump_ram, bool dump_bank);
 
 void memory_set_ram_bank(uint8_t bank);
 void memory_set_rom_bank(uint8_t bank);

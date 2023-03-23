@@ -79,19 +79,19 @@ void machine_dump(const char *reason)
 		}
 		index++;
 	}
-	SDL_RWops *f = SDL_RWFromFile(filename, "wb");
+	struct x16file *f = x16open(filename, "wb");
 	if (!f) {
 		printf("Cannot write to %s!\n", filename);
 		return;
 	}
 
 	if (Options.dump_cpu) {
-		SDL_RWwrite(f, &state6502.a, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.x, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.y, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.sp, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.status, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.pc, sizeof(uint16_t), 1);
+		x16write(f, &state6502.a, sizeof(uint8_t), 1);
+		x16write(f, &state6502.x, sizeof(uint8_t), 1);
+		x16write(f, &state6502.y, sizeof(uint8_t), 1);
+		x16write(f, &state6502.sp, sizeof(uint8_t), 1);
+		x16write(f, &state6502.status, sizeof(uint8_t), 1);
+		x16write(f, &state6502.pc, sizeof(uint16_t), 1);
 	}
 	memory_save(f, Options.dump_ram, Options.dump_bank);
 
@@ -99,7 +99,7 @@ void machine_dump(const char *reason)
 		vera_video_save(f);
 	}
 
-	SDL_RWclose(f);
+	x16close(f);
 	printf("Dumped system to %s.\n", filename);
 }
 
@@ -341,10 +341,10 @@ int main(int argc, char **argv)
 	save_options_on_close(false);
 
 	if (nvram_dirty && !Options.nvram_path.empty()) {
-		SDL_RWops *f = SDL_RWFromFile(Options.nvram_path.generic_string().c_str(), "wb");
+		struct x16file *f = x16open(Options.nvram_path.generic_string().c_str(), "wb");
 		if (f) {
-			SDL_RWwrite(f, nvram, 1, sizeof(nvram));
-			SDL_RWclose(f);
+			x16write(f, nvram, 1, sizeof(nvram));
+			x16close(f);
 		}
 		nvram_dirty = false;
 	}

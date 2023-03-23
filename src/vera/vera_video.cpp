@@ -9,6 +9,7 @@
 #include "vera_pcm.h"
 #include "vera_psg.h"
 #include "vera_spi.h"
+#include "files.h"
 
 #include <algorithm>
 #include <limits.h>
@@ -945,13 +946,13 @@ bool vera_video_get_irq_out()
 // saves the video memory and register content into a file
 //
 
-void vera_video_save(SDL_RWops *f)
+void vera_video_save(struct x16file *f)
 {
-	SDL_RWwrite(f, &video_ram[0], sizeof(uint8_t), sizeof(video_ram));
-	SDL_RWwrite(f, &reg_composer[0], sizeof(uint8_t), sizeof(reg_composer));
-	SDL_RWwrite(f, &palette[0], sizeof(uint8_t), sizeof(palette));
-	SDL_RWwrite(f, &reg_layer[0][0], sizeof(uint8_t), sizeof(reg_layer));
-	SDL_RWwrite(f, &sprite_data[0], sizeof(uint8_t), sizeof(sprite_data));
+	x16write(f, &video_ram[0], sizeof(uint8_t), sizeof(video_ram));
+	x16write(f, &reg_composer[0], sizeof(uint8_t), sizeof(reg_composer));
+	x16write(f, &palette[0], sizeof(uint8_t), sizeof(palette));
+	x16write(f, &reg_layer[0][0], sizeof(uint8_t), sizeof(reg_layer));
+	x16write(f, &sprite_data[0], sizeof(uint8_t), sizeof(sprite_data));
 }
 
 static const int increments[32] = {

@@ -19,6 +19,7 @@
 #include "via.h"
 #include "wav_recorder.h"
 #include "ym2151/ym2151.h"
+#include "files.h"
 
 #define RAM_SIZE (0xa000 + (uint32_t)Options.num_ram_banks * 8192) /* $0000-$9FFF + banks at $A000-$BFFF */
 
@@ -440,13 +441,13 @@ uint8_t bank6502(uint16_t address)
 // saves the memory content into a file
 //
 
-void memory_save(SDL_RWops *f, bool dump_ram, bool dump_bank)
+void memory_save(struct x16file *f, bool dump_ram, bool dump_bank)
 {
 	if (dump_ram) {
-		SDL_RWwrite(f, &RAM[0], sizeof(uint8_t), 0xa000);
+		x16write(f, &RAM[0], sizeof(uint8_t), 0xa000);
 	}
 	if (dump_bank) {
-		SDL_RWwrite(f, &RAM[0xa000], sizeof(uint8_t), (Options.num_ram_banks * 8192));
+		x16write(f, &RAM[0xa000], sizeof(uint8_t), (Options.num_ram_banks * 8192));
 	}
 }
 
