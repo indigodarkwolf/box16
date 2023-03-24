@@ -2,6 +2,8 @@
 
 #include "options.h"
 #include "zlib.h"
+#include "unistd.h"  // Added to resolve Microsoft c++ warnings around POSIX and other depreciated errors.
+
 
 bool files_find(std::filesystem::path &real_path, const std::filesystem::path &search_path)
 {
@@ -252,7 +254,7 @@ x16open(const char *path, const char *attribs)
 
 		f->file = SDL_RWFromFile(tmp_path, attribs);
 		if (f->file == NULL) {
-			_unlink(tmp_path);
+			unlink(tmp_path);
 			goto error;
 		}
 		f->size = total_read;
@@ -303,7 +305,7 @@ void x16close(struct x16file *f)
 		}
 
 		if (f->modified == false) {
-			_unlink(tmp_path);
+			unlink(tmp_path);
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
@@ -321,7 +323,7 @@ void x16close(struct x16file *f)
 		gzFile zfile = gzopen(f->path, "wb6");
 		if (zfile == Z_NULL) {
 			printf("Could not open file for compression: %s\n", f->path);
-			_unlink(tmp_path);
+			unlink(tmp_path);
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
@@ -344,7 +346,7 @@ void x16close(struct x16file *f)
 			if (zfile != Z_NULL) {
 				gzclose(zfile);
 			}
-			_unlink(tmp_path);
+			unlink(tmp_path);
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
@@ -388,7 +390,7 @@ void x16close(struct x16file *f)
 			gzclose(zfile);
 		}
 
-		_unlink(tmp_path);
+		unlink(tmp_path);
 	}
 
 	if (f == open_files) {
