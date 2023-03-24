@@ -133,8 +133,8 @@ struct x16file {
 	char path[PATH_MAX];
 
 	SDL_RWops *file;
-	int64_t    size;
-	int64_t    pos;
+	size_t    size;
+	size_t    pos;
 	bool       modified;
 
 	struct x16file *next;
@@ -235,19 +235,19 @@ x16open(const char *path, const char *attribs)
 		char     *buffer      = (char*)malloc(buffer_size);
 
 		int           read               = gzread(zfile, buffer, buffer_size);
-		int64_t       total_read         = read;
-		const int64_t progress_increment = 128 * 1024 * 1024;
-		int64_t       progress_threshold = progress_increment;
+		size_t        total_read         = read;
+		const size_t  progress_increment = 128 * 1024 * 1024;
+		size_t        progress_threshold = progress_increment;
 		while (read > 0) {
 			if (total_read > progress_threshold) {
-				printf("%" PRId64 " MB\n", total_read / (1024 * 1024));
+				printf("%zd MB\n", total_read / (1024 * 1024));
 				progress_threshold += progress_increment;
 			}
 			SDL_RWwrite(tfile, buffer, read, 1);
 			read = gzread(zfile, buffer, buffer_size);
 			total_read += read;
 		}
-		printf("%" PRId64 " MB\n", total_read / (1024 * 1024));
+		printf("%zd MB\n", total_read / (1024 * 1024));
 
 		SDL_RWclose(tfile);
 		gzclose(zfile);
@@ -264,7 +264,7 @@ x16open(const char *path, const char *attribs)
 		if (f->file == NULL) {
 			goto error;
 		}
-		f->size = SDL_RWsize(f->file);
+		f->size = (size_t)SDL_RWsize(f->file);
 	}
 	f->pos      = 0;
 	f->modified = false;
@@ -367,10 +367,10 @@ void x16close(struct x16file *f)
 		const size_t buffer_size = 16 * 1024 * 1024;
 		char     *buffer      = (char*)malloc(buffer_size);
 
-		const int64_t progress_increment = 128 * 1024 * 1024;
-		int64_t       progress_threshold = progress_increment;
+		const size_t progress_increment = 128 * 1024 * 1024;
+		size_t       progress_threshold = progress_increment;
 		size_t        read               = SDL_RWread(tfile, buffer, 1, buffer_size);
-		int64_t       total_read         = read;
+		size_t       total_read         = read;
 		while (read > 0) {
 			if (total_read > progress_threshold) {
 				printf("%d%%\n", (int)(total_read * 100 / f->size));
@@ -407,7 +407,7 @@ void x16close(struct x16file *f)
 	free(f);
 }
 
-int64_t
+size_t
 x16size(struct x16file *f)
 {
 	if (f == NULL) {
@@ -417,7 +417,7 @@ x16size(struct x16file *f)
 	return f->size;
 }
 
-int x16seek(struct x16file *f, int64_t pos, int origin)
+int x16seek(struct x16file *f, size_t pos, int origin)
 {
 	if (f == NULL) {
 		return 0;
@@ -441,7 +441,7 @@ int x16seek(struct x16file *f, int64_t pos, int origin)
 	return (int)SDL_RWseek(f->file, f->pos, SEEK_SET);
 }
 
-int64_t
+size_t
 x16tell(struct x16file *f)
 {
 	if (f == NULL) {
@@ -472,13 +472,13 @@ x16read8(struct x16file *f)
 	return read;
 }
 
-uint64_t
-x16write(struct x16file *f, const void *data, uint64_t data_size, uint64_t data_count)
+size_t
+x16write(struct x16file *f, const void *data, size_t data_size, size_t data_count)
 {
 	if (f == NULL) {
 		return 0;
 	}
-	int64_t written = SDL_RWwrite(f->file, data, data_size, data_count);
+	size_t written = SDL_RWwrite(f->file, data, data_size, data_count);
 	if (written) {
 		f->modified = true;
 	}
@@ -486,13 +486,13 @@ x16write(struct x16file *f, const void *data, uint64_t data_size, uint64_t data_
 	return written;
 }
 
-uint64_t
-x16read(struct x16file *f, void *data, uint64_t data_size, uint64_t data_count)
+size_t
+x16read(struct x16file *f, void *data, size_t data_size, size_t data_count)
 {
 	if (f == NULL) {
 		return 0;
 	}
-	int64_t read = SDL_RWread(f->file, data, data_size, data_count);
+	size_t read = SDL_RWread(f->file, data, data_size, data_count);
 	f->pos += read * data_size;
 	return read;
 }
