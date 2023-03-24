@@ -1,8 +1,9 @@
+#include <unistd.h> // Added to resolve Microsoft c++ warnings around POSIX and other depreciated errors.
+
 #include <SDL.h>
 
 #include "options.h"
 #include "zlib.h"
-#include "unistd.h"  // Added to resolve Microsoft c++ warnings around POSIX and other depreciated errors.
 
 
 bool files_find(std::filesystem::path &real_path, const std::filesystem::path &search_path)
