@@ -150,7 +150,7 @@ void LOAD()
 		std::filesystem::path filepath = Options.hyper_path / filename;
 
 		x16file *f = x16open(filepath.generic_string().c_str(), "rb");
-		if (f == Z_NULL) {
+		if (f == nullptr) {
 			state6502.a = 4; // FNF
 			RAM[STATUS] = state6502.a;
 			state6502.status |= 1;
@@ -246,7 +246,7 @@ void SAVE()
 		flags = "wb9";
 	}
 	x16file *f = x16open(filepath.generic_string().c_str(), flags);
-	if (f == Z_NULL) {
+	if (f == nullptr) {
 		state6502.a = 4; // FNF
 		RAM[STATUS] = state6502.a;
 		state6502.status |= 1;

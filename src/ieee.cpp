@@ -178,7 +178,7 @@ static int copen(int channel)
 		if (strcmp(channels[channel].name, ":*") != 0) {
 			channels[channel].f = x16open(channels[channel].name, channels[channel].write ? "wb9" : "rb");
 		}
-		if (channels[channel].f == Z_NULL) {
+		if (channels[channel].f == nullptr) {
 			if (log_ieee) {
 				printf("  FILE NOT FOUND\n");
 			}
@@ -207,7 +207,7 @@ static void cclose(int channel)
 	channels[channel].name[0] = 0;
 	if (channels[channel].f) {
 		x16close(channels[channel].f);
-		channels[channel].f = Z_NULL;
+		channels[channel].f = nullptr;
 	}
 }
 

@@ -167,7 +167,7 @@ int main(int argc, char **argv)
 	}
 
 	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> x16file * {
-		x16file *f = Z_NULL;
+		x16file *f = nullptr;
 
 		option_source optsrc  = option_get_source(cmdline_option);
 		char const   *srcname = option_get_source_name(optsrc);
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
 		if (!Options.rom_carts.empty()) {
 			for (auto &[path, bank] : Options.rom_carts) {
 				x16file *cf = open_file(path, "romcart", "rb");
-				if (cf == Z_NULL) {
+				if (cf == nullptr) {
 					error("Cartridge / ROM error", "Could not find cartridge.");
 				}
 				const size_t cart_size = x16size(cf);
@@ -233,7 +233,7 @@ int main(int argc, char **argv)
 	// Load NVRAM, if specified
 	if (!Options.nvram_path.empty()) {
 		x16file *f = open_file(Options.nvram_path, "nvram", "rb");
-		if (f != Z_NULL) {
+		if (f != nullptr) {
 			x16read(f, nvram, sizeof(uint8_t), sizeof(nvram));
 			x16close(f);
 		}

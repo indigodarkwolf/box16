@@ -237,7 +237,7 @@ void hypercalls_update()
 				std::filesystem::path prg_path = options_get_hyper_path() / Options.prg_path;
 
 				auto prg_file = x16open(prg_path.generic_string().c_str(), "rb");
-				if (prg_file == Z_NULL) {
+				if (prg_file == nullptr) {
 					printf("Cannot open PRG file %s (%s)!\n", prg_path.generic_string().c_str(), std::filesystem::absolute(prg_path).generic_string().c_str());
 					exit(1);
 				}
@@ -256,7 +256,7 @@ void hypercalls_update()
 				}
 				uint16_t end = start + (uint16_t)x16read(prg_file, RAM + start, sizeof(uint8_t), 65536 - (int)start);
 				x16close(prg_file);
-				prg_file = Z_NULL;
+				prg_file = nullptr;
 
 				if (start == 0x0801) {
 					// set start of variables
