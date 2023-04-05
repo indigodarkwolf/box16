@@ -115,11 +115,6 @@ uint8_t gzread8(gzFile f)
 	return value;
 }
 
-#ifndef __APPLE__
-#	define _XOPEN_SOURCE 600
-#	define _POSIX_C_SOURCE 1
-#endif
-
 #include "files.h"
 
 #include <SDL.h>

@@ -13,6 +13,8 @@
 
 #include <algorithm>
 #include <limits.h>
+#include <cstring>
+#include <cmath>
 
 #ifdef __EMSCRIPTEN__
 #	include "emscripten.h"

@@ -267,7 +267,6 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
       <WarningLevel>Level3</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PreprocessorDefinitions>ZLIB_WINAPI;</PreprocessorDefinitions>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\zlib-1.2.13\lib\x64\zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -302,7 +301,6 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
       <TreatWarningAsError>true</TreatWarningAsError>
       <WholeProgramOptimization>true</WholeProgramOptimization>
       <PreprocessorDefinitions>ZLIB_WINAPI;</PreprocessorDefinitions>
-      <DisableLanguageExtensions>false</DisableLanguageExtensions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>opengl32.lib;$(VendorDir)\SDL2-2.0.10\lib\x64\SDL2.lib;$(VendorDir)\zlib-1.2.13\lib\x64\zlibwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
