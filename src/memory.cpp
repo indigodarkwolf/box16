@@ -12,6 +12,7 @@
 
 #include "cpu/fake6502.h"
 #include "debugger.h"
+#include "files.h"
 #include "gif_recorder.h"
 #include "glue.h"
 #include "hypercalls.h"
@@ -440,13 +441,13 @@ uint8_t bank6502(uint16_t address)
 // saves the memory content into a file
 //
 
-void memory_save(SDL_RWops *f, bool dump_ram, bool dump_bank)
+void memory_save(x16file *f, bool dump_ram, bool dump_bank)
 {
 	if (dump_ram) {
-		SDL_RWwrite(f, &RAM[0], sizeof(uint8_t), 0xa000);
+		x16write(f, &RAM[0], sizeof(uint8_t), 0xa000);
 	}
 	if (dump_bank) {
-		SDL_RWwrite(f, &RAM[0xa000], sizeof(uint8_t), (Options.num_ram_banks * 8192));
+		x16write(f, &RAM[0xa000], sizeof(uint8_t), (Options.num_ram_banks * 8192));
 	}
 }
 

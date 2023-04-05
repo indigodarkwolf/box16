@@ -79,19 +79,19 @@ void machine_dump(const char *reason)
 		}
 		index++;
 	}
-	SDL_RWops *f = SDL_RWFromFile(filename, "wb");
+	x16file *f = x16open(filename, "wb");
 	if (!f) {
 		printf("Cannot write to %s!\n", filename);
 		return;
 	}
 
 	if (Options.dump_cpu) {
-		SDL_RWwrite(f, &state6502.a, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.x, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.y, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.sp, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.status, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.pc, sizeof(uint16_t), 1);
+		x16write(f, &state6502.a, sizeof(uint8_t), 1);
+		x16write(f, &state6502.x, sizeof(uint8_t), 1);
+		x16write(f, &state6502.y, sizeof(uint8_t), 1);
+		x16write(f, &state6502.sp, sizeof(uint8_t), 1);
+		x16write(f, &state6502.status, sizeof(uint8_t), 1);
+		x16write(f, &state6502.pc, sizeof(uint16_t), 1);
 	}
 	memory_save(f, Options.dump_ram, Options.dump_bank);
 
@@ -99,7 +99,7 @@ void machine_dump(const char *reason)
 		vera_video_save(f);
 	}
 
-	SDL_RWclose(f);
+	x16close(f);
 	printf("Dumped system to %s.\n", filename);
 }
 
@@ -166,8 +166,8 @@ int main(int argc, char **argv)
 		debugger_init(Options.num_ram_banks);
 	}
 
-	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> gzFile {
-		gzFile f = Z_NULL;
+	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> x16file * {
+		x16file *f = Z_NULL;
 
 		option_source optsrc  = option_get_source(cmdline_option);
 		char const   *srcname = option_get_source_name(optsrc);
@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 		if (options_find_file(real_path, path)) {
 			const std::string &real_path_string = real_path.generic_string();
 
-			f = gzopen(real_path_string.c_str(), mode);
+			f = x16open(real_path_string.c_str(), mode);
 			printf("Using %s at %s\n", cmdline_option, real_path_string.c_str());
 		}
 		printf("\t-%s sourced from: %s\n", cmdline_option, srcname);
@@ -196,15 +196,15 @@ int main(int argc, char **argv)
 
 	// Load ROM
 	{
-		gzFile f = open_file(Options.rom_path, "rom", "rb");
+		x16file *f = open_file(Options.rom_path, "rom", "rb");
 		if (f == nullptr) {
 			error("ROM error", "Could not find ROM.");
 		}
 
 		// Could be changed to allow extended rom files
 		memset(ROM, 0, ROM_SIZE);
-		gzread(f, ROM, ROM_SIZE);
-		gzclose(f);
+		x16read(f, ROM, sizeof(uint8_t), ROM_SIZE);
+		x16close(f);
 
 		// Look for ROM symbols?
 		if (Options.load_standard_symbols) {
@@ -219,23 +219,23 @@ int main(int argc, char **argv)
 
 		if (!Options.rom_carts.empty()) {
 			for (auto &[path, bank] : Options.rom_carts) {
-				gzFile cf = open_file(path, "romcart", "rb");
+				x16file *cf = open_file(path, "romcart", "rb");
 				if (cf == Z_NULL) {
 					error("Cartridge / ROM error", "Could not find cartridge.");
 				}
-				const size_t cart_size = gzsize(cf);
-				gzread(cf, ROM + (0x4000 * bank), static_cast<unsigned int>(cart_size));
-				gzclose(cf);
+				const size_t cart_size = x16size(cf);
+				x16read(cf, ROM + (0x4000 * bank), sizeof(uint8_t), static_cast<unsigned int>(cart_size));
+				x16close(cf);
 			}
 		}
 	}
 
 	// Load NVRAM, if specified
 	if (!Options.nvram_path.empty()) {
-		gzFile f = open_file(Options.nvram_path, "nvram", "rb");
+		x16file *f = open_file(Options.nvram_path, "nvram", "rb");
 		if (f != Z_NULL) {
-			gzread(f, nvram, sizeof(nvram));
-			gzclose(f);
+			x16read(f, nvram, sizeof(uint8_t), sizeof(nvram));
+			x16close(f);
 		}
 	}
 
@@ -341,10 +341,10 @@ int main(int argc, char **argv)
 	save_options_on_close(false);
 
 	if (nvram_dirty && !Options.nvram_path.empty()) {
-		SDL_RWops *f = SDL_RWFromFile(Options.nvram_path.generic_string().c_str(), "wb");
+		x16file *f = x16open(Options.nvram_path.generic_string().c_str(), "wb");
 		if (f) {
-			SDL_RWwrite(f, nvram, 1, sizeof(nvram));
-			SDL_RWclose(f);
+			x16write(f, nvram, 1, sizeof(nvram));
+			x16close(f);
 		}
 		nvram_dirty = false;
 	}
