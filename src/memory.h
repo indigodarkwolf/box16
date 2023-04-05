@@ -29,7 +29,7 @@ uint8_t read6502(uint16_t address);
 void    debug_write6502(uint16_t address, uint8_t bank, uint8_t value);
 void    write6502(uint16_t address, uint8_t value);
 uint8_t bank6502(uint16_t address);
-void    memory_save(struct x16file *f, bool dump_ram, bool dump_bank);
+void    memory_save(x16file *f, bool dump_ram, bool dump_bank);
 
 void memory_set_ram_bank(uint8_t bank);
 void memory_set_rom_bank(uint8_t bank);

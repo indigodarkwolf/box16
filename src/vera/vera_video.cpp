@@ -948,7 +948,7 @@ bool vera_video_get_irq_out()
 // saves the video memory and register content into a file
 //
 
-void vera_video_save(struct x16file *f)
+void vera_video_save(x16file *f)
 {
 	x16write(f, &video_ram[0], sizeof(uint8_t), sizeof(video_ram));
 	x16write(f, &reg_composer[0], sizeof(uint8_t), sizeof(reg_composer));

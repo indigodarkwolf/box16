@@ -56,7 +56,7 @@ private:
 	file_header header;
 	uint32_t    samples_written = 0;
 
-	struct x16file *wav_file = nullptr;
+	x16file *wav_file = nullptr;
 
 	void update_sizes()
 	{

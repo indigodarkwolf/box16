@@ -79,7 +79,7 @@ void machine_dump(const char *reason)
 		}
 		index++;
 	}
-	struct x16file *f = x16open(filename, "wb");
+	x16file *f = x16open(filename, "wb");
 	if (!f) {
 		printf("Cannot write to %s!\n", filename);
 		return;
@@ -166,8 +166,8 @@ int main(int argc, char **argv)
 		debugger_init(Options.num_ram_banks);
 	}
 
-	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> struct x16file* {
-		struct x16file *f = Z_NULL;
+	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> x16file * {
+		x16file *f = Z_NULL;
 
 		option_source optsrc  = option_get_source(cmdline_option);
 		char const   *srcname = option_get_source_name(optsrc);
@@ -196,7 +196,7 @@ int main(int argc, char **argv)
 
 	// Load ROM
 	{
-		struct x16file *f = open_file(Options.rom_path, "rom", "rb");
+		x16file *f = open_file(Options.rom_path, "rom", "rb");
 		if (f == nullptr) {
 			error("ROM error", "Could not find ROM.");
 		}
@@ -219,7 +219,7 @@ int main(int argc, char **argv)
 
 		if (!Options.rom_carts.empty()) {
 			for (auto &[path, bank] : Options.rom_carts) {
-				struct x16file *cf = open_file(path, "romcart", "rb");
+				x16file *cf = open_file(path, "romcart", "rb");
 				if (cf == Z_NULL) {
 					error("Cartridge / ROM error", "Could not find cartridge.");
 				}
@@ -232,7 +232,7 @@ int main(int argc, char **argv)
 
 	// Load NVRAM, if specified
 	if (!Options.nvram_path.empty()) {
-		struct x16file *f = open_file(Options.nvram_path, "nvram", "rb");
+		x16file *f = open_file(Options.nvram_path, "nvram", "rb");
 		if (f != Z_NULL) {
 			x16read(f, nvram, sizeof(uint8_t), sizeof(nvram));
 			x16close(f);
@@ -341,7 +341,7 @@ int main(int argc, char **argv)
 	save_options_on_close(false);
 
 	if (nvram_dirty && !Options.nvram_path.empty()) {
-		struct x16file *f = x16open(Options.nvram_path.generic_string().c_str(), "wb");
+		x16file *f = x16open(Options.nvram_path.generic_string().c_str(), "wb");
 		if (f) {
 			x16write(f, nvram, 1, sizeof(nvram));
 			x16close(f);

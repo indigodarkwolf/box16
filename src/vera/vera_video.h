@@ -84,7 +84,7 @@ void vera_video_reset(void);
 bool vera_video_step(float mhz, float cycles);
 void vera_video_force_redraw_screen();
 bool vera_video_get_irq_out(void);
-void vera_video_save(struct x16file *f);
+void vera_video_save(x16file *f);
 
 uint8_t vera_debug_video_read(uint8_t reg);
 uint8_t vera_video_read(uint8_t reg);

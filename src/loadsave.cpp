@@ -149,7 +149,7 @@ void LOAD()
 
 		std::filesystem::path filepath = Options.hyper_path / filename;
 
-		struct x16file *f = x16open(filepath.generic_string().c_str(), "rb");
+		x16file *f = x16open(filepath.generic_string().c_str(), "rb");
 		if (f == Z_NULL) {
 			state6502.a = 4; // FNF
 			RAM[STATUS] = state6502.a;
@@ -245,7 +245,7 @@ void SAVE()
 	if (filepath.extension().generic_string() == ".gz") {
 		flags = "wb9";
 	}
-	struct x16file *f = x16open(filepath.generic_string().c_str(), flags);
+	x16file *f = x16open(filepath.generic_string().c_str(), flags);
 	if (f == Z_NULL) {
 		state6502.a = 4; // FNF
 		RAM[STATUS] = state6502.a;

@@ -200,7 +200,7 @@ void keyboard_add_text(char const *const text)
 
 void keyboard_add_file(char const *const path)
 {
-	struct x16file *file = x16open(path, "r");
+	x16file *file = x16open(path, "r");
 	if (file == Z_NULL) {
 		printf("Cannot open text file %s!\n", path);
 		return;

@@ -45,7 +45,7 @@ struct channel_t {
 	bool   write;
 	int    pos;
 	int    size;
-	struct x16file *f;
+	x16file *f;
 };
 
 channel_t channels[16];

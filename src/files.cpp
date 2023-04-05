@@ -1,10 +1,15 @@
-#include <unistd.h> // Added to resolve Microsoft c++ warnings around POSIX and other depreciated errors.
+#include "files.h"
 
+#include <unistd.h> // Added to resolve Microsoft c++ warnings around POSIX and other depreciated errors.
 #include <SDL.h>
+#include <inttypes.h>
+#include <limits.h>
+#include <stdlib.h>
+#include <string.h>
+#include <zlib.h>
 
 #include "options.h"
 #include "zlib.h"
-
 
 bool files_find(std::filesystem::path &real_path, const std::filesystem::path &search_path)
 {
@@ -72,19 +77,6 @@ std::tuple<void *, size_t> files_load(const std::filesystem::path &path)
 	return std::make_tuple(ops_data, ops_size);
 }
 
-//bool file_is_compressed_type(char const *path)
-//{
-//	int len = (int)strlen(path);
-//
-//	if (strcmp(path + len - 3, ".gz") == 0 || strcmp(path + len - 3, "-gz") == 0) {
-//		return true;
-//	} else if (strcmp(path + len - 2, ".z") == 0 || strcmp(path + len - 2, "-z") == 0 || strcmp(path + len - 2, "_z") == 0 || strcmp(path + len - 2, ".Z") == 0) {
-//		return true;
-//	}
-//
-//	return false;
-//}
-
 size_t gzsize(gzFile f)
 {
 	auto oldseek = gztell(f);
@@ -115,15 +107,6 @@ uint8_t gzread8(gzFile f)
 	return value;
 }
 
-#include "files.h"
-
-#include <SDL.h>
-#include <inttypes.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <string.h>
-#include <zlib.h>
-
 struct x16file {
 	char path[PATH_MAX];
 
@@ -132,13 +115,12 @@ struct x16file {
 	size_t    pos;
 	bool       modified;
 
-	struct x16file *next;
+	x16file *next;
 };
 
-struct x16file *open_files = NULL;
+x16file *open_files = NULL;
 
-static bool
-get_tmp_name(char *path_buffer, const char *original_path, char const *extension)
+static bool get_tmp_name(char *path_buffer, const char *original_path, char const *extension)
 {
 	if (strlen(original_path) > PATH_MAX - strlen(extension)) {
 		printf("Path too long, cannot create temp file: %s\n", original_path);
@@ -164,8 +146,7 @@ bool file_is_compressed_type(char const *path)
 	return false;
 }
 
-const char *
-file_find_extension(const char *path, const char *mark)
+const char *file_find_extension(const char *path, const char *mark)
 {
 	if (path == NULL) {
 		return NULL;
@@ -190,18 +171,17 @@ file_find_extension(const char *path, const char *mark)
 
 void files_shutdown()
 {
-	struct x16file *f      = open_files;
-	struct x16file *next_f = NULL;
+	x16file *f      = open_files;
+	x16file *next_f = NULL;
 	for (; f != NULL; f = next_f) {
 		next_f = f->next;
 		x16close(f);
 	}
 }
 
-struct x16file *
-x16open(const char *path, const char *attribs)
+x16file *x16open(const char *path, const char *attribs)
 {
-	struct x16file *f = (struct x16file*) malloc(sizeof(struct x16file));
+	x16file *f = (x16file*) malloc(sizeof(x16file));
 	strcpy(f->path, path);
 
 	if (file_is_compressed_type(path)) {
@@ -273,7 +253,7 @@ error:
 	return NULL;
 }
 
-void x16close(struct x16file *f)
+void x16close(x16file *f)
 {
 	if (f == NULL) {
 		return;
@@ -289,7 +269,7 @@ void x16close(struct x16file *f)
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
-				for (struct x16file *fi = open_files; fi != NULL; fi = fi->next) {
+				for (x16file *fi = open_files; fi != NULL; fi = fi->next) {
 					if (fi->next == f) {
 						fi->next = f->next;
 						break;
@@ -305,7 +285,7 @@ void x16close(struct x16file *f)
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
-				for (struct x16file *fi = open_files; fi != NULL; fi = fi->next) {
+				for (x16file *fi = open_files; fi != NULL; fi = fi->next) {
 					if (fi->next == f) {
 						fi->next = f->next;
 						break;
@@ -323,7 +303,7 @@ void x16close(struct x16file *f)
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
-				for (struct x16file *fi = open_files; fi != NULL; fi = fi->next) {
+				for (x16file *fi = open_files; fi != NULL; fi = fi->next) {
 					if (fi->next == f) {
 						fi->next = f->next;
 						break;
@@ -346,7 +326,7 @@ void x16close(struct x16file *f)
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
-				for (struct x16file *fi = open_files; fi != NULL; fi = fi->next) {
+				for (x16file *fi = open_files; fi != NULL; fi = fi->next) {
 					if (fi->next == f) {
 						fi->next = f->next;
 						break;
@@ -392,7 +372,7 @@ void x16close(struct x16file *f)
 	if (f == open_files) {
 		open_files = f->next;
 	} else {
-		for (struct x16file *fi = open_files; fi != NULL; fi = fi->next) {
+		for (x16file *fi = open_files; fi != NULL; fi = fi->next) {
 			if (fi->next == f) {
 				fi->next = f->next;
 				break;
@@ -402,8 +382,7 @@ void x16close(struct x16file *f)
 	free(f);
 }
 
-size_t
-x16size(struct x16file *f)
+size_t x16size(x16file *f)
 {
 	if (f == NULL) {
 		return 0;
@@ -412,7 +391,7 @@ x16size(struct x16file *f)
 	return f->size;
 }
 
-int x16seek(struct x16file *f, size_t pos, int origin)
+int x16seek(x16file *f, size_t pos, int origin)
 {
 	if (f == NULL) {
 		return 0;
@@ -436,8 +415,7 @@ int x16seek(struct x16file *f, size_t pos, int origin)
 	return (int)SDL_RWseek(f->file, f->pos, SEEK_SET);
 }
 
-size_t
-x16tell(struct x16file *f)
+size_t x16tell(x16file *f)
 {
 	if (f == NULL) {
 		return 0;
@@ -445,7 +423,7 @@ x16tell(struct x16file *f)
 	return f->pos;
 }
 
-int x16write8(struct x16file *f, uint8_t val)
+int x16write8(x16file *f, uint8_t val)
 {
 	if (f == NULL) {
 		return 0;
@@ -455,8 +433,7 @@ int x16write8(struct x16file *f, uint8_t val)
 	return written;
 }
 
-uint8_t
-x16read8(struct x16file *f)
+uint8_t x16read8(x16file *f)
 {
 	if (f == NULL) {
 		return 0;
@@ -467,8 +444,7 @@ x16read8(struct x16file *f)
 	return read;
 }
 
-size_t
-x16write(struct x16file *f, const void *data, size_t data_size, size_t data_count)
+size_t x16write(x16file *f, const void *data, size_t data_size, size_t data_count)
 {
 	if (f == NULL) {
 		return 0;
@@ -481,8 +457,7 @@ x16write(struct x16file *f, const void *data, size_t data_size, size_t data_coun
 	return written;
 }
 
-size_t
-x16read(struct x16file *f, void *data, size_t data_size, size_t data_count)
+size_t x16read(x16file *f, void *data, size_t data_size, size_t data_count)
 {
 	if (f == NULL) {
 		return 0;
