@@ -176,10 +176,10 @@ void keyboard_add_event(const bool down, const SDL_Scancode scancode)
 	evt.data.key_event.ps2_code = SDL_to_PS2_table[scancode];
 
 	if (Keyboard_event_list.empty()) {
+		process_key_event(evt.data.key_event);
+	} else {
 		evt.type = keyboard_event_type::key_event;
 		Keyboard_event_list.push_back(evt);
-	} else {
-		process_key_event(evt.data.key_event);
 	}
 }
 
