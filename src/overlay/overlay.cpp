@@ -305,7 +305,7 @@ static void draw_debugger_cpu_visualizer()
 	};
 
 	int h = cpu_visualization_get_highlight();
-	if (ImGui::BeginCombo("Hightlight type", vis_labels[h])) {
+	if (ImGui::BeginCombo("Highlight type", vis_labels[h])) {
 		for (int i = 0; i < 4; ++i) {
 			if (ImGui::Selectable(vis_labels[i], i == h)) {
 				cpu_visualization_set_highlight((cpu_visualization_highlight)i);
