@@ -94,7 +94,7 @@ uint8_t  debug6502 = 0;
 uint8_t penaltyop, penaltyaddr;
 uint8_t waiting = 0;
 
-_smart_stack stack6502[256];
+_smart_stack  stack6502[256];
 
 // externally supplied functions
 extern uint8_t read6502(uint16_t address);

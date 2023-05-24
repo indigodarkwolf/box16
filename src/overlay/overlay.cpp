@@ -2391,7 +2391,7 @@ static void draw_menu_bar()
 			if (ImGui::MenuItem("Change CWD")) {
 				char *open_path = nullptr;
 				if (NFD_PickFolder("", &open_path) == NFD_OKAY && open_path != nullptr) {
-					Options.hyper_path = open_path;
+					Options.fsroot_path = open_path;
 				}
 			}
 

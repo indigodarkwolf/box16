@@ -47,7 +47,8 @@ struct options {
 	std::filesystem::path                                 rom_path = "rom.bin";
 	std::list<std::tuple<std::filesystem::path, uint8_t>> rom_carts;
 	std::filesystem::path                                 nvram_path  = "";
-	std::filesystem::path                                 hyper_path  = ".";
+	std::filesystem::path                                 fsroot_path  = ".";
+	std::filesystem::path                                 startin_path = ".";
 	std::filesystem::path                                 prg_path    = "";
 	std::filesystem::path                                 bas_path    = "";
 	std::filesystem::path                                 sdcard_path = "";

@@ -39,7 +39,7 @@ int create_directory_listing(uint8_t *data)
 	*data++ = 0x12; // REVERSE ON
 	*data++ = '"';
 
-	const std::string path_str = Options.hyper_path.generic_string();
+	const std::string path_str = Options.fsroot_path.generic_string();
 	{
 		int       i    = 0;
 		const int stop = MIN((int)path_str.length(), 16);
@@ -59,11 +59,11 @@ int create_directory_listing(uint8_t *data)
 	*data++ = 'C';
 	*data++ = 0;
 
-	if (!std::filesystem::exists(Options.hyper_path)) {
+	if (!std::filesystem::exists(Options.fsroot_path)) {
 		return 0;
 	}
 
-	for (const auto &entry : std::filesystem::directory_iterator(Options.hyper_path)) {
+	for (const auto &entry : std::filesystem::directory_iterator(Options.fsroot_path)) {
 		const std::string            filename = entry.path().filename().generic_string();
 		size_t                       namlen   = filename.length();
 		std::filesystem::file_status st       = entry.status();
@@ -147,7 +147,7 @@ void LOAD()
 		memcpy(filename, kernal_filename, len);
 		filename[len] = 0;
 
-		std::filesystem::path filepath = Options.hyper_path / filename;
+		std::filesystem::path filepath = Options.fsroot_path / filename;
 
 		x16file *f = x16open(filepath.generic_string().c_str(), "rb");
 		if (f == nullptr) {
@@ -232,7 +232,7 @@ void SAVE()
 	memcpy(filename, kernal_filename, len);
 	filename[len] = '\0';
 
-	std::filesystem::path filepath = Options.hyper_path / filename;
+	std::filesystem::path filepath = Options.fsroot_path / filename;
 
 	uint16_t start = RAM[state6502.a] | RAM[state6502.a + 1] << 8;
 	uint16_t end   = state6502.x | state6502.y << 8;
@@ -243,7 +243,7 @@ void SAVE()
 	}
 	char const *flags = "wb0";
 	if (filepath.extension().generic_string() == ".gz") {
-		flags = "wb9";
+		flags = "wb6";
 	}
 	x16file *f = x16open(filepath.generic_string().c_str(), flags);
 	if (f == nullptr) {

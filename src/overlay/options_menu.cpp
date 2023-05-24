@@ -66,14 +66,14 @@ void draw_options_menu()
 	{
 		if (ImGui::Button("...")) {
 			char *open_path = nullptr;
-			if (NFD_PickFolder(Options.hyper_path.generic_string().c_str(), &open_path) == NFD_OKAY && open_path != nullptr) {
-				Options.hyper_path = open_path;
+			if (NFD_PickFolder(Options.fsroot_path.generic_string().c_str(), &open_path) == NFD_OKAY && open_path != nullptr) {
+				Options.fsroot_path = open_path;
 			} else if (NFD_PickFolder("", &open_path) == NFD_OKAY && open_path != nullptr) {
-				Options.hyper_path = open_path;
+				Options.fsroot_path = open_path;
 			}
 		}
 		ImGui::SameLine();
-		ImGui::InputText("Hypercall Path", Options.hyper_path);
+		ImGui::InputText("Hypercall Path", Options.fsroot_path);
 	}
 	ImGui::EndGroup();
 	if (ImGui::IsItemHovered()) {

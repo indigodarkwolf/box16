@@ -853,7 +853,7 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	}
 
 	if (ini.has("hypercall_path")) {
-		opts.hyper_path = ini["hypercall_path"];
+		opts.fsroot_path = ini["hypercall_path"];
 	}
 
 	if (ini.has("keymap")) {
@@ -1326,7 +1326,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	// set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());
 	set_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
 	set_option("keymap", keymaps_strict[Options.keymap], keymaps_strict[Default_options.keymap]);
-	set_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
+	set_option("hypercall_path", Options.fsroot_path, Default_options.fsroot_path);
 	set_comma_option("prg", Options.prg_path, Default_options.prg_path, Options.prg_override_start, Default_options.prg_override_start);
 	set_option("run", Options.run_after_load, Default_options.run_after_load);
 	set_option("bas", Options.bas_path, Default_options.bas_path);
@@ -1673,5 +1673,5 @@ const std::filesystem::path &options_get_prefs_path()
 
 const std::filesystem::path &options_get_hyper_path()
 {
-	return Options.hyper_path;
+	return Options.fsroot_path;
 }

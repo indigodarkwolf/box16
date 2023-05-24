@@ -33,6 +33,7 @@
 
 static uint16_t Kernal_status  = 0;
 static bool     Has_boot_tasks = false;
+static bool     prg_finished_loading = false;
 
 static bool (*Hypercall_table[0x100])(void);
 
@@ -90,10 +91,12 @@ static bool init_kernal_status()
 	return true;
 }
 
-static bool set_kernal_status(uint8_t s)
+static bool set_kernal_status(int s)
 {
 	// everything okay, write the status!
-	RAM[Kernal_status] = s;
+	if (s >= 0) {
+		RAM[Kernal_status] = static_cast<uint8_t>(s);
+	}
 	return true;
 }
 
@@ -109,8 +112,12 @@ static bool ieee_hypercalls_allowed()
 		return false;
 	}
 
-	if (sdcard_is_attached()) {
-		// if should emulate an SD card, we'll always skip host fs
+	//if (sdcard_is_attached()) {
+	//	// if should emulate an SD card, we'll always skip host fs
+	//	return false;
+	//}
+
+	if (sdcard_is_attached() && !Options.prg_path.empty() && prg_finished_loading) {
 		return false;
 	}
 
@@ -122,6 +129,8 @@ bool hypercalls_init()
 	if (!init_kernal_status()) {
 		return false;
 	}
+
+	ieee_init();
 
 	// Setup whether we have boot tasks
 	if (!Options.prg_path.empty()) {
@@ -153,7 +162,7 @@ void hypercalls_update()
 		Hypercall_table[KERNAL_MACPTR & 0xff] = []() -> bool {
 			uint16_t count = state6502.a;
 
-			const uint8_t s = MACPTR(state6502.y << 8 | state6502.x, &count);
+			const int s = MACPTR(state6502.y << 8 | state6502.x, &count, state6502.status & 0x01);
 
 			state6502.x = count & 0xff;
 			state6502.y = count >> 8;
@@ -164,7 +173,9 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_SECOND & 0xff] = []() -> bool {
-			SECOND(state6502.a);
+			const int s = SECOND(state6502.a);
+
+			set_kernal_status(s);
 			return true;
 		};
 
@@ -174,16 +185,16 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_ACPTR & 0xff] = []() -> bool {
-			const uint8_t s = ACPTR(&state6502.a);
+			const int s = ACPTR(&state6502.a);
 
-			state6502.status = (state6502.status & ~2) | (!state6502.a << 1);
+			state6502.status = (state6502.status & ~3) | (!state6502.a << 1);
 
 			set_kernal_status(s);
 			return true;
 		};
 
 		Hypercall_table[KERNAL_CIOUT & 0xff] = []() -> bool {
-			const uint8_t s = CIOUT(state6502.a);
+			const int s = CIOUT(state6502.a);
 
 			set_kernal_status(s);
 			return true;
@@ -195,8 +206,22 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_UNLSN & 0xff] = []() -> bool {
-			const uint8_t s = UNLSN();
-
+			const int s = UNLSN();
+			if (s == -2) {             // special error behavior
+				state6502.status = (state6502.status | 1); // SEC
+			} else {
+				state6502.status = (state6502.status & ~1); // CLC
+			}
+			static int count_unlistn = 0;
+			if (!Options.prg_path.empty() && sdcard_path_is_set() && ++count_unlistn == 4) {
+				// after auto-loading a PRG from the host fs,
+				// switch to the SD card if requested
+				// 4x UNLISTEN:
+				//    2x for LOAD"AUTOBOOT.X16*"
+				//    2x for LOAD":*"
+				prg_finished_loading = true;
+				sdcard_attach();
+			}
 			set_kernal_status(s);
 			return true;
 		};
