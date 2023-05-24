@@ -18,7 +18,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
+#include <ctime>
 #include <unistd.h>
 
 #define UNIT_NO 8
@@ -196,7 +196,7 @@ static std::filesystem::path wildcard_match(const std::filesystem::path &origin,
 				return false;
 			}
 
-			for (int i = 1, j = 1; i < pattern.length() && j < dpname.length(); ++i) {
+			for (size_t i = 1, j = 1; i < pattern.length() && j < dpname.length(); ++i) {
 				switch (pattern[i]) {
 					case '?':
 						++j;
@@ -263,8 +263,8 @@ static int create_directory_listing(uint8_t *data, char *dirstring)
 
 	dirlist_eof = true;
 	dirlist_cwd = false;
-	int i       = 1;
-	int j;
+	size_t i       = 1;
+	size_t j;
 
 	dirlist_timestmaps  = false;
 	dirlist_type_filter = 0;
@@ -342,9 +342,6 @@ static int create_directory_listing(uint8_t *data, char *dirstring)
 static int continue_directory_listing(uint8_t *data)
 {
 	uint8_t *data_start = data;
-	int      file_size;
-	bool     found;
-	int      i;
 
 	while (dirlist_dirp != dirlist_dirp_end) {
 		auto const &dp = *dirlist_dirp;
@@ -387,8 +384,9 @@ static int continue_directory_listing(uint8_t *data)
 				continue;
 			}
 
-			found = false;
-			for (i = 0; i < strlen(dirlist_wildcard) && i < filename.length(); i++) {
+			bool found = false;
+			size_t i = 0;
+			for (; i < strlen(dirlist_wildcard) && i < filename.length(); i++) {
 				if (dirlist_wildcard[i] == '*') {
 					found = true;
 					break;
@@ -411,7 +409,7 @@ static int continue_directory_listing(uint8_t *data)
 			}
 		}
 
-		file_size = static_cast<int>((std::filesystem::file_size(dp.path()) + 255) / 256);
+		int file_size = static_cast<int>((std::filesystem::file_size(dp.path()) + 255) / 256);
 		if (file_size > 0xFFFF) {
 			file_size = 0xFFFF;
 		}
@@ -457,10 +455,10 @@ static int continue_directory_listing(uint8_t *data)
 			time_t fttime = fwtime.time_since_epoch().count();
 
 			// ISO-8601 date+time
-			tm mtime;
-			if (localtime_s(&mtime, &fttime)) {
+			const tm *mtime = std::localtime(&fttime);
+			if (mtime != nullptr) {
 				*data++ = ' '; // space before the date
-				data += strftime((char *)data, 20, "%Y-%m-%d %H:%M:%S", &mtime);
+				data += strftime((char *)data, 20, "%Y-%m-%d %H:%M:%S", mtime);
 			}
 		}
 
