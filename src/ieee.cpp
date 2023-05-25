@@ -23,8 +23,8 @@
 
 #define UNIT_NO 8
 
-static constexpr bool log_ieee = true;
-// static constexpr bool log_ieee = false;
+//static constexpr bool log_ieee = true;
+static constexpr bool log_ieee = false;
 
 char error[80];
 int  error_len = 0;
@@ -980,7 +980,10 @@ static int copen(int channel)
 					break;
 			}
 		}
+	} else {
+		channels[channel].read = true;
 	}
+
 	if (channel <= 1) {
 		// channels 0 and 1 are magic
 		channels[channel].write = channel;
