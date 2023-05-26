@@ -1,6 +1,6 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
-// Copyright (c) 2021-2022 Stephen Horn, et al.
+// Copyright (c) 2021-2023 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #ifndef GLUE_H
@@ -20,10 +20,14 @@
 
 #define NUM_ROM_BANKS 32
 
-#define ROM_SIZE (NUM_ROM_BANKS * 16384) /* banks at $C000-$FFFF */
+#define HIDDEN_RAM_BANKS (256 - 32)
+#define TOTAL_ROM_BANKS (NUM_ROM_BANKS + HIDDEN_RAM_BANKS)
 
-extern _state6502 state6502;
-extern uint8_t    waiting;
+#define ROM_SIZE (TOTAL_ROM_BANKS * 16384) /* banks at $C000-$FFFF */
+
+extern _state6502   state6502;
+extern uint8_t      waiting;
+extern _smart_stack stack6502[256];
 
 extern uint8_t *RAM;
 extern uint8_t  ROM[ROM_SIZE];
@@ -32,9 +36,11 @@ extern uint8_t  debug6502;
 
 extern bool save_on_exit;
 
-extern void machine_dump();
+extern void machine_dump(const char *reason);
 extern void machine_reset();
 extern void machine_toggle_warp();
 extern void init_audio();
+
+
 
 #endif

@@ -1,5 +1,5 @@
 // Commander X16 Emulator
-// Copyright (c) 2021-2022 Stephen Horn, et al.
+// Copyright (c) 2021-2023 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #include "audio.h"
@@ -8,8 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#include "CDSPResampler.h"
 
 #include "ring_buffer.h"
 #include "vera/vera_pcm.h"

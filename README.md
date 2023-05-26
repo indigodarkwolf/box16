@@ -56,9 +56,10 @@ You can build a ROM image yourself using the [build instructions](https://github
 Read `resources/r41/README.box16` and build or acquire the necessary files.
 
 The needed development packages are available as a distribution package with most major versions of Linux:
-- Debian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
-- Fedora 33: `sudo dnf install glew-devel SDL2-devel SDL2_image-devel`
-- Raspbian: `sudo apt-get install libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev`
+- Debian: `sudo apt-get install libgtk-3-dev libsdl2-dev`
+- Fedora 37: `sudo dnf install gtk3-devel SDL2-devel alsa-lib-devel`
+- Raspbian: `sudo apt-get install libgtk-3-dev libsdl2-dev`
+- Ubuntu: `sudo apt-get install build-essential libsdl2-dev libgtk-3-dev`
 
 Type `make` to build the source. The output will be `box16` in the output directory. Remember you will also need a `rom.bin` as described above.
 
@@ -360,8 +361,8 @@ Wiki
 License
 -------
 
-Copyright (c) 2019-2020 Michael Steil &lt;mist64@mac.com&gt;, [www.pagetable.com](https://www.pagetable.com/), et al.<br>
-Portions copyright (c) 2021-2022 Stephen Horn, et al.<br>
+Copyright (c) 2019-2023 Michael Steil &lt;mist64@mac.com&gt;, [www.pagetable.com](https://www.pagetable.com/), et al.<br>
+Portions copyright (c) 2021-2023 Stephen Horn, et al.<br>
 All rights reserved. License: 2-clause BSD
 
 

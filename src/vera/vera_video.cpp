@@ -1,7 +1,7 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
 // Copyright (c) 2020 Frank van den Hoef
-// Copyright (c) 2021-2022 Stephen Horn, et al.
+// Copyright (c) 2021-2023 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #include "vera_video.h"
@@ -9,9 +9,12 @@
 #include "vera_pcm.h"
 #include "vera_psg.h"
 #include "vera_spi.h"
+#include "files.h"
 
-#include <limits.h>
 #include <algorithm>
+#include <limits.h>
+#include <cstring>
+#include <cmath>
 
 #ifdef __EMSCRIPTEN__
 #	include "emscripten.h"
@@ -87,8 +90,8 @@ static uint16_t ntsc_scan_pos_y;
 static int frame_count = 0;
 static int cheat_mask  = 0;
 
-static bool log_video           = false;
-static bool shadow_safety_frame = false;
+static bool log_video              = false;
+static bool shadow_safety_frame[4] = { false, false, true, true };
 
 static uint8_t framebuffer[SCREEN_WIDTH * SCREEN_HEIGHT * 4];
 
@@ -168,12 +171,12 @@ static uint32_t calc_layer_map_offset_base2(const struct vera_video_layer_proper
 	return ((eff_x >> props->tilew_log2) & props->mapw_max) << 1;
 }
 
-//TODO: Unused in all current cases. Delete? Or leave commented as a reminder?
-//static uint32_t
-//calc_layer_map_addr(struct video_layer_properties *props, int eff_x, int eff_y)
+// TODO: Unused in all current cases. Delete? Or leave commented as a reminder?
+// static uint32_t
+// calc_layer_map_addr(struct video_layer_properties *props, int eff_x, int eff_y)
 //{
 //	return props->map_base + ((eff_y / props->tileh) * props->mapw + (eff_x / props->tilew)) * 2;
-//}
+// }
 static void refresh_layer_properties(const uint8_t layer)
 {
 	struct vera_video_layer_properties *props = &layer_properties[layer];
@@ -415,9 +418,9 @@ static void render_sprite_line(const uint16_t y)
 		}
 
 		const int32_t scale          = reg_composer[1];
-		const int16_t scaled_x_start = ((int32_t)props->sprite_x << 7) / scale;
-		const int16_t scaled_x_end   = scaled_x_start + (((int32_t)width << 7) / scale);
-		const bool hflip = props->hflip;
+		const int16_t scaled_x_start = scale ? ((int32_t)props->sprite_x << 7) / scale : (props->sprite_x ? SCREEN_WIDTH : 0);
+		const int16_t scaled_x_end   = scale ? scaled_x_start + (((int32_t)width << 7) / scale) : SCREEN_WIDTH;
+		const bool    hflip          = props->hflip;
 		for (int16_t sx = scaled_x_start; sx < scaled_x_end; sx += 1) {
 			if ((uint16_t)sx >= SCREEN_WIDTH) {
 				continue;
@@ -437,7 +440,7 @@ static void render_sprite_line(const uint16_t y)
 			if (sprite_budget == 0)
 				break;
 
-			const uint8_t col_index = unpacked_sprite_line[hflip ? width - x - 1: x];
+			const uint8_t col_index = unpacked_sprite_line[hflip ? width - x - 1 : x];
 
 			// palette offset
 			if (col_index > 0) {
@@ -724,17 +727,17 @@ static void render_line(uint16_t y)
 		return;
 	}
 
-	uint8_t out_mode = reg_composer[0] & 3;
+	const uint8_t out_mode = reg_composer[0] & 3;
 
-	uint8_t  border_color = reg_composer[3];
-	uint16_t hstart       = reg_composer[4] << 2;
-	uint16_t hstop        = reg_composer[5] << 2;
-	uint16_t vstart       = reg_composer[6] << 1;
-	uint16_t vstop        = reg_composer[7] << 1;
+	const uint8_t  border_color = reg_composer[3];
+	const uint16_t hstart       = reg_composer[4] << 2;
+	const uint16_t hstop        = reg_composer[5] << 2;
+	const uint16_t vstart       = reg_composer[6] << 1;
+	const uint16_t vstop        = reg_composer[7] << 1;
 
-	int eff_y = (reg_composer[2] * (y - vstart)) >> 7;
+	const int eff_y = (reg_composer[2] * (y - vstart)) >> 7;
 
-	uint8_t dc_video = reg_composer[0];
+	const uint8_t dc_video = reg_composer[0];
 
 	const bool layer0_was_enabled = layer_line_enable[0];
 	const bool layer1_was_enabled = layer_line_enable[1];
@@ -796,17 +799,17 @@ static void render_line(uint16_t y)
 			border_fill          = border_fill | (border_fill << 16);
 			memset(col_line, border_fill, SCREEN_WIDTH);
 		} else {
-			hstart = hstart < 640 ? hstart : 640;
-			hstop  = hstop < 640 ? hstop : 640;
+			const uint16_t xstart = hstart < 640 ? hstart : 640;
+			const uint16_t xstop  = hstop < 640 ? hstop : 640;
 
-			for (uint16_t x = 0; x < hstart; ++x) {
+			for (uint16_t x = 0; x < xstart; ++x) {
 				col_line[x] = border_color;
 			}
-			uint16_t hwidth = hstop - hstart;
-			for (uint16_t x = 0; x < hwidth; ++x) {
-				col_line[hstart + x] = calculate_line_col_index(sprite_line_z[x], sprite_line_col[x], layer_line[0][x], layer_line[1][x]);
+			const uint16_t xwidth = xstop - xstart;
+			for (uint16_t x = 0; x < xwidth; ++x) {
+				col_line[xstart + x] = calculate_line_col_index(sprite_line_z[x], sprite_line_col[x], layer_line[0][x], layer_line[1][x]);
 			}
-			for (uint16_t x = hstop; x < SCREEN_WIDTH; ++x) {
+			for (uint16_t x = xstop; x < SCREEN_WIDTH; ++x) {
 				col_line[x] = border_color;
 			}
 		}
@@ -822,7 +825,7 @@ static void render_line(uint16_t y)
 	}
 
 	// NTSC overscan
-	if (out_mode == 2 || shadow_safety_frame) {
+	if (!shadow_safety_frame[0] && shadow_safety_frame[out_mode]) {
 		uint32_t *framebuffer4 = framebuffer4_begin;
 		for (uint16_t x = 0; x < SCREEN_WIDTH; x++) {
 			if (x < SCREEN_WIDTH * TITLE_SAFE_X ||
@@ -849,11 +852,9 @@ static void update_isr_and_coll(uint16_t y, uint16_t compare)
 			isr = (isr & 0xf) | sprite_line_collisions;
 		}
 		sprite_line_collisions = 0;
-		if (ien & 1) { // VSYNC IRQ
-			isr |= 1;
-		}
+		isr |= 1;
 	}
-	if ((ien & 2) && (y < SCREEN_HEIGHT) && (y == compare)) { // LINE IRQ
+	if ((y < SCREEN_HEIGHT) && (y == compare)) { // LINE IRQ
 		isr |= 2;
 	}
 }
@@ -947,13 +948,13 @@ bool vera_video_get_irq_out()
 // saves the video memory and register content into a file
 //
 
-void vera_video_save(SDL_RWops *f)
+void vera_video_save(x16file *f)
 {
-	SDL_RWwrite(f, &video_ram[0], sizeof(uint8_t), sizeof(video_ram));
-	SDL_RWwrite(f, &reg_composer[0], sizeof(uint8_t), sizeof(reg_composer));
-	SDL_RWwrite(f, &palette[0], sizeof(uint8_t), sizeof(palette));
-	SDL_RWwrite(f, &reg_layer[0][0], sizeof(uint8_t), sizeof(reg_layer));
-	SDL_RWwrite(f, &sprite_data[0], sizeof(uint8_t), sizeof(sprite_data));
+	x16write(f, &video_ram[0], sizeof(uint8_t), sizeof(video_ram));
+	x16write(f, &reg_composer[0], sizeof(uint8_t), sizeof(reg_composer));
+	x16write(f, &palette[0], sizeof(uint8_t), sizeof(palette));
+	x16write(f, &reg_layer[0][0], sizeof(uint8_t), sizeof(reg_layer));
+	x16write(f, &sprite_data[0], sizeof(uint8_t), sizeof(sprite_data));
 }
 
 static const int increments[32] = {
@@ -1357,7 +1358,7 @@ const uint8_t vera_video_get_dc_vstop()
 
 void vera_video_set_dc_video(uint8_t value)
 {
-	reg_composer[0]     = value;
+	reg_composer[0] = value;
 	if ((value & 0x3) == 1) {
 		reg_composer[0] &= 0x7f;
 	}
@@ -1507,14 +1508,20 @@ const uint8_t *vera_video_get_sprite_data(int sprite)
 	}
 }
 
-void vera_video_enable_safety_frame(bool enable)
+void vera_video_enable_safety_frame(uint8_t video_mode, bool enable)
 {
-	shadow_safety_frame = enable;
+	const uint8_t out_mode        = video_mode & 3;
+	shadow_safety_frame[out_mode] = enable;
 }
 
-bool vera_video_safety_frame_is_enabled()
+bool vera_video_safety_frame_is_enabled(uint8_t video_mode)
 {
-	return shadow_safety_frame;
+	const uint8_t out_mode = video_mode & 3;
+	if (video_mode == 0) {
+		// 0 is special, both in the sense that it is inverted, but also in the sense that it toggles the other 3 video modes.
+		return shadow_safety_frame[0];
+	}
+	return !shadow_safety_frame[0] && shadow_safety_frame[out_mode];
 }
 
 float vera_video_get_scan_pos_x()

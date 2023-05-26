@@ -12,7 +12,7 @@
 #include "imgui/imgui_impl_sdl.h"
 
 #include "cpu_visualization.h"
-#include "disasm.h"
+#include "disasm_overlay.h"
 #include "ram_dump.h"
 #include "util.h"
 #include "vram_dump.h"
@@ -22,7 +22,9 @@
 #include "boxmon/boxmon.h"
 #include "boxmon/command.h"
 #include "cpu/fake6502.h"
+#include "cpu/mnemonics.h"
 #include "debugger.h"
+#include "disasm.h"
 #include "display.h"
 #include "glue.h"
 #include "joystick.h"
@@ -326,20 +328,17 @@ static void draw_monitor_console()
 
 static void draw_debugger_cpu_status()
 {
-	ImGui::BeginTable("cpu status", 2);
+	ImGui::BeginTable("cpu status", 3, ImGuiTableFlags_Borders);
 	{
-		ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 160);
+		ImGui::TableSetupColumn("Status", ImGuiTableColumnFlags_WidthFixed, 140);
+		ImGui::TableSetupColumn("CPU Stack", ImGuiTableColumnFlags_WidthFixed, 63);
+		ImGui::TableSetupColumn("Smart Stack", ImGuiTableColumnFlags_WidthStretch);
+		ImGui::TableHeadersRow();
 
 		ImGui::TableNextColumn();
 		ImGui::BeginTable("cpu regs", 1);
 		{
 			ImGui::TableNextColumn();
-			ImGui::TextDisabled("Status");
-			ImGui::NewLine();
-
-			ImGui::TableNextRow();
-			ImGui::TableNextColumn();
-
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 3));
 
 			char const *names[] = { "N", "V", "-", "B", "D", "I", "Z", "C" };
@@ -420,19 +419,126 @@ static void draw_debugger_cpu_status()
 		ImGui::EndTable();
 
 		ImGui::TableNextColumn();
-		ImGui::TextDisabled("CPU Stack");
-		ImGui::NewLine();
 
-		ImGui::BeginChild("cpu stack", ImVec2(44, 460));
-		{
+		if (ImGui::BeginTable("cpu stack", 1, ImGuiTableFlags_ScrollY)) {
 			for (uint16_t i = (uint16_t)state6502.sp + 0x100; i < 0x200; ++i) {
 				uint8_t value = debug_read6502(i);
+				ImGui::TableNextColumn();
 				if (ImGui::InputHex(i, value)) {
 					debug_write6502(i, 0, value);
 				}
 			}
+			ImGui::EndTable();
 		}
-		ImGui::EndChild();
+
+		ImGui::TableNextColumn();
+
+		if (ImGui::BeginTable("smart stack", 1, ImGuiTableFlags_ScrollY)) {
+			for (uint16_t i = state6502.sp_depth - 1; i < state6502.sp_depth; --i) {
+				ImGui::TableNextColumn();
+				auto do_label = [](uint16_t pc, uint8_t bank, bool allow_disabled) {
+					char const *label = disasm_get_label(pc);
+					bool        pushed = false;
+
+					if (pc >= 0xa000) {
+						if (label == nullptr) {
+							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+							char stack_line[256];
+							snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X", bank, pc);
+							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+							ImGui::PopStyleColor();
+						} else {
+							char stack_line[256];
+							snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X: %s", bank, pc, label);
+							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+						}
+					} else {
+						if (label == nullptr) {
+							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+							char stack_line[256];
+							snprintf(stack_line, sizeof(stack_line), "$%04X", pc);
+							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+							ImGui::PopStyleColor();
+						} else {
+							char stack_line[256];
+							snprintf(stack_line, sizeof(stack_line), "$%04X: %s", pc, label);
+							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+						}					
+					}
+
+					if (pushed) {
+						disasm.set_dump_start(pc);
+						if (pc >= 0xc000) {
+							disasm.set_rom_bank(bank);
+						} else if (pc >= 0xa000) {
+							disasm.set_ram_bank(bank);
+						}
+					}
+				};
+				switch (stack6502[i].op_type) {
+					case _stack_op_type::nmi:
+						ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF003388);
+						ImGui::PushStyleColor(ImGuiCol_Text, 0xFF0077FF);
+						break;
+					case _stack_op_type::irq:
+						ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF007788);
+						ImGui::PushStyleColor(ImGuiCol_Text, 0xFF00FFFF);
+						break;
+					case _stack_op_type::op:
+						ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+						ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
+						break;
+					default:
+						break;
+				}
+				ImGui::PushID(i);
+				do_label(stack6502[i].dest_pc, stack6502[i].dest_bank, true);
+				ImGui::PopID();
+				ImGui::PopStyleColor(2);
+
+				if (ImGui::IsItemHovered()) {
+					ImGui::BeginTooltip();
+
+					if (ImGui::BeginTable("additional info table", 2, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX)) {
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextDisabled("%s", "Source address:");
+						ImGui::TableSetColumnIndex(1);
+						do_label(stack6502[i].source_pc, stack6502[i].source_bank, false);
+
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextDisabled("%s", "Destination address:");
+						ImGui::TableSetColumnIndex(1);
+						do_label(stack6502[i].dest_pc, stack6502[i].dest_bank, false);
+
+						ImGui::TableNextRow();
+						ImGui::TableSetColumnIndex(0);
+						ImGui::TextDisabled("%s", "Cause:");
+						ImGui::TableSetColumnIndex(1);
+
+						switch (stack6502[i].op_type) {
+							case _stack_op_type::nmi:
+								ImGui::Text("%s", "NMI");
+								break;
+							case _stack_op_type::irq:
+								ImGui::Text("%s", "IRQ");
+								break;
+							case _stack_op_type::op:
+								ImGui::Text("%s", mnemonics[stack6502[i].opcode]);
+								break;
+							default:
+								break;
+						}
+
+						ImGui::EndTable();
+					}
+
+					ImGui::EndTooltip();
+				}
+			}
+			ImGui::EndTable();
+		}
 	}
 	ImGui::EndTable();
 }
@@ -464,7 +570,7 @@ static void draw_debugger_cpu_visualizer()
 	};
 
 	int h = cpu_visualization_get_highlight();
-	if (ImGui::BeginCombo("Hightlight type", vis_labels[h])) {
+	if (ImGui::BeginCombo("Highlight type", vis_labels[h])) {
 		for (int i = 0; i < 4; ++i) {
 			if (ImGui::Selectable(vis_labels[i], i == h)) {
 				cpu_visualization_set_highlight((cpu_visualization_highlight)i);
@@ -478,7 +584,7 @@ static void draw_debugger_cpu_visualizer()
 	vis.load_memory(cpu_visualization_get_framebuffer(), SCAN_WIDTH, SCAN_HEIGHT, SCAN_WIDTH, SCAN_HEIGHT);
 
 	ImVec2 vis_imsize(SCAN_WIDTH, SCAN_HEIGHT);
-	ImGui::Image((void *)(intptr_t)vis.get_texture_id(), vis_imsize, vis.get_top_left(0), vis.get_bottom_right(0));
+	ImGui::Image((void *)(intptr_t)vis.get_texture_id(), ImGui::GetContentRegionAvail(), vis.get_top_left(0), vis.get_bottom_right(0));
 }
 
 static void draw_debugger_vera_status()
@@ -770,10 +876,10 @@ static void draw_debugger_vera_sprite()
 		const bool    hflip  = spr->prop.hflip;
 		const bool    vflip  = spr->prop.vflip;
 		uint16_t      box[4]{
-            (uint16_t)((spr->prop.sprite_x) & 0x3FF),
-            (uint16_t)((spr->prop.sprite_x + width) & 0x3FF),
-            (uint16_t)((spr->prop.sprite_y) & 0x3FF),
-            (uint16_t)((spr->prop.sprite_y + height) & 0x3FF),
+			     (uint16_t)((spr->prop.sprite_x) & 0x3FF),
+			     (uint16_t)((spr->prop.sprite_x + width) & 0x3FF),
+			     (uint16_t)((spr->prop.sprite_y) & 0x3FF),
+			     (uint16_t)((spr->prop.sprite_y + height) & 0x3FF),
 		}; // l, r, t, b
 		// this might sounds hacky but it works
 		if (box[1] < box[0])
@@ -2242,6 +2348,7 @@ static void draw_symbols_list()
 
 							if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
 								disasm.set_dump_start(address);
+								disasm.set_rom_bank(bank);
 							}
 						}
 						any_selected_visible = any_selected_visible || is_selected;
@@ -2479,7 +2586,7 @@ static void draw_menu_bar()
 				debugger_interrupt();
 			}
 			if (ImGui::MenuItem("Save Dump", Options.no_keybinds ? nullptr : "Ctrl-S")) {
-				machine_dump();
+				machine_dump("user menu request");
 			}
 			if (ImGui::BeginMenu("Controller Ports")) {
 				joystick_for_each_slot([](int slot, int instance_id, SDL_GameController *controller) {
@@ -2549,7 +2656,7 @@ static void draw_menu_bar()
 			if (ImGui::MenuItem("Change CWD")) {
 				char *open_path = nullptr;
 				if (NFD_PickFolder("", &open_path) == NFD_OKAY && open_path != nullptr) {
-					Options.hyper_path = open_path;
+					Options.fsroot_path = open_path;
 				}
 			}
 
@@ -2605,9 +2712,17 @@ static void draw_menu_bar()
 			ImGui::Checkbox("YM2151 Monitor", &Show_YM2151_monitor);
 			ImGui::Separator();
 
-			bool safety_frame = vera_video_safety_frame_is_enabled();
-			if (ImGui::Checkbox("Show Safety Frame", &safety_frame)) {
-				vera_video_enable_safety_frame(safety_frame);
+			if (ImGui::BeginMenu("Safety Frame")) {
+				static constexpr const char   *modes[]   = { "Disabled", "VGA", "NTSC", "RGB interlaced, composite, via VGA connector" };
+				static constexpr const uint8_t num_modes = sizeof(modes) / sizeof(modes[0]);
+
+				for (uint8_t i = 0; i < num_modes; ++i) {
+					bool safety_frame = vera_video_safety_frame_is_enabled(i);
+					if (ImGui::Checkbox(modes[i], &safety_frame)) {
+						vera_video_enable_safety_frame(i, safety_frame);
+					}
+				}
+				ImGui::EndMenu();
 			}
 
 			ImGui::Checkbox("MIDI Control", &Show_midi_overlay);
@@ -2701,7 +2816,7 @@ void overlay_draw()
 	}
 
 	if (Show_cpu_monitor) {
-		if (ImGui::Begin("CPU Monitor", &Show_cpu_monitor)) {
+		if (ImGui::Begin("CPU Monitor", &Show_cpu_monitor, ImGuiWindowFlags_NoScrollbar)) {
 			draw_debugger_cpu_status();
 		}
 		ImGui::End();
@@ -2744,6 +2859,7 @@ void overlay_draw()
 	}
 
 	if (Show_cpu_visualizer) {
+		ImGui::SetNextWindowSize(ImVec2(816, 607), ImGuiCond_Once);
 		if (ImGui::Begin("CPU Visualizer", &Show_cpu_visualizer)) {
 			cpu_visualization_enable(Show_cpu_visualizer);
 			draw_debugger_cpu_visualizer();

@@ -13,9 +13,26 @@
 
 struct _state6502 {
 	uint16_t pc;
+	uint8_t sp_depth;
 	uint8_t  sp, a, x, y, status;
 };
 
+enum class _stack_op_type : uint8_t {
+	op,
+	nmi,
+	irq,
+};
+
+struct _smart_stack {
+	uint16_t       source_pc;
+	uint16_t       dest_pc;
+	uint8_t        source_bank;
+	uint8_t        dest_bank;
+	_stack_op_type op_type;
+	uint8_t        opcode;
+};
+
+extern void     init6502();
 extern void     reset6502();
 extern void     step6502();
 extern void     force6502();

@@ -4,7 +4,9 @@
 #ifndef SD_CARD_H
 #define SD_CARD_H
 
+void sdcard_shutdown();
 void sdcard_set_file(char const *path);
+bool sdcard_path_is_set();
 void sdcard_attach();
 void sdcard_detach();
 bool sdcard_is_attached();

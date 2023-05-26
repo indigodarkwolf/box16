@@ -8,7 +8,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install Dependencies
         run: |
-          sudo apt-get install -y make build-essential libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev
+          sudo apt-get update && sudo apt-get install -y make build-essential libgtk-3-dev libsdl2-dev
       - name: Build Box16 (Ubuntu)
         run: |
           cd build
@@ -16,7 +16,7 @@ jobs:
       - name: Archive Ubuntu build
         uses: actions/upload-artifact@v3
         with:
-          name: Box16 (Ubuntu)
+          name: box16-nr42.xx-linux
           path: build/box16/
   build-ubuntu-trace:
     runs-on: ubuntu-latest
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install Dependencies
         run: |
-          sudo apt-get install -y make build-essential libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev
+          sudo apt-get update && sudo apt-get install -y make build-essential libgtk-3-dev libsdl2-dev
       - name: Build Box16 (Ubuntu w/ Tracing)
         run: |
           cd build
@@ -32,7 +32,7 @@ jobs:
       - name: Archive Ubuntu build
         uses: actions/upload-artifact@v3
         with:
-          name: Box16 (Ubuntu w Tracing)
+          name: box16-nr42.xx-linux-trace
           path: build/box16/
   build-ubuntu-debug:
     runs-on: ubuntu-latest
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Install Dependencies
         run: |
-          sudo apt-get install -y make build-essential libglew-dev libgtk-3-dev libsdl2-dev libsdl2-image-dev
+          sudo apt-get update && sudo apt-get install -y make build-essential libgtk-3-dev libsdl2-dev
       - name: Build Box16 (Ubuntu)
         run: |
           cd build
@@ -72,15 +72,15 @@ jobs:
           cd ..
           mkdir -p box16-Win32-Release
           cp vs2022/out/Win32/Release/Box16.exe box16-Win32-Release/
-          cp vs2022/out/Win32/Release/glew32.dll box16-Win32-Release/
-          cp vs2022/out/Win32/Release/SDL2.dll box16-Win32-Release/
           cp vs2022/out/Win32/Release/box16-icon56-24.png box16-Win32-Release/
           cp vs2022/out/Win32/Release/icons.png box16-Win32-Release/
           cp vs2022/out/Win32/Release/README.box16 box16-Win32-Release/
+          cp vs2022/out/Win32/Release/SDL2.dll box16-Win32-Release/
+          cp vs2022/out/Win32/Release/zlibwapi.dll box16-Win32-Release/
       - name: Archive Win32-Release build
         uses: actions/upload-artifact@v3
         with:
-          name: Box16 (Win32 Release)
+          name: box16-nr42.xx-Win32
           path: build/box16-Win32-Release/
   build-win32-release-trace:
     runs-on: windows-latest
@@ -97,15 +97,15 @@ jobs:
           cd ..
           mkdir -p box16-Win32-Release-Trace
           cp "vs2022/out/Win32/Release (TRACE)/Box16.exe" box16-Win32-Release-Trace/
-          cp "vs2022/out/Win32/Release (TRACE)/glew32.dll" box16-Win32-Release-Trace/
-          cp "vs2022/out/Win32/Release (TRACE)/SDL2.dll" box16-Win32-Release-Trace/
           cp "vs2022/out/Win32/Release (TRACE)/box16-icon56-24.png" box16-Win32-Release-Trace/
           cp "vs2022/out/Win32/Release (TRACE)/icons.png" box16-Win32-Release-Trace/
           cp "vs2022/out/Win32/Release (TRACE)/README.box16" box16-Win32-Release-Trace/
+          cp "vs2022/out/Win32/Release (TRACE)/SDL2.dll" box16-Win32-Release-Trace/
+          cp "vs2022/out/Win32/Release (TRACE)/zlibwapi.dll" box16-Win32-Release-Trace/
       - name: Archive Win32-Release-Trace build
         uses: actions/upload-artifact@v3
         with:
-          name: Box16 (Win32 Release w Tracing)
+          name: box16-nr42.xx-Win32-trace
           path: build/box16-Win32-Release-Trace/
   build-x64-debug:
     runs-on: windows-latest
@@ -134,15 +134,15 @@ jobs:
           cd ..
           mkdir -p box16-x64-Release
           cp vs2022/out/x64/Release/Box16.exe box16-x64-Release/
-          cp vs2022/out/x64/Release/glew32.dll box16-x64-Release/
-          cp vs2022/out/x64/Release/SDL2.dll box16-x64-Release/
           cp vs2022/out/x64/Release/box16-icon56-24.png box16-x64-Release/
           cp vs2022/out/x64/Release/icons.png box16-x64-Release/
           cp vs2022/out/x64/Release/README.box16 box16-x64-Release/
+          cp vs2022/out/x64/Release/SDL2.dll box16-x64-Release/
+          cp vs2022/out/x64/Release/zlibwapi.dll box16-x64-Release/
       - name: Archive x64-Release build
         uses: actions/upload-artifact@v3
         with:
-          name: Box16 (x64 Release)
+          name: box16-nr42.xx-x64
           path: build/box16-x64-Release/
   build-x64-release-trace:
     runs-on: windows-latest
@@ -159,14 +159,14 @@ jobs:
           cd ..
           mkdir -p box16-x64-Release-Trace
           cp "vs2022/out/x64/Release (TRACE)/Box16.exe" box16-x64-Release-Trace/
-          cp "vs2022/out/x64/Release (TRACE)/glew32.dll" box16-x64-Release-Trace/
-          cp "vs2022/out/x64/Release (TRACE)/SDL2.dll" box16-x64-Release-Trace/
           cp "vs2022/out/x64/Release (TRACE)/box16-icon56-24.png" box16-x64-Release-Trace/
           cp "vs2022/out/x64/Release (TRACE)/icons.png" box16-x64-Release-Trace/
           cp "vs2022/out/x64/Release (TRACE)/README.box16" box16-x64-Release-Trace/
+          cp "vs2022/out/x64/Release (TRACE)/SDL2.dll" box16-x64-Release-Trace/
+          cp "vs2022/out/x64/Release (TRACE)/zlibwapi.dll" box16-x64-Release-Trace/
       - name: Archive x64-Release-Trace build
         uses: actions/upload-artifact@v3
         with:
-          name: Box16 (x64 Release w Tracing)
+          name: box16-nr42.xx-x64-trace
           path: build/box16-x64-Release-Trace/
 

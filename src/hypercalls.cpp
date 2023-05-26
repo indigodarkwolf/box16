@@ -11,8 +11,10 @@
 #include "memory.h"
 #include "options.h"
 #include "rom_symbols.h"
+#include "symbols.h"
 #include "unicode.h"
 #include "vera/sdcard.h"
+#include "zlib.h"
 
 #define KERNAL_MACPTR (0xff44)
 #define KERNAL_SECOND (0xff93)
@@ -31,6 +33,7 @@
 
 static uint16_t Kernal_status  = 0;
 static bool     Has_boot_tasks = false;
+static bool     prg_finished_loading = false;
 
 static bool (*Hypercall_table[0x100])(void);
 
@@ -88,10 +91,12 @@ static bool init_kernal_status()
 	return true;
 }
 
-static bool set_kernal_status(uint8_t s)
+static bool set_kernal_status(int s)
 {
 	// everything okay, write the status!
-	RAM[Kernal_status] = s;
+	if (s >= 0) {
+		RAM[Kernal_status] = static_cast<uint8_t>(s);
+	}
 	return true;
 }
 
@@ -107,8 +112,12 @@ static bool ieee_hypercalls_allowed()
 		return false;
 	}
 
-	if (sdcard_is_attached()) {
-		// if should emulate an SD card, we'll always skip host fs
+	//if (sdcard_is_attached()) {
+	//	// if should emulate an SD card, we'll always skip host fs
+	//	return false;
+	//}
+
+	if (sdcard_is_attached() && !Options.prg_path.empty() && prg_finished_loading) {
 		return false;
 	}
 
@@ -120,6 +129,8 @@ bool hypercalls_init()
 	if (!init_kernal_status()) {
 		return false;
 	}
+
+	ieee_init();
 
 	// Setup whether we have boot tasks
 	if (!Options.prg_path.empty()) {
@@ -151,7 +162,7 @@ void hypercalls_update()
 		Hypercall_table[KERNAL_MACPTR & 0xff] = []() -> bool {
 			uint16_t count = state6502.a;
 
-			const uint8_t s = MACPTR(state6502.y << 8 | state6502.x, &count);
+			const int s = MACPTR(state6502.y << 8 | state6502.x, &count, state6502.status & 0x01);
 
 			state6502.x = count & 0xff;
 			state6502.y = count >> 8;
@@ -162,7 +173,9 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_SECOND & 0xff] = []() -> bool {
-			SECOND(state6502.a);
+			const int s = SECOND(state6502.a);
+
+			set_kernal_status(s);
 			return true;
 		};
 
@@ -172,16 +185,16 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_ACPTR & 0xff] = []() -> bool {
-			const uint8_t s = ACPTR(&state6502.a);
+			const int s = ACPTR(&state6502.a);
 
-			state6502.status = (state6502.status & ~2) | (!state6502.a << 1);
+			state6502.status = (state6502.status & ~3) | (!state6502.a << 1);
 
 			set_kernal_status(s);
 			return true;
 		};
 
 		Hypercall_table[KERNAL_CIOUT & 0xff] = []() -> bool {
-			const uint8_t s = CIOUT(state6502.a);
+			const int s = CIOUT(state6502.a);
 
 			set_kernal_status(s);
 			return true;
@@ -193,8 +206,22 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_UNLSN & 0xff] = []() -> bool {
-			const uint8_t s = UNLSN();
-
+			const int s = UNLSN();
+			if (s == -2) {             // special error behavior
+				state6502.status = (state6502.status | 1); // SEC
+			} else {
+				state6502.status = (state6502.status & ~1); // CLC
+			}
+			static int count_unlistn = 0;
+			if (!Options.prg_path.empty() && sdcard_path_is_set() && ++count_unlistn == 4) {
+				// after auto-loading a PRG from the host fs,
+				// switch to the SD card if requested
+				// 4x UNLISTEN:
+				//    2x for LOAD"AUTOBOOT.X16*"
+				//    2x for LOAD":*"
+				prg_finished_loading = true;
+				sdcard_attach();
+			}
 			set_kernal_status(s);
 			return true;
 		};
@@ -232,32 +259,38 @@ void hypercalls_update()
 		Hypercall_table[KERNAL_CHRIN & 0xff] = []() -> bool {
 			// as soon as BASIC starts reading a line...
 			if (!Options.prg_path.empty()) {
-				std::filesystem::path prg_path;
-				options_get_hyper_path(prg_path, Options.prg_path);
+				std::filesystem::path prg_path = options_get_hyper_path() / Options.prg_path;
 
-				SDL_RWops *prg_file = SDL_RWFromFile(prg_path.generic_string().c_str(), "rb");
-				if (!prg_file) {
+				auto prg_file = x16open(prg_path.generic_string().c_str(), "rb");
+				if (prg_file == nullptr) {
 					printf("Cannot open PRG file %s (%s)!\n", prg_path.generic_string().c_str(), std::filesystem::absolute(prg_path).generic_string().c_str());
 					exit(1);
 				}
 
 				// ...inject the app into RAM
-				uint8_t  start_lo = SDL_ReadU8(prg_file);
-				uint8_t  start_hi = SDL_ReadU8(prg_file);
+				uint8_t start_lo;
+				uint8_t start_hi;
+				x16read(prg_file, &start_lo, sizeof(uint8_t), 1);
+				x16read(prg_file, &start_hi, sizeof(uint8_t), 1);
+
 				uint16_t start;
 				if (Options.prg_override_start > 0) {
 					start = Options.prg_override_start;
 				} else {
 					start = start_hi << 8 | start_lo;
 				}
-				uint16_t end = start + (uint16_t)SDL_RWread(prg_file, RAM + start, 1, 65536 - (int)start);
-				SDL_RWclose(prg_file);
+				uint16_t end = start + (uint16_t)x16read(prg_file, RAM + start, sizeof(uint8_t), 65536 - (int)start);
+				x16close(prg_file);
 				prg_file = nullptr;
+
 				if (start == 0x0801) {
 					// set start of variables
 					RAM[VARTAB]     = end & 0xff;
 					RAM[VARTAB + 1] = end >> 8;
 				}
+
+				// Now look for and load symbols, if applicable.
+				symbols_load_file(prg_path.replace_extension(".sym").generic_string(), 0);
 
 				if (Options.run_after_load) {
 					if (start == 0x0801) {

@@ -2,7 +2,7 @@
 
 MIT License
 
-Copyright (c) 2021-2022 Stephen Horn, et al.
+Copyright (c) 2021-2023 Stephen Horn, et al.
 
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -25,7 +25,6 @@ SOFTWARE.
 
 */
 
-#include <GL/glew.h>
 #include <algorithm>
 #include <atomic>
 #include <thread>
@@ -65,7 +64,7 @@ static std::string           Imgui_ini_path_str;
 static bool Initd_sdl_image           = false;
 static bool Initd_sdl_gl              = false;
 static bool Initd_display_context     = false;
-static bool Initd_glew                = false;
+static bool Initd_glad                = false;
 static bool Initd_display_framebuffer = false;
 static bool Initd_video_framebuffer   = false;
 static bool Initd_imgui               = false;
@@ -77,6 +76,16 @@ static bool Initd_icons               = false;
 #if defined(GL_EXT_texture_filter_anisotropic)
 static float Max_anisotropy = 1.0f;
 #endif
+
+static bool vsync_is_enabled()
+{
+	return static_cast<int>(Options.vsync_mode) > static_cast<int>(vsync_mode_t::VSYNC_MODE_DISABLED);
+}
+
+static bool vsync_is_disabled()
+{
+	return static_cast<int>(Options.vsync_mode) < static_cast<int>(vsync_mode_t::VSYNC_MODE_DISABLED);
+}
 
 bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 {
@@ -151,7 +160,7 @@ bool icon_set::load_memory(const void *buffer, int texture_width, int texture_he
 void icon_set::update_memory(const void *buffer)
 {
 	glBindTexture(GL_TEXTURE_2D, texture);
-	glTextureSubImage2D(texture, 0, 0, 0, texture_width, texture_height, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buffer);
+	glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, texture_width, texture_height, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buffer);
 }
 
 void icon_set::unload()
@@ -214,13 +223,14 @@ static void display_video()
 {
 	if (!vera_video_is_cheat_frame()) {
 		const uint8_t *video_buffer = vera_video_get_framebuffer();
-		glTextureSubImage2D(Video_framebuffer_texture_handle, 0, 0, 0, Display.video_rect.w, Display.video_rect.h, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, video_buffer);
+		glBindTexture(GL_TEXTURE_2D, Video_framebuffer_texture_handle);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Display.video_rect.w, Display.video_rect.h, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, video_buffer);
 		if (Options.scale_quality == scale_quality_t::BEST) {
-			glGenerateTextureMipmap(Video_framebuffer_texture_handle);
+			glGenerateMipmap(GL_TEXTURE_2D);
 		}
 		GLenum result = glGetError();
 		if (result != GL_NO_ERROR) {
-			printf("GL error %s\n", glewGetErrorString(result));
+			printf("GL error %d\n", result);
 		}
 	}
 
@@ -344,20 +354,26 @@ bool display_init(const display_settings &settings)
 	}
 	Initd_display_context = true;
 
-	// Initialize GLEW
+	// Initialize GLAD
 	{
-		glewExperimental = GL_TRUE;
+		int version = gladLoadGLES2((GLADloadfunc)SDL_GL_GetProcAddress);
+		printf("GLES %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+		if (version == 0) {
+			printf("Failed to initialize OpenGL context (`gladLoadGLES2()` returned 0)\n");
+			return false;
+		}
 
-		GLenum result = glewInit();
-		if (result != GLEW_OK) {
-			printf("Unable to initialize GL: %s\n", glewGetErrorString(result));
+		version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
+		printf("GL %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+		if (version == 0) {
+			printf("Failed to initialize OpenGL context (`gladLoadGL()` returned 0)\n");
 			return false;
 		}
 	}
-	Initd_glew = true;
+	Initd_glad = true;
 
 #if defined(GL_EXT_texture_filter_anisotropic)
-	if (glewIsSupported("EXT_texture_filter_anisotropic")) {
+	if (GLAD_GL_EXT_texture_filter_anisotropic) {
 		glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &Max_anisotropy);
 	} else {
 		Max_anisotropy = 0;
@@ -444,8 +460,7 @@ bool display_init(const display_settings &settings)
 		unsigned                   icons_w;
 		unsigned                   icons_h;
 
-		std::filesystem::path icons_path;
-		options_get_base_path(icons_path, "box16-icon56-24.png");
+		std::filesystem::path icons_path = options_get_base_path() / "box16-icon56-24.png";
 
 		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path.generic_string(), LCT_RGB) != 0) {
 			printf("Unable to load icon resources from %s\n", icons_path.generic_string().c_str());
@@ -463,8 +478,7 @@ bool display_init(const display_settings &settings)
 		unsigned                   icons_w;
 		unsigned                   icons_h;
 
-		std::filesystem::path icons_path;
-		options_get_base_path(icons_path, "icons.png");
+		std::filesystem::path icons_path = options_get_base_path() / "icons.png";
 
 		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path.generic_string(), LCT_RGBA) != 0) {
 			printf("Unable to load icon resources from %s\n", icons_path.generic_string().c_str());
@@ -493,7 +507,11 @@ bool display_init(const display_settings &settings)
 	SDL_ShowCursor(SDL_DISABLE);
 
 	if (Options.vsync_mode == vsync_mode_t::VSYNC_MODE_GET_SYNC || Options.vsync_mode == vsync_mode_t::VSYNC_MODE_WAIT_SYNC) {
-		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		if(glFenceSync == nullptr) {
+			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_DISABLED;
+		} else {
+			Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+		}
 	}
 
 	Display_timing_history.add(0);
@@ -521,7 +539,7 @@ void display_shutdown()
 	Initd_sdl_image           = false;
 	Initd_sdl_gl              = false;
 	Initd_display_context     = false;
-	Initd_glew                = false;
+	Initd_glad                = false;
 	Initd_display_framebuffer = false;
 	Initd_imgui               = false;
 	Initd_imgui_sdl2          = false;
@@ -532,23 +550,24 @@ void display_process()
 {
 	auto video_timeout = [](uint32_t usec_limit) -> bool {
 		const uint32_t current_render_time = timing_total_microseconds_realtime();
-		const bool failed = current_render_time - Last_render_time > usec_limit;
+		const bool     failed              = current_render_time - Last_render_time > usec_limit;
 		if (failed) {
 			// Seems like vsync isn't working, let's disable it.
 			SDL_ShowSimpleMessageBox(SDL_MessageBoxFlags::SDL_MESSAGEBOX_WARNING, "V-Sync was automatically disabled", "Box16 has detected a problem with the current V-Sync settings.\nV-Sync has been disabled.", display_get_window());
-			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_NONE;
+			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_DISABLED;
 			return true;
 		}
 
 		return false;
 	};
 
-	if (Options.vsync_mode != vsync_mode_t::VSYNC_MODE_NONE) {
+	if (vsync_is_enabled()) {
 		video_timeout(5000000);
 	}
 
 	if (Render_complete != 0) {
 		switch (Options.vsync_mode) {
+			case vsync_mode_t::VSYNC_MODE_DISABLED: [[fallthrough]];
 			case vsync_mode_t::VSYNC_MODE_NONE:
 				// Handle asynchronous vsync disable
 				glDeleteSync(Render_complete);
@@ -557,7 +576,7 @@ void display_process()
 
 			case vsync_mode_t::VSYNC_MODE_GET_SYNC: {
 				GLsizei num_sync_values = 1;
-				GLint   sync_status = GL_UNSIGNALED;
+				GLint   sync_status     = GL_UNSIGNALED;
 				while (sync_status == GL_UNSIGNALED) {
 					glGetSynciv(Render_complete, GL_SYNC_STATUS, sizeof(sync_status), &num_sync_values, &sync_status);
 
@@ -625,7 +644,7 @@ void display_process()
 	ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
 	SDL_GL_SwapWindow(Display_window);
 
-	if (Options.vsync_mode != vsync_mode_t::VSYNC_MODE_NONE) {
+	if (vsync_is_enabled()) {
 		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		if (Render_complete == 0) {
 			printf("Error: glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0) returned 0, V-Sync is probably not supported by this system's drivers.\n");
@@ -655,8 +674,8 @@ void display_toggle_fullscreen()
 
 float display_get_fps()
 {
-	const uint32_t cutoff_us = std::max((uint32_t)1000000, timing_total_microseconds_realtime()) - 1000000;
-	uint32_t framecount = 0;
+	const uint32_t cutoff_us  = std::max((uint32_t)1000000, timing_total_microseconds_realtime()) - 1000000;
+	uint32_t       framecount = 0;
 	Display_timing_history.for_until_reverse([&](const uint32_t &us) -> bool {
 		if (us > cutoff_us) {
 			++framecount;
@@ -667,8 +686,8 @@ float display_get_fps()
 
 	return (float)framecount;
 
-	//const uint32_t display_interval_us = Display_timing_history.get_newest() - Display_timing_history.get_oldest();
-	//return 60.0f / (((float)display_interval_us) / 1000000.0f);
+	// const uint32_t display_interval_us = Display_timing_history.get_newest() - Display_timing_history.get_oldest();
+	// return 60.0f / (((float)display_interval_us) / 1000000.0f);
 }
 
 void display_refund_render_time(uint32_t time_us)

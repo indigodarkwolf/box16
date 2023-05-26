@@ -1,6 +1,6 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
-// Copyright (c) 2021-2022 Stephen Horn, et al.
+// Copyright (c) 2021-2023 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #include "loadsave.h"
@@ -12,6 +12,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "files.h"
 #include "glue.h"
 #include "memory.h"
 #include "options.h"
@@ -38,7 +39,7 @@ int create_directory_listing(uint8_t *data)
 	*data++ = 0x12; // REVERSE ON
 	*data++ = '"';
 
-	const std::string path_str = Options.hyper_path.generic_string();
+	const std::string path_str = Options.fsroot_path.generic_string();
 	{
 		int       i    = 0;
 		const int stop = MIN((int)path_str.length(), 16);
@@ -58,11 +59,11 @@ int create_directory_listing(uint8_t *data)
 	*data++ = 'C';
 	*data++ = 0;
 
-	if (!std::filesystem::exists(Options.hyper_path)) {
+	if (!std::filesystem::exists(Options.fsroot_path)) {
 		return 0;
 	}
 
-	for (const auto &entry : std::filesystem::directory_iterator(Options.hyper_path)) {
+	for (const auto &entry : std::filesystem::directory_iterator(Options.fsroot_path)) {
 		const std::string            filename = entry.path().filename().generic_string();
 		size_t                       namlen   = filename.length();
 		std::filesystem::file_status st       = entry.status();
@@ -146,28 +147,31 @@ void LOAD()
 		memcpy(filename, kernal_filename, len);
 		filename[len] = 0;
 
-		std::filesystem::path filepath = Options.hyper_path / filename;
+		std::filesystem::path filepath = Options.fsroot_path / filename;
 
-		SDL_RWops *f = SDL_RWFromFile(filepath.generic_string().c_str(), "rb");
-		if (!f) {
+		x16file *f = x16open(filepath.generic_string().c_str(), "rb");
+		if (f == nullptr) {
 			state6502.a = 4; // FNF
 			RAM[STATUS] = state6502.a;
 			state6502.status |= 1;
 			return;
 		}
-		const uint8_t sa       = RAM[SA];
-		const uint8_t start_lo = SDL_ReadU8(f);
-		const uint8_t start_hi = SDL_ReadU8(f);
-		uint16_t      start    = [override_start, sa, start_lo, start_hi]() -> uint16_t {
-            if (sa & 1) {
-                return start_hi << 8 | start_lo;
-            } else {
-                return override_start;
-            }
+		const uint8_t sa = RAM[SA];
+		uint8_t       start_lo;
+		uint8_t       start_hi;
+		x16read(f, &start_lo, sizeof(start_lo), 1);
+		x16read(f, &start_hi, sizeof(start_hi) , 1);
+
+		uint16_t start = [override_start, sa, start_lo, start_hi]() -> uint16_t {
+			if (sa & 1) {
+				return start_hi << 8 | start_lo;
+			} else {
+				return override_start;
+			}
 		}();
 
 		if (sa & 0x2) {
-			SDL_RWseek(f, -2, RW_SEEK_CUR);
+			x16seek(f, -2, SEEK_CUR);
 		}
 
 		uint16_t bytes_read = 0;
@@ -178,7 +182,7 @@ void LOAD()
 			vera_video_write(2, ((state6502.a - 2) & 0xf) | 0x10);
 			uint8_t buf[2048];
 			while (1) {
-				uint16_t n = (uint16_t)SDL_RWread(f, buf, 1, sizeof buf);
+				uint16_t n = (uint16_t)x16read(f, buf, sizeof(uint8_t), sizeof(buf));
 				if (n == 0) {
 					break;
 				}
@@ -189,14 +193,14 @@ void LOAD()
 			}
 		} else if (start < 0x9f00) {
 			// Fixed RAM
-			bytes_read = (uint16_t)SDL_RWread(f, RAM + start, 1, 0x9f00 - start);
+			bytes_read = (uint16_t)x16read(f, RAM + start, sizeof(uint8_t), 0x9f00 - start);
 		} else if (start < 0xa000) {
 			// IO addresses
 		} else if (start < 0xc000) {
 			// banked RAM
 			while (1) {
 				size_t len = 0xc000 - start;
-				bytes_read = (uint16_t)SDL_RWread(f, RAM + (((memory_get_ram_bank() % (uint16_t)Options.num_ram_banks) << 13) & 0xffffff) + start, 1, len);
+				bytes_read = (uint16_t)x16read(f, RAM + (((memory_get_ram_bank() % (uint16_t)Options.num_ram_banks) << 13) & 0xffffff) + start, sizeof(uint8_t), static_cast<unsigned int>(len));
 				if (bytes_read < len)
 					break;
 
@@ -208,7 +212,7 @@ void LOAD()
 			// ROM
 		}
 
-		SDL_RWclose(f);
+		x16close(f);
 
 		uint16_t end = start + bytes_read;
 		state6502.x  = end & 0xff;
@@ -228,7 +232,7 @@ void SAVE()
 	memcpy(filename, kernal_filename, len);
 	filename[len] = '\0';
 
-	std::filesystem::path filepath = Options.hyper_path / filename;
+	std::filesystem::path filepath = Options.fsroot_path / filename;
 
 	uint16_t start = RAM[state6502.a] | RAM[state6502.a + 1] << 8;
 	uint16_t end   = state6502.x | state6502.y << 8;
@@ -237,20 +241,23 @@ void SAVE()
 		state6502.a = 0;
 		return;
 	}
-
-	SDL_RWops *f = SDL_RWFromFile(filepath.generic_string().c_str(), "wb");
-	if (!f) {
+	char const *flags = "wb0";
+	if (filepath.extension().generic_string() == ".gz") {
+		flags = "wb6";
+	}
+	x16file *f = x16open(filepath.generic_string().c_str(), flags);
+	if (f == nullptr) {
 		state6502.a = 4; // FNF
 		RAM[STATUS] = state6502.a;
 		state6502.status |= 1;
 		return;
 	}
 
-	SDL_WriteU8(f, start & 0xff);
-	SDL_WriteU8(f, start >> 8);
+	x16write8(f, start & 0xff);
+	x16write8(f, start >> 8);
 
-	SDL_RWwrite(f, RAM + start, 1, end - start);
-	SDL_RWclose(f);
+	x16write(f, RAM + start, sizeof(uint8_t), end - start);
+	x16close(f);
 
 	state6502.status &= 0xfe;
 	RAM[STATUS] = 0;

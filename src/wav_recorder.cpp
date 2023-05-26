@@ -2,6 +2,7 @@
 
 #include "SDL.h"
 #include "audio.h"
+#include "files.h"
 
 // WAV recorder states
 enum wav_recorder_state_t {
@@ -55,7 +56,7 @@ private:
 	file_header header;
 	uint32_t    samples_written = 0;
 
-	SDL_RWops *wav_file = nullptr;
+	x16file *wav_file = nullptr;
 
 	void update_sizes()
 	{
@@ -73,7 +74,7 @@ void wav_recorder::begin(const char *path, int32_t sample_rate)
 	}
 
 	if (wav_file == nullptr) {
-		wav_file = SDL_RWFromFile(path, "wb");
+		wav_file = x16open(path, "wb");
 
 		if (wav_file != nullptr) {
 			header.fmt.samples_per_sec = sample_rate;
@@ -81,9 +82,9 @@ void wav_recorder::begin(const char *path, int32_t sample_rate)
 			header.fmt.block_align     = sizeof(int16_t) * header.fmt.channels;
 			header.fmt.bits_per_sample = (sizeof(int16_t)) << 3;
 
-			const size_t written = SDL_RWwrite(wav_file, &header, sizeof(file_header), 1);
+			const size_t written = x16write(wav_file, &header, sizeof(file_header), 1);
 			if (written == 0) {
-				SDL_RWclose(wav_file);
+				x16close(wav_file);
 				wav_file = nullptr;
 			}
 		}
@@ -94,9 +95,9 @@ void wav_recorder::end()
 {
 	if (wav_file != nullptr) {
 		update_sizes();
-		SDL_RWseek(wav_file, 0, RW_SEEK_SET);
-		SDL_RWwrite(wav_file, &header, sizeof(file_header), 1);
-		SDL_RWclose(wav_file);
+		x16seek(wav_file, 0, RW_SEEK_SET);
+		x16write(wav_file, &header, sizeof(file_header), 1);
+		x16close(wav_file);
 		wav_file = nullptr;
 	}
 }
@@ -105,9 +106,9 @@ void wav_recorder::add(const int16_t *samples, const int num_samples)
 {
 	if (wav_file) {
 		const size_t bytes   = sizeof(int16_t) * 2 * num_samples;
-		const size_t written = SDL_RWwrite(wav_file, samples, bytes, 1);
+		const size_t written = x16write(wav_file, samples, bytes, 1);
 		if (written == 0) {
-			SDL_RWclose(wav_file);
+			x16close(wav_file);
 			wav_file = nullptr;
 		} else {
 			samples_written += num_samples;
@@ -123,9 +124,7 @@ void wav_recorder_init()
 
 void wav_recorder_shutdown()
 {
-	if (Wav_record_state == RECORD_WAV_RECORDING) {
-		Wav_recorder.end();
-	}
+	Wav_recorder.end();
 }
 
 void wav_recorder_process(const int16_t *samples, const int num_samples)

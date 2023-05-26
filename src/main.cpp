@@ -1,6 +1,6 @@
 // Commander X16 Emulator
 // Copyright (c) 2019 Michael Steil
-// Copyright (c) 2021-2022 Stephen Horn, et al.
+// Copyright (c) 2021-2023 Stephen Horn, et al.
 // All rights reserved. License: 2-clause BSD
 
 #include <limits.h>
@@ -17,8 +17,11 @@
 #include "audio.h"
 #include "boxmon/boxmon.h"
 #include "cpu/fake6502.h"
+#include "cpu/mnemonics.h"
 #include "debugger.h"
+#include "disasm.h"
 #include "display.h"
+#include "files.h"
 #include "gif_recorder.h"
 #include "glue.h"
 #include "hypercalls.h"
@@ -46,9 +49,6 @@
 #include "via.h"
 #include "wav_recorder.h"
 #include "ym2151/ym2151.h"
-#include "cpu/mnemonics.h"
-#include "overlay/disasm.h"
-
 
 #ifdef __EMSCRIPTEN__
 #	include <emscripten.h>
@@ -61,11 +61,12 @@ bool debugger_enabled = true;
 
 bool save_on_exit = true;
 
-bool       has_boot_tasks = false;
-SDL_RWops *prg_file       = nullptr;
+bool   has_boot_tasks = false;
+gzFile prg_file       = nullptr;
 
-void machine_dump()
+void machine_dump(const char *reason)
 {
+	printf("Dumping system memory. Reason: %s\n", reason);
 	int  index = 0;
 	char filename[22];
 	for (;;) {
@@ -79,19 +80,19 @@ void machine_dump()
 		}
 		index++;
 	}
-	SDL_RWops *f = SDL_RWFromFile(filename, "wb");
+	x16file *f = x16open(filename, "wb");
 	if (!f) {
 		printf("Cannot write to %s!\n", filename);
 		return;
 	}
 
 	if (Options.dump_cpu) {
-		SDL_RWwrite(f, &state6502.a, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.x, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.y, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.sp, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.status, sizeof(uint8_t), 1);
-		SDL_RWwrite(f, &state6502.pc, sizeof(uint16_t), 1);
+		x16write(f, &state6502.a, sizeof(uint8_t), 1);
+		x16write(f, &state6502.x, sizeof(uint8_t), 1);
+		x16write(f, &state6502.y, sizeof(uint8_t), 1);
+		x16write(f, &state6502.sp, sizeof(uint8_t), 1);
+		x16write(f, &state6502.status, sizeof(uint8_t), 1);
+		x16write(f, &state6502.pc, sizeof(uint16_t), 1);
 	}
 	memory_save(f, Options.dump_ram, Options.dump_bank);
 
@@ -99,7 +100,7 @@ void machine_dump()
 		vera_video_save(f);
 	}
 
-	SDL_RWclose(f);
+	x16close(f);
 	printf("Dumped system to %s.\n", filename);
 }
 
@@ -168,8 +169,8 @@ int main(int argc, char **argv)
 		debugger_init(Options.num_ram_banks);
 	}
 
-	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> SDL_RWops * {
-		SDL_RWops *f = nullptr;
+	auto open_file = [](std::filesystem::path &path, char const *cmdline_option, char const *mode) -> x16file * {
+		x16file *f = nullptr;
 
 		option_source optsrc  = option_get_source(cmdline_option);
 		char const   *srcname = option_get_source_name(optsrc);
@@ -178,10 +179,10 @@ int main(int argc, char **argv)
 		if (options_find_file(real_path, path)) {
 			const std::string &real_path_string = real_path.generic_string();
 
-			f = SDL_RWFromFile(real_path_string.c_str(), mode);
+			f = x16open(real_path_string.c_str(), mode);
 			printf("Using %s at %s\n", cmdline_option, real_path_string.c_str());
 		}
-		printf("\t-%s sourced from: %s\n ", cmdline_option, srcname);
+		printf("\t-%s sourced from: %s\n", cmdline_option, srcname);
 		return f;
 	};
 
@@ -208,22 +209,46 @@ int main(int argc, char **argv)
 
 	// Load ROM
 	{
-		SDL_RWops *f = open_file(Options.rom_path, "rom", "rb");
+		x16file *f = open_file(Options.rom_path, "rom", "rb");
 		if (f == nullptr) {
 			error("ROM error", "Could not find ROM.");
 		}
 
+		// Could be changed to allow extended rom files
 		memset(ROM, 0, ROM_SIZE);
-		SDL_RWread(f, ROM, ROM_SIZE, 1);
-		SDL_RWclose(f);
+		x16read(f, ROM, sizeof(uint8_t), ROM_SIZE);
+		x16close(f);
+
+		// Look for ROM symbols?
+		if (Options.load_standard_symbols) {
+			symbols_load_file((Options.rom_path.parent_path() / "kernal.sym").generic_string(), 0);
+			symbols_load_file((Options.rom_path.parent_path() / "keymap.sym").generic_string(), 1);
+			symbols_load_file((Options.rom_path.parent_path() / "dos.sym").generic_string(), 2);
+			symbols_load_file((Options.rom_path.parent_path() / "geos.sym").generic_string(), 3);
+			symbols_load_file((Options.rom_path.parent_path() / "basic.sym").generic_string(), 4);
+			symbols_load_file((Options.rom_path.parent_path() / "monitor.sym").generic_string(), 5);
+			symbols_load_file((Options.rom_path.parent_path() / "charset.sym").generic_string(), 0);
+		}
+
+		if (!Options.rom_carts.empty()) {
+			for (auto &[path, bank] : Options.rom_carts) {
+				x16file *cf = open_file(path, "romcart", "rb");
+				if (cf == nullptr) {
+					error("Cartridge / ROM error", "Could not find cartridge.");
+				}
+				const size_t cart_size = x16size(cf);
+				x16read(cf, ROM + (0x4000 * bank), sizeof(uint8_t), static_cast<unsigned int>(cart_size));
+				x16close(cf);
+			}
+		}
 	}
 
 	// Load NVRAM, if specified
 	if (!Options.nvram_path.empty()) {
-		SDL_RWops *f = open_file(Options.nvram_path, "nvram", "rb");
-		if (f) {
-			SDL_RWread(f, nvram, sizeof(nvram), 1);
-			SDL_RWclose(f);
+		x16file *f = open_file(Options.nvram_path, "nvram", "rb");
+		if (f != nullptr) {
+			x16read(f, nvram, sizeof(uint8_t), sizeof(nvram));
+			x16close(f);
 		}
 	}
 
@@ -268,7 +293,10 @@ int main(int argc, char **argv)
 		init_settings.window_rect.y = 0;
 		init_settings.window_rect.w = (int)(480 * Options.window_scale * init_settings.aspect_ratio);
 		init_settings.window_rect.h = (480 * Options.window_scale) + IMGUI_OVERLAY_MENU_BAR_HEIGHT;
-		display_init(init_settings);
+		if (const bool initd = display_init(init_settings); initd == false) {
+			printf("Could not initialize display, quitting.\n");
+			goto display_quit;
+		}
 	}
 
 	vera_video_reset();
@@ -326,15 +354,16 @@ int main(int argc, char **argv)
 	save_options_on_close(false);
 
 	if (nvram_dirty && !Options.nvram_path.empty()) {
-		SDL_RWops *f = SDL_RWFromFile(Options.nvram_path.generic_string().c_str(), "wb");
+		x16file *f = x16open(Options.nvram_path.generic_string().c_str(), "wb");
 		if (f) {
-			SDL_RWwrite(f, nvram, 1, sizeof(nvram));
-			SDL_RWclose(f);
+			x16write(f, nvram, 1, sizeof(nvram));
+			x16close(f);
 		}
 		nvram_dirty = false;
 	}
 
 	boxmon_system_shutdown();
+	sdcard_shutdown();
 
 	SDL_free(const_cast<char *>(private_path));
 	SDL_free(const_cast<char *>(base_path));
@@ -343,209 +372,11 @@ int main(int argc, char **argv)
 	wav_recorder_shutdown();
 	gif_recorder_shutdown();
 	debugger_shutdown();
+display_quit:
 	display_shutdown();
 	SDL_Quit();
 
 	return 0;
-}
-
-static char const *disasm_get_label(uint16_t address)
-{
-	static char label[256];
-
-	const symbol_list_type &symbols = symbols_find(address);
-	if (symbols.size() > 0) {
-		strncpy(label, symbols.front().c_str(), 256);
-		label[255] = '\0';
-		return label;
-	}
-
-	for (uint16_t i = 1; i < 3; ++i) {
-		const symbol_list_type &symbols = symbols_find(address - i);
-		if (symbols.size() > 0) {
-			snprintf(label, 256, "%s+%d", symbols.front().c_str(), i);
-			label[255] = '\0';
-			return label;
-		}
-	}
-
-	return nullptr;
-}
-
-static char const *disasm_label(uint16_t target, bool branch_target, const char *hex_format)
-{
-	const char *symbol = disasm_get_label(target);
-
-	static char inner[256];
-	if (symbol != nullptr) {
-		snprintf(inner, 256, "%s", symbol);
-	} else {
-		snprintf(inner, 256, hex_format, target);
-	}
-	inner[255] = '\0';
-	return inner;
-}
-
-static char const *disasm_label_wrap(uint16_t target, bool branch_target, const char *hex_format, const char *wrapper_format)
-{
-	const char *symbol = disasm_get_label(target);
-
-	char inner[256];
-	if (symbol != nullptr) {
-		snprintf(inner, 256, "%s", symbol);
-	} else {
-		snprintf(inner, 256, hex_format, target);
-	}
-	inner[255] = '\0';
-
-	static char wrapped[512];
-	snprintf(wrapped, 512, wrapper_format, inner);
-	wrapped[511] = '\0';
-	return wrapped;
-}
-
-void sncatf(char *&buffer_start, size_t &size_remaining, char const *fmt, ...)
-{
-	va_list arglist;
-	va_start(arglist, fmt);
-	size_t printed = vsnprintf(buffer_start, size_remaining, fmt, arglist);
-    va_end(arglist);
-	buffer_start += printed;
-	size_remaining -= printed;
-}
-
-size_t disasm_code(char* buffer, size_t buffer_size, uint16_t pc, /*char *line, unsigned int max_line,*/ uint8_t bank)
-{
-
-	uint8_t     opcode   = debug_read6502(pc, bank);
-	char const *mnemonic = mnemonics[opcode];
-	op_mode     mode     = mnemonics_mode[opcode];
-
-	//		Test for branches. These are BRA ($80) and
-	//		$10,$30,$50,$70,$90,$B0,$D0,$F0.
-	//
-	bool is_branch = (opcode == 0x80) || ((opcode & 0x1F) == 0x10) || (opcode == 0x20);
-
-	//		Ditto bbr and bbs, the "zero-page, relative" ops.
-	//		$0F,$1F,$2F,$3F,$4F,$5F,$6F,$7F,$8F,$9F,$AF,$BF,$CF,$DF,$EF,$FF
-	//
-	bool is_zprel = (opcode & 0x0F) == 0x0F;
-
-	is_branch = is_branch || is_zprel;
-	char* buffer_beg = buffer;
-
-
-	switch (mode) {
-		case op_mode::MODE_ZPREL: {
-			uint8_t  zp     = debug_read6502(pc + 1, bank);
-			uint16_t target = pc + 3 + (int8_t)debug_read6502(pc + 2, bank);
-
-			sncatf(buffer, buffer_size, "%s", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label(zp, is_branch, "$%02X") );
-			sncatf(buffer, buffer_size, ", ");
-			sncatf(buffer, buffer_size, "%s", disasm_label(target, is_branch, "$%04X") );
-		} break;
-
-		case op_mode::MODE_IMP:
-			sncatf(buffer, buffer_size, "%s", mnemonic);
-			break;
-
-		case op_mode::MODE_IMM: {
-			uint16_t value = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "#$%02X", value);
-		} break;
-
-		case op_mode::MODE_ZP: {
-			uint8_t value = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "$%02X", value);
-		} break;
-
-		case op_mode::MODE_REL: {
-			uint16_t target = pc + 2 + (int8_t)debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label(target, is_branch, "$%04X"));
-		} break;
-
-		case op_mode::MODE_ZPX: {
-			uint8_t value = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(value, is_branch, "$%02X", "%s,x"));
-		} break;
-
-		case op_mode::MODE_ZPY: {
-			uint8_t value = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(value, is_branch, "$%02X", "%s,y"));
-		} break;
-
-		case op_mode::MODE_ABSO: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label(target, is_branch, "$%04X"));
-		} break;
-
-		case op_mode::MODE_ABSX: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%04X", "%s,x"));
-		} break;
-
-		case op_mode::MODE_ABSY: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%04X", "%s,y"));
-		} break;
-
-		case op_mode::MODE_AINX: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%04X", "(%s,x)"));
-		} break;
-
-		case op_mode::MODE_INDY: {
-			uint8_t target = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%02X", "(%s),y"));
-		} break;
-
-		case op_mode::MODE_INDX: {
-			uint8_t target = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%02X", "(%s,x)"));
-		} break;
-
-		case op_mode::MODE_IND: {
-			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%04X", "(%s)"));
-		} break;
-
-		case op_mode::MODE_IND0: {
-			uint8_t target = debug_read6502(pc + 1, bank);
-
-			sncatf(buffer, buffer_size, "%s ", mnemonic);
-			sncatf(buffer, buffer_size, "%s", disasm_label_wrap(target, is_branch, "$%02X", "(%s)"));
-		} break;
-
-		case op_mode::MODE_A:
-			sncatf(buffer, buffer_size, "%s a", mnemonic);
-			break;
-	}
-	return (size_t)(buffer - buffer_beg);
 }
 
 void emulator_loop()
@@ -566,45 +397,43 @@ void emulator_loop()
 		//
 #if defined(TRACE)
 		{
-			uint16_t pc = state6502.pc;
-			uint8_t  x  = state6502.x;
-			uint8_t  y  = state6502.y;
-			uint8_t  a  = state6502.a;
-			uint8_t  status  = state6502.status;
-			uint8_t  sp      = state6502.sp;
-			uint8_t  ram     = memory_get_ram_bank();	
-			uint8_t  rom     = memory_get_rom_bank();	
-			uint8_t  cur     = memory_get_current_bank(pc);	
+			uint16_t pc     = state6502.pc;
+			uint8_t  x      = state6502.x;
+			uint8_t  y      = state6502.y;
+			uint8_t  a      = state6502.a;
+			uint8_t  status = state6502.status;
+			uint8_t  sp     = state6502.sp;
+			uint8_t  ram    = memory_get_ram_bank();
+			uint8_t  rom    = memory_get_rom_bank();
+			uint8_t  cur    = memory_get_current_bank(pc);
 			char     buffer[1024];
 			uint8_t  pos = 0;
 
-			if ( (Options.log_cpu_main && (pc >= 0x0800 && pc <= 0x9FFF ) ) ||
-			     (Options.log_cpu_bram && (pc >= 0xA000 && pc <= 0xBFFF ) ) ||
-			     (Options.log_cpu_low  && (pc >= 0x0000 && pc <= 0x07FF ) ) ||
- 			     (Options.log_cpu_brom && (pc >= 0xC000 && pc <= 0xFFFF ) )
-				) {
+			if ((Options.log_cpu_main && (pc >= 0x0800 && pc <= 0x9FFF)) ||
+			    (Options.log_cpu_bram && (pc >= 0xA000 && pc <= 0xBFFF)) ||
+			    (Options.log_cpu_low && (pc >= 0x0000 && pc <= 0x07FF)) ||
+			    (Options.log_cpu_brom && (pc >= 0xC000 && pc <= 0xFFFF))) {
 
-				 printf("a:$%02x x:$%02x y:$%02x s:$%02x p:", a, x, y, sp);
-				 for (int i = 7; i >= 0; i--) {
-					 printf("%c", (status & (1 << i)) ? "czidb.vn"[i] : '-');
-				 }
+				printf("a:$%02x x:$%02x y:$%02x s:$%02x p:", a, x, y, sp);
+				for (int i = 7; i >= 0; i--) {
+					printf("%c", (status & (1 << i)) ? "czidb.vn"[i] : '-');
+				}
 
-				 printf(" ram=$%02x rom=$%02x ", ram, rom);
-				 const char *label     = disasm_get_label(pc);
-				 size_t      label_len = label ? strlen(label) : 0;
-				 if (label) {
-					 printf("%s", label);
-				 }
-				 label_len = (label_len <= 25) ? label_len : 25;
-				 for (size_t i = 0; i < 25 - label_len; i++) {
-					 printf(" ");
-				 }
-				 printf("$%02x:$%04x ", cur, pc);
-				 disasm_code(buffer, sizeof(buffer), pc, cur);
-				 printf("%s", buffer);
+				printf(" ram=$%02x rom=$%02x ", ram, rom);
+				const char *label     = disasm_get_label(pc);
+				size_t      label_len = label ? strlen(label) : 0;
+				if (label) {
+					printf("%s", label);
+				}
+				label_len = (label_len <= 25) ? label_len : 25;
+				for (size_t i = 0; i < 25 - label_len; i++) {
+					printf(" ");
+				}
+				printf("$%02x:$%04x ", cur, pc);
+				disasm_code(buffer, sizeof(buffer), pc, cur);
+				printf("%s", buffer);
 
-
-				 printf("\n");
+				printf("\n");
 			}
 		}
 #endif
@@ -665,7 +494,7 @@ void emulator_loop()
 
 		if (state6502.pc == 0xffff) {
 			if (save_on_exit) {
-				machine_dump();
+				machine_dump("CPU program counter reached $ffff");
 			}
 			return;
 		}

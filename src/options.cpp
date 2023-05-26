@@ -18,7 +18,7 @@ std::filesystem::path Options_ini_path;
 mINI::INIStructure Cmdline_ini;
 mINI::INIStructure Inifile_ini;
 
-std::vector<uint32_t> Break_options;
+std::vector<uint32_t>                                 Break_options;
 std::vector<std::pair<std::string, symbol_bank_type>> Sym_options;
 
 static const char *token_or_empty(const std::string &str, const char *token)
@@ -46,16 +46,16 @@ static const char *token_or_empty(char *str, const char *token)
 static void usage()
 {
 	printf("%s %s (%s)\n", VER_TITLE, VER_NUM, VER_NAME);
-	printf("Copyright (c) 2019-2022 Michael Steil,\n");
-	printf("              2020 Frank van den Hoen,\n");
-	printf("              2021-2022 Stephen Horn, et al.\n");
+	printf("Copyright (c) 2019-2023 Michael Steil,\n");
+	printf("              2020 Frank van den Hoef,\n");
+	printf("              2021-2023 Stephen Horn, et al.\n");
 	printf("All rights reserved. License: 2-clause BSD\n\n");
 
 	printf("Usage: box16 [option] ...\n\n");
 
 	printf("-abufs <number of audio buffers>\n");
 	printf("\tIs provided for backward-compatibility with x16emu toolchains,\n");
-	printf("\tbut is non-functional in Box16.\n ");
+	printf("\tbut is non-functional in Box16.\n");
 
 	printf("-bas <app.txt>\n");
 	printf("\tInject a BASIC program in ASCII encoding through the\n");
@@ -157,11 +157,18 @@ static void usage()
 	printf("-rom <rom.bin>\n");
 	printf("\tOverride KERNAL/BASIC/* ROM file.\n");
 
+	printf("-romcart <cart.bin>[,<banknum>]\n");
+	printf("\tLoad a cartridge into ROM space starting at the specified banknum, or bank 32 if omitted.\n");
+	printf("\t-romcart can be specified multiple times, or its arguments can be specified as a comma-separated list.\n");
+	printf("\t(example: `-romcart cart0.bin,32,cart1.bin,36,cart2.bin,40`)\n");
+
 	printf("-rtc\n");
 	printf("\tSet the real-time-clock to the current system time and date.\n");
 
 	printf("-randram\n");
-	printf("\tRandomize the byte contents of memory on first boot.\n");
+	printf("\t(deprecated, no effect)\n");
+	printf("-zeroram\n");
+	printf("\tSet all RAM to zero instead of uninitialized random values at boot.\n");
 
 	printf("-run\n");
 	printf("\tStart the -prg/-bas program using RUN or SYS, depending\n");
@@ -219,7 +226,7 @@ static void usage()
 	printf("\tUse ,auto to start paused, but begin recording once a non-zero audio signal is detected.\n");
 
 	printf("-widescreen\n");
-    printf("\tDisplay the emulated X16 in a 16:9 aspect ratio instead of 4:3.\n");
+	printf("\tDisplay the emulated X16 in a 16:9 aspect ratio instead of 4:3.\n");
 
 	printf("-wuninit\n");
 	printf("\tPrint a warning whenever uninitialized RAM is accessed.\n");
@@ -234,30 +241,30 @@ static void usage()
 	printf("\nThe following options are deprecated and will be ignored:\n\n");
 
 	printf("-create_patch <target.bin>\n");
-	//printf("\tCreate a patch from the current ROM image (specified by -rom) to this target ROM image.\n");
+	// printf("\tCreate a patch from the current ROM image (specified by -rom) to this target ROM image.\n");
 
 	printf("-ignore_patch\n");
-	//printf("\tWhen loading ROM data, ignore the current patch file.\n");
+	// printf("\tWhen loading ROM data, ignore the current patch file.\n");
 
 	printf("-joy1\n");
-	//printf("\tEnable binding a gamepad to SNES controller port 1\n");
+	// printf("\tEnable binding a gamepad to SNES controller port 1\n");
 
 	printf("-joy2\n");
-	//printf("\tEnable binding a gamepad to SNES controller port 2\n");
+	// printf("\tEnable binding a gamepad to SNES controller port 2\n");
 
 	printf("-joy3\n");
-	//printf("\tEnable binding a gamepad to SNES controller port 3\n");
+	// printf("\tEnable binding a gamepad to SNES controller port 3\n");
 
 	printf("-joy4\n");
 	// printf("\tEnable binding a gamepad to SNES controller port 4\n");
 
 	printf("-nopatch\n");
-	//printf("\tThis is an alias for -ignore_patch.\n");
+	// printf("\tThis is an alias for -ignore_patch.\n");
 
 	printf("-patch <patch.bpf>\n");
-	//printf("\tApply the following patch file to rom.\n");
-	//printf("\tIf -create_patch has also been specified, this patch file is overwritten with the newly created patch data.\n");
-	//printf("\tIf -ignore_patch has also specified, this patch file will not be applied during system boot.\n");
+	// printf("\tApply the following patch file to rom.\n");
+	// printf("\tIf -create_patch has also been specified, this patch file is overwritten with the newly created patch data.\n");
+	// printf("\tIf -ignore_patch has also specified, this patch file will not be applied during system boot.\n");
 
 	exit(1);
 }
@@ -387,8 +394,8 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			}
 
 			// Deprecated and ignored
-			//ini["create_patch"] = "true";
-			//ini["patch_target"] = argv[0];
+			// ini["create_patch"] = "true";
+			// ini["patch_target"] = argv[0];
 			argc--;
 			argv++;
 
@@ -471,7 +478,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			// Deprecated and ignored
-			//ini["ignore_patch"] = "true";
+			// ini["ignore_patch"] = "true";
 
 		} else if (!strcmp(argv[0], "-ini")) {
 			argc--;
@@ -536,7 +543,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			// Deprecated and ignored
-			//ini["ignore_patch"] = "true";
+			// ini["ignore_patch"] = "true";
 
 		} else if (!strcmp(argv[0], "-nosound")) {
 			argc--;
@@ -562,7 +569,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			}
 
 			// Deprecated and ignored
-			//ini["patch"] = argv[0];
+			// ini["patch"] = argv[0];
 			argc--;
 			argv++;
 
@@ -600,9 +607,13 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argv++;
 
 		} else if (!strcmp(argv[0], "-randram")) {
+		    /* this operation has no effect anymore, randomizing the Ram is now default */
 			argc--;
 			argv++;
-			ini["randram"] = "true";
+		} else if (!strcmp(argv[0], "-zeroram")) {
+			argc--;
+			argv++;
+			ini["zeroram"] = "true";
 
 		} else if (!strcmp(argv[0], "-rom")) {
 			argc--;
@@ -612,6 +623,41 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			}
 
 			ini["rom"] = argv[0];
+			argc--;
+			argv++;
+
+		} else if (!strcmp(argv[0], "-romcart")) {
+			argc--;
+			argv++;
+
+			int bank = 32;
+
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
+			std::stringstream new_carts;
+			std::string      &carts = ini["carts"];
+
+			const char *path_str = token_or_empty(argv[0], ",");
+			const char *bank_str = token_or_empty(nullptr, ",");
+			const char *prefix   = carts.empty() ? "" : ",";
+			while (path_str[0] != '\0') {
+				int bank;
+				if (sscanf(bank_str, "%d", &bank) != 1) {
+					new_carts << prefix << path_str << "," << 32;
+					path_str = bank_str;
+					bank_str = token_or_empty(nullptr, ",");
+				} else {
+					new_carts << prefix << path_str << "," << bank;
+					path_str = token_or_empty(nullptr, ",");
+					bank_str = token_or_empty(nullptr, ",");
+				}
+				prefix = ",";
+			}
+
+			carts.append(new_carts.str());
+
 			argc--;
 			argv++;
 
@@ -729,7 +775,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 				argc--;
 				argv++;
 			} else {
-				ini["warp"] = "true";			
+				ini["warp"] = "true";
 			}
 		} else if (!strcmp(argv[0], "-wav")) {
 			argc--;
@@ -751,7 +797,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			ini["wuninit"] = "true";
-	
+
 		} else if (!strcmp(argv[0], "-ymirq")) {
 			argc--;
 			argv++;
@@ -774,8 +820,19 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.rom_path = ini["rom"];
 	}
 
+	if (ini.has("carts")) {
+		const char *path_str = token_or_empty(ini["carts"], ",");
+		const char *bank_str = token_or_empty(nullptr, ",");
+
+		while (path_str[0] != '\0' && bank_str[0] != '\0') {
+			opts.rom_carts.push_back({ path_str, (uint8_t)strtol(bank_str, nullptr, 10) });
+			path_str = token_or_empty(nullptr, ",");
+			bank_str = token_or_empty(nullptr, ",");
+		}
+	}
+
 	// Deprecated and ignored
-	//if (ini.has("patch") && ini["patch"] != "") {
+	// if (ini.has("patch") && ini["patch"] != "") {
 	//	opts.patch_path = ini["patch"];
 	//	if (!ini.has("ignore_patch") || ini["ignore_patch"] != "true") {
 	//		opts.apply_patch = true;
@@ -783,27 +840,20 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	//}
 
 	// Deprecated and ignored
-	//if (ini.has("ignore_patch") && ini["ignore_patch"] == "true") {
+	// if (ini.has("ignore_patch") && ini["ignore_patch"] == "true") {
 	//	opts.apply_patch = false;
 	//}
 
 	if (ini.has("ram")) {
-		int  kb    = atoi(ini["ram"].c_str());
-		bool found = false;
-		for (int cmp = 8; cmp <= 2048; cmp *= 2) {
-			if (kb == cmp) {
-				found = true;
-				break;
-			}
-		}
-		if (!found) {
+		int kb = atoi(ini["ram"].c_str());
+		if (kb & 0x7) {
 			return "ram";
 		}
 		opts.num_ram_banks = kb / 8;
 	}
 
 	if (ini.has("hypercall_path")) {
-		opts.hyper_path = ini["hypercall_path"];
+		opts.fsroot_path = ini["hypercall_path"];
 	}
 
 	if (ini.has("keymap")) {
@@ -934,8 +984,8 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	}
 
 	if (ini.has("dump")) {
-		opts.dump_cpu = false;
-		opts.dump_ram = false;
+		opts.dump_cpu  = false;
+		opts.dump_ram  = false;
 		opts.dump_bank = false;
 		opts.dump_vram = false;
 
@@ -986,13 +1036,7 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 	}
 
 	if (ini.has("stds")) {
-		Sym_options.push_back({ "kernal.sym", 0 });
-		Sym_options.push_back({ "keymap.sym", 1 });
-		Sym_options.push_back({ "dos.sym", 2 });
-		Sym_options.push_back({ "geos.sym", 3 });
-		Sym_options.push_back({ "basic.sym", 4 });
-		Sym_options.push_back({ "monitor.sym", 5 });
-		Sym_options.push_back({ "charset.sym", 0 });
+		opts.load_standard_symbols = true;
 	}
 
 	if (ini.has("scale")) {
@@ -1089,8 +1133,8 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.widescreen = true;
 	}
 
-	if (ini.has("randram") && ini["randram"] == "true") {
-		opts.memory_randomize = true;
+	if (ini.has("zeroram") && ini["zeroram"] == "true") {
+		opts.memory_randomize = false;
 	}
 
 	if (ini.has("wuninit") && ini["wuninit"] == "true") {
@@ -1148,6 +1192,23 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 		} else if constexpr (std::is_same<decltype(option_value), std::filesystem::path>::value) {
 			if (all || option_value != default_value) {
 				ini_main[name] = option_value.generic_string();
+			}
+		} else if constexpr (std::is_same<decltype(option_value), decltype(options::rom_carts)>::value) {
+			auto stringify = [](auto &value) -> std::string {
+				std::stringstream value_string;
+				const char       *prefix = "";
+				for (auto &[path, bank] : value) {
+					value_string << prefix << path.generic_string() << "," << bank;
+					prefix = ",";
+				}
+				return value_string.str();
+			};
+
+			std::string option_value_string  = stringify(option_value);
+			std::string default_value_string = stringify(default_value);
+
+			if (all || option_value_string != default_value_string) {
+				ini_main[name] = option_value_string;
 			}
 		} else {
 			if (all || option_value != default_value) {
@@ -1260,12 +1321,13 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	};
 
 	set_option("rom", Options.rom_path, Default_options.rom_path);
+	set_option("carts", Options.rom_carts, Default_options.rom_carts);
 	// Deprecated and ignored
-	//set_option("patch", Options.patch_path, Default_options.patch_path);
-	//set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());
+	// set_option("patch", Options.patch_path, Default_options.patch_path);
+	// set_option("ignore_patch", !Options.apply_patch, Options.patch_path.empty());
 	set_option("ram", Options.num_ram_banks * 8, Default_options.num_ram_banks * 8);
 	set_option("keymap", keymaps_strict[Options.keymap], keymaps_strict[Default_options.keymap]);
-	set_option("hypercall_path", Options.hyper_path, Default_options.hyper_path);
+	set_option("hypercall_path", Options.fsroot_path, Default_options.fsroot_path);
 	set_comma_option("prg", Options.prg_path, Default_options.prg_path, Options.prg_override_start, Default_options.prg_override_start);
 	set_option("run", Options.run_after_load, Default_options.run_after_load);
 	set_option("bas", Options.bas_path, Default_options.bas_path);
@@ -1324,7 +1386,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
 	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
 	set_option("widescreen", Options.widescreen, Default_options.widescreen);
-	set_option("randram", Options.memory_randomize, Default_options.memory_randomize);
+	set_option("zeroram", Options.memory_randomize, Default_options.memory_randomize);
 	set_option("wuninit", Options.memory_uninit_warn, Default_options.memory_uninit_warn);
 }
 
@@ -1417,7 +1479,7 @@ void options_init(const char *base_path, const char *prefs_path, int argc, char 
 	}
 
 	// Deprecated and ignored
-	//if (cmdline_main.has("create_patch")) {
+	// if (cmdline_main.has("create_patch")) {
 	//	if (cmdline_main["create_patch"] == "true") {
 	//		Options.create_patch = true;
 	//		Options.patch_target = cmdline_main["patch_target"];
@@ -1436,7 +1498,7 @@ void options_init(const char *base_path, const char *prefs_path, int argc, char 
 			mINI::INIFile file(Options_ini_path.generic_string());
 			file.read(Inifile_ini);
 		} else {
-			options_get_prefs_path(Options_ini_path, "box16.ini");
+			Options_ini_path = Options_prefs_path / "box16.ini";
 		}
 	}
 
@@ -1522,24 +1584,6 @@ void options_apply_debugger_opts()
 	}
 }
 
-size_t options_get_base_path(std::filesystem::path &real_path, const std::filesystem::path &path)
-{
-	real_path = Options_base_path / path;
-	return real_path.generic_string().length();
-}
-
-size_t options_get_prefs_path(std::filesystem::path &real_path, const std::filesystem::path &path)
-{
-	real_path = Options_prefs_path / path;
-	return real_path.generic_string().length();
-}
-
-size_t options_get_hyper_path(std::filesystem::path &real_path, const std::filesystem::path &path)
-{
-	real_path = Options.hyper_path / path;
-	return real_path.generic_string().length();
-}
-
 bool option_cmdline_option_was_set(char const *cmdline_option)
 {
 	return Cmdline_ini["main"].has(cmdline_option);
@@ -1617,4 +1661,19 @@ int options_log_verbose(const char *format, ...)
 		return result;
 	}
 	return 0;
+}
+
+const std::filesystem::path &options_get_base_path()
+{
+	return Options_base_path;
+}
+
+const std::filesystem::path &options_get_prefs_path()
+{
+	return Options_prefs_path;
+}
+
+const std::filesystem::path &options_get_hyper_path()
+{
+	return Options.fsroot_path;
 }

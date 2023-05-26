@@ -5,10 +5,10 @@
 #ifndef VERA_VIDEO_H
 #define VERA_VIDEO_H
 
-#include <SDL.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include "files.h"
 
 // both VGA and NTSC signal timing
 #define SCAN_WIDTH 800
@@ -84,7 +84,7 @@ void vera_video_reset(void);
 bool vera_video_step(float mhz, float cycles);
 void vera_video_force_redraw_screen();
 bool vera_video_get_irq_out(void);
-void vera_video_save(SDL_RWops *f);
+void vera_video_save(x16file *f);
 
 uint8_t vera_debug_video_read(uint8_t reg);
 uint8_t vera_video_read(uint8_t reg);
@@ -152,8 +152,8 @@ const uint8_t *                    vera_video_get_layer_data(int layer);
 const vera_video_sprite_properties *vera_video_get_sprite_properties(int sprite);
 const uint8_t *                     vera_video_get_sprite_data(int sprite);
 
-void vera_video_enable_safety_frame(bool enable);
-bool vera_video_safety_frame_is_enabled();
+void vera_video_enable_safety_frame(uint8_t video_mode, bool enable);
+bool vera_video_safety_frame_is_enabled(uint8_t video_mode);
 
 float    vera_video_get_scan_pos_x();
 uint16_t vera_video_get_scan_pos_y();
