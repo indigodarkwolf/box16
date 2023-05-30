@@ -441,7 +441,7 @@ uint8_t bank6502(uint16_t address)
 	return memory_get_current_bank(address);
 }
 
-void vpb6502(void)
+void vp6502(void)
 {
 	ROM_BANK = 0;
 }

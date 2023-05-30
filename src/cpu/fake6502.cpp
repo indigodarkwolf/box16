@@ -100,7 +100,7 @@ _smart_stack  stack6502[256];
 extern uint8_t read6502(uint16_t address);
 extern void    write6502(uint16_t address, uint8_t value);
 extern uint8_t bank6502(uint16_t address);
-extern void    vpb6502(void);
+extern void    vp6502(void);
 
 static uint16_t getvalue();
 static void     putvalue(uint16_t saveval);
@@ -136,7 +136,7 @@ void nmi6502()
 	push8(state6502.status & ~FLAG_BREAK);
 	setinterrupt();
 	cleardecimal();
-	vpb6502();
+	vp6502();
 	state6502.pc = (uint16_t)read6502(0xFFFA) | ((uint16_t)read6502(0xFFFB) << 8);
 	waiting      = 0;
 
@@ -157,7 +157,7 @@ void irq6502()
 		push8(state6502.status & ~FLAG_BREAK);
 		setinterrupt();
 		cleardecimal();
-		vpb6502();
+		vp6502();
 		state6502.pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
 
 		ss.dest_pc = state6502.pc;
