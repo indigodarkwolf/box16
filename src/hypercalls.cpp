@@ -237,23 +237,23 @@ void hypercalls_update()
 		};
 	}
 
-	if (!sdcard_is_attached()) {
-		Hypercall_table[KERNAL_LOAD & 0xff] = []() -> bool {
-			if (RAM[FA] == 8) {
-				LOAD();
-				return true;
-			}
-			return false;
-		};
+	// if (!sdcard_is_attached()) {
+	// 	Hypercall_table[KERNAL_LOAD & 0xff] = []() -> bool {
+	// 		if (RAM[FA] == 8) {
+	// 			LOAD();
+	// 			return true;
+	// 		}
+	// 		return false;
+	// 	};
 
-		Hypercall_table[KERNAL_SAVE & 0xff] = []() -> bool {
-			if (RAM[FA] == 8) {
-				SAVE();
-				return true;
-			}
-			return false;
-		};
-	}
+	// 	Hypercall_table[KERNAL_SAVE & 0xff] = []() -> bool {
+	// 		if (RAM[FA] == 8) {
+	// 			SAVE();
+	// 			return true;
+	// 		}
+	// 		return false;
+	// 	};
+	// }
 
 	if (Has_boot_tasks) {
 		Hypercall_table[KERNAL_CHRIN & 0xff] = []() -> bool {
