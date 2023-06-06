@@ -184,6 +184,7 @@ brk()
 	push8(state6502.status | FLAG_BREAK); // push CPU status to stack
 	setinterrupt();                       // set interrupt flag
 	cleardecimal();                       // clear decimal flag (65C02 change)
+	vp6502();
 	state6502.pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
 }
 
