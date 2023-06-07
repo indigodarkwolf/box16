@@ -5,7 +5,7 @@
 #include "debugger.h"
 #include "display.h"
 #include "glue.h"
-#include "imgui/imgui_impl_sdl.h"
+#include "imgui/imgui_impl_sdl2.h"
 #include "joystick.h"
 #include "keyboard.h"
 #include "options.h"

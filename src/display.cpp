@@ -32,7 +32,7 @@ SOFTWARE.
 #include "display.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_opengl2.h"
-#include "imgui/imgui_impl_sdl.h"
+#include "imgui/imgui_impl_sdl2.h"
 #include "lodepng.h"
 #include "memory.h"
 #include "options.h"
