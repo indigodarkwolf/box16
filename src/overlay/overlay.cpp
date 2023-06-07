@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "imgui/imgui.h"
-#include "imgui/imgui_impl_sdl.h"
+#include "imgui/imgui_impl_sdl2.h"
 
 #include "cpu_visualization.h"
 #include "disasm_overlay.h"
@@ -2050,7 +2050,7 @@ static void draw_symbols_list()
 			static bool     selected      = false;
 			static uint16_t selected_addr = 0;
 			static uint8_t  selected_bank = 0;
-			if (ImGui::ListBoxHeader("Filtered Symbols")) {
+			if (ImGui::BeginListBox("Filtered Symbols")) {
 				int  id                   = 0;
 				bool any_selected_visible = false;
 
@@ -2091,7 +2091,7 @@ static void draw_symbols_list()
 					}
 				});
 				selected = any_selected_visible;
-				ImGui::ListBoxFooter();
+				ImGui::EndListBox();
 			}
 
 			if (ImGui::Button("Add Breakpoint at Symbol") && selected) {
@@ -2194,10 +2194,10 @@ static void draw_symbols_files()
 static void draw_debugger_controls()
 {
 	bool paused  = debugger_is_paused();
-	bool shifted = ImGui::IsKeyDown(SDL_SCANCODE_LSHIFT) || ImGui::IsKeyDown(SDL_SCANCODE_RSHIFT);
+	bool shifted = ImGui::IsKeyDown(ImGuiKey_LeftShift) || ImGui::IsKeyDown(ImGuiKey_RightShift);
 
 	static bool stop_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_STOP_DISABLED : ICON_STOP, !paused, &stop_hovered) || (shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F5))) {
+	if (ImGui::TileButton(paused ? ICON_STOP_DISABLED : ICON_STOP, !paused, &stop_hovered) || (shifted && ImGui::IsKeyPressed(ImGuiKey_F5))) {
 		debugger_pause_execution();
 		disasm.follow_pc();
 	}
@@ -2208,7 +2208,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	static bool run_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_RUN : ICON_RUN_DISABLED, paused, &run_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F5))) {
+	if (ImGui::TileButton(paused ? ICON_RUN : ICON_RUN_DISABLED, paused, &run_hovered) || (!shifted && ImGui::IsKeyPressed(ImGuiKey_F5))) {
 		debugger_continue_execution();
 		disasm.follow_pc();
 	}
@@ -2218,7 +2218,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	static bool step_over_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_STEP_OVER : ICON_STEP_OVER_DISABLED, paused, &step_over_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F10))) {
+	if (ImGui::TileButton(paused ? ICON_STEP_OVER : ICON_STEP_OVER_DISABLED, paused, &step_over_hovered) || (!shifted && ImGui::IsKeyPressed(ImGuiKey_F10))) {
 		debugger_step_over_execution();
 		disasm.follow_pc();
 	}
@@ -2228,7 +2228,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	static bool step_into_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_STEP_INTO : ICON_STEP_INTO_DISABLED, paused, &step_into_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F11))) {
+	if (ImGui::TileButton(paused ? ICON_STEP_INTO : ICON_STEP_INTO_DISABLED, paused, &step_into_hovered) || (!shifted && ImGui::IsKeyPressed(ImGuiKey_F11))) {
 		debugger_step_execution();
 		disasm.follow_pc();
 	}
@@ -2238,7 +2238,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	static bool step_out_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_STEP_OUT : ICON_STEP_OUT_DISABLED, paused, &step_out_hovered) || (shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F11))) {
+	if (ImGui::TileButton(paused ? ICON_STEP_OUT : ICON_STEP_OUT_DISABLED, paused, &step_out_hovered) || (shifted && ImGui::IsKeyPressed(ImGuiKey_F11))) {
 		debugger_step_out_execution();
 		disasm.follow_pc();
 	}
@@ -2250,7 +2250,7 @@ static void draw_debugger_controls()
 	static bool set_breakpoint_hovered = false;
 	const bool  breakpoint_exists      = debugger_has_breakpoint(state6502.pc, memory_get_current_bank(state6502.pc));
 	const bool  breakpoint_active      = debugger_breakpoint_is_active(state6502.pc, memory_get_current_bank(state6502.pc));
-	if (ImGui::TileButton(paused ? ICON_ADD_BREAKPOINT : ICON_UNCHECKED_DISABLED, paused, &set_breakpoint_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F9))) {
+	if (ImGui::TileButton(paused ? ICON_ADD_BREAKPOINT : ICON_UNCHECKED_DISABLED, paused, &set_breakpoint_hovered) || (!shifted && ImGui::IsKeyPressed(ImGuiKey_F9))) {
 		if (breakpoint_active) {
 			debugger_deactivate_breakpoint(state6502.pc, memory_get_current_bank(state6502.pc));
 		} else if (breakpoint_exists) {
