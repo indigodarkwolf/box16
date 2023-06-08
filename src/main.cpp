@@ -282,7 +282,9 @@ int main(int argc, char **argv)
 		init_settings.window_rect.h = (480 * Options.window_scale) + IMGUI_OVERLAY_MENU_BAR_HEIGHT;
 		if (const bool initd = display_init(init_settings); initd == false) {
 			printf("Could not initialize display, quitting.\n");
-			goto display_quit;
+			display_shutdown();
+			SDL_Quit();
+			return 0;
 		}
 	}
 
@@ -337,7 +339,13 @@ int main(int argc, char **argv)
 #else
 	emulator_loop();
 #endif
+	SDL_free(const_cast<char *>(private_path));
+	SDL_free(const_cast<char *>(base_path));
+	main_shutdown();
+	return 0;
+}
 
+void main_shutdown() {
 	save_options_on_close(false);
 
 	if (nvram_dirty && !Options.nvram_path.empty()) {
@@ -350,19 +358,12 @@ int main(int argc, char **argv)
 	}
 
 	sdcard_shutdown();
-
-	SDL_free(const_cast<char *>(private_path));
-	SDL_free(const_cast<char *>(base_path));
-
 	audio_close();
 	wav_recorder_shutdown();
 	gif_recorder_shutdown();
 	debugger_shutdown();
-display_quit:
 	display_shutdown();
 	SDL_Quit();
-
-	return 0;
 }
 
 void emulator_loop()

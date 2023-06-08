@@ -521,6 +521,9 @@ bool display_init(const display_settings &settings)
 
 void display_shutdown()
 {
+	Fullscreen = false;
+	SDL_SetWindowFullscreen(Display_window, 0);
+
 	if (Initd_imgui_opengl)
 		ImGui_ImplOpenGL2_Shutdown();
 
