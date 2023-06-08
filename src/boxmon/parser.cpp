@@ -3,6 +3,7 @@
 #include <sstream>
 #include <stack>
 
+#include "boxmon.h"
 #include "memory.h"
 #include "symbols.h"
 
@@ -55,7 +56,11 @@ namespace boxmon
 
 	int boxmon_symbol_expression::evaluate() const
 	{
-		return 0;
+		auto namelist = symbols_find(m_symbol);
+		if (namelist.empty()) {
+			return 0;
+		}
+		return namelist.front();
 	}
 
 	boxmon_unary_expression::boxmon_unary_expression(expression_type type, const boxmon_expression *param)
@@ -305,11 +310,17 @@ namespace boxmon
 
 		std::stringstream rs;
 
+		if (*look == '.') {
+			rs << *look;
+			++look;
+		}
+
 		while (isalnum(*look) || *look == '_') {
 			rs << *look;
 			++look;
 		}
-		if (*look != '\0' && !isprint(*look)) {
+
+		if (look == input) {
 			return false;
 		}
 
@@ -363,7 +374,7 @@ namespace boxmon
 			++result;
 		}
 
-		if (result >= options.size()) {
+		if (result >= static_cast<int>(options.size())) {
 			return false;
 		}
 
@@ -522,14 +533,14 @@ namespace boxmon
 
 		auto pop_op = [&]() -> bool {
 			if (operator_stack.empty()) {
-				printf("Expression parse failed (internal error, popping op with no more ops left) at: \"%s\"\n", look);
+				boxmon_error_printf("Expression parse failed (internal error, popping op with no more ops left) at: \"%s\"\n", look);
 				return false;
 			}
 			const boxmon_expression::expression_type op = operator_stack.top();
 			operator_stack.pop();
 
 			if (expression_stack.empty()) {
-				printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
+				boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
 				return false;
 			}
 			const boxmon_expression *rhs = expression_stack.top();
@@ -544,7 +555,7 @@ namespace boxmon
 					break;
 				default:
 					if (expression_stack.empty()) {
-						printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
+						boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
 						return false;
 					} else {
 						const boxmon_expression *lhs = expression_stack.top();
@@ -694,7 +705,7 @@ namespace boxmon
 			boxmon_expression::expression_type parse_type = read_token();
 			switch (parse_type) {
 				case boxmon_expression::expression_type::invalid:
-					printf("Expression parse failed (invalid token) at: \"%s\"\n", look);
+					boxmon_error_printf("Expression parse failed (invalid token) at: \"%s\"\n", look);
 					clear_stacks();
 					return false;
 				case boxmon_expression::expression_type::value:
@@ -712,7 +723,7 @@ namespace boxmon
 						}
 					}
 					if (operator_stack.empty()) {
-						printf("Expression parse failed (mismatched parenthesis) at: \"%s\"\n", look);
+						boxmon_error_printf("Expression parse failed (mismatched parenthesis) at: \"%s\"\n", look);
 					} else {
 						operator_stack.pop();
 					}
@@ -744,7 +755,7 @@ namespace boxmon
 		}
 
 		if (expression_stack.empty()) {
-			printf("Expression parse failed (internal error, no final expression) at: \"%s\"\n", look);
+			boxmon_error_printf("Expression parse failed (internal error, no final expression) at: \"%s\"\n", look);
 			return false;
 		}
 
@@ -752,7 +763,7 @@ namespace boxmon
 		expression_stack.pop();
 
 		if (!expression_stack.empty()) {
-			printf("Expression parse failed (too many expressions) at: \"%s\"\n", look);
+			boxmon_error_printf("Expression parse failed (too many expressions) at: \"%s\"\n", look);
 			return false;
 		}
 

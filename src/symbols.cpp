@@ -9,17 +9,19 @@
 
 #include "debugger.h"
 
-using symbol_address_type      = uint32_t;
 using loaded_symbol_type       = std::tuple<symbol_address_type, std::string>;
 using loaded_symbol_files_type = std::unordered_map<std::string, std::list<loaded_symbol_type>>;
 using symbol_table_type        = std::map<symbol_address_type, symbol_list_type>;
+using symbol_nametable_type    = std::map<std::string, std::list<symbol_address_type>>;
 
 symbol_table_type        Symbols_table;
+symbol_nametable_type    Symbols_nametable;
 loaded_symbol_files_type Loaded_symbols_by_file;
 std::set<std::string>    Loaded_symbol_files;
 std::set<std::string>    Visible_symbol_files;
 
 const symbol_list_type Empty_symbols_list;
+const symbol_namelist_type Empty_symbols_namelist;
 
 std::set<std::string> Ignore_list = {
 	//".__BSS_LOAD__",
@@ -60,6 +62,13 @@ static void show_file_entries(const std::string &file_path)
 			} else {
 				Symbols_table.insert({ addr, std::list<std::string>{ name } });
 			}
+
+			const auto &nametable_entry = Symbols_nametable.find(name);
+			if (nametable_entry != Symbols_nametable.end()) {
+				nametable_entry->second.push_back(addr);
+			} else {
+				Symbols_nametable.insert({ name, std::list<symbol_address_type>{ addr } });
+			}
 		}
 	}
 
@@ -78,6 +87,12 @@ static void hide_file_entries(const std::string &file_path)
 			sym_list.remove(name);
 			if (sym_list.empty()) {
 				Symbols_table.erase(addr);
+			}
+
+			auto &name_list = Symbols_nametable[name];
+			name_list.remove(addr);
+			if (name_list.empty()) {
+				Symbols_nametable.erase(name);
 			}
 		}
 	}
@@ -230,6 +245,16 @@ bool symbols_file_any_is_visible()
 bool symbols_file_is_visible(const std::string &file_path)
 {
 	return Visible_symbol_files.find(file_path) != Visible_symbol_files.end();
+}
+
+const symbol_namelist_type &symbols_find(const std::string &name)
+{
+	auto entry = Symbols_nametable.find(name);
+	if (entry == Symbols_nametable.end()) {
+		return Empty_symbols_namelist;
+	}
+
+	return entry->second;
 }
 
 const symbol_list_type &symbols_find(uint32_t address, symbol_bank_type bank)

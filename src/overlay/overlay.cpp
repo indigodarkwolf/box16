@@ -64,6 +64,7 @@ bool Show_midi_overlay     = false;
 
 imgui_vram_dump vram_dump;
 
+// Shamelessly copied and modified from the ImGui example, comments intact.
 // Demonstrate creating a simple console window, with scrolling, filtering, completion and history.
 // For the console example, we are using a more C++ like approach of declaring a class to hold both data and functions.
 struct BoxmonAppConsole {
@@ -155,7 +156,7 @@ struct BoxmonAppConsole {
 			ImGui::LogToClipboard();
 		}
 		auto &Items = boxmon_get_console_history();
-		for (int i = 0; i < Items.size(); i++) {
+		for (size_t i = 0; i < Items.size(); i++) {
 			const auto &[severity, line] = Items[i];
 			if (!Filter.PassFilter(line.c_str())) {
 				continue;
@@ -263,7 +264,7 @@ struct BoxmonAppConsole {
 					for (;;) {
 						int  c                      = 0;
 						bool all_candidates_matches = true;
-						for (int i = 0; i < candidates.size() && all_candidates_matches; i++) {
+						for (size_t i = 0; i < candidates.size() && all_candidates_matches; i++) {
 							if (i == 0) {
 								c = toupper(candidates[i]->get_name()[match_len]);
 							} else if (c == 0 || c != toupper(candidates[i]->get_name()[match_len])) {
@@ -283,7 +284,7 @@ struct BoxmonAppConsole {
 
 					// List matches
 					boxmon_console_printf("Possible matches:\n");
-					for (int i = 0; i < candidates.size(); i++) {
+					for (size_t i = 0; i < candidates.size(); i++) {
 						boxmon_console_printf("    %s: %s\n", candidates[i]->get_name(), candidates[i]->get_description());
 					}
 				}
@@ -302,7 +303,7 @@ struct BoxmonAppConsole {
 					}
 				} else if (data->EventKey == ImGuiKey_DownArrow) {
 					if (HistoryPos != -1) {
-						if (++HistoryPos >= History.size()) {
+						if (++HistoryPos >= static_cast<int>(History.size())) {
 							HistoryPos = -1;
 						}
 					}

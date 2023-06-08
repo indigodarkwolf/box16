@@ -124,6 +124,17 @@ BOXMON_COMMAND(help, "help")
 	return true;
 }
 
+BOXMON_COMMAND(eval, "eval <expr>")
+{
+	const boxmon::boxmon_expression *expr;
+	if (parser.parse_expression(expr, input)) {
+		boxmon_console_printf("%d", expr->evaluate());
+		return true;
+	}
+
+	return false;
+}
+
 BOXMON_COMMAND(break, "break [load|store|exec] [address [address] [if <cond_expr>]]")
 {
 	uint8_t breakpoint_flags = 0;
@@ -165,17 +176,6 @@ BOXMON_COMMAND(add_label, "add_label <address> <label>")
 }
 
 BOXMON_ALIAS(al, add_label);
-
-BOXMON_COMMAND(eval, "eval <expression>")
-{
-	const boxmon::boxmon_expression *expr;
-	if (parser.parse_expression(expr, input)) {
-		boxmon_console_printf("%d", expr->evaluate());
-		return true;
-	}
-
-	return false;
-}
 
 //// Machine state commands
 // bool parse_backtrace(char const *&input);
