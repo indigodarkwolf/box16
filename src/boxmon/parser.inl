@@ -37,14 +37,19 @@ namespace boxmon
 		};
 
 		char const *look = input;
-		while (!isgraph(*look)) {
+		while (isalnum(*look)) {
 			if (!isnum(*look)) {
-				return false;
+				break;
 			}
 			result <<= 4;
 			result |= tonum(*look);
 			++look;
 		}
+
+		if (input == look) {
+			return false;
+		}
+
 		input = look;
 
 		skip_whitespace(input);
@@ -73,14 +78,19 @@ namespace boxmon
 		};
 
 		char const *look = input;
-		while (!isgraph(*look)) {
+		while (isalnum(*look)) {
 			if (!isnum(*look)) {
-				return false;
+				break;
 			}
 			result *= 10;
-			result |= tonum(*look);
+			result += tonum(*look);
 			++look;
 		}
+
+		if (input == look) {
+			return false;
+		}
+
 		input = look;
 
 		skip_whitespace(input);
@@ -109,14 +119,19 @@ namespace boxmon
 		};
 
 		char const *look = input;
-		while (!isgraph(*look)) {
+		while (isalnum(*look)) {
 			if (!isnum(*look)) {
-				return false;
+				break;
 			}
 			result <<= 3;
 			result |= tonum(*look);
 			++look;
 		}
+
+		if (input == look) {
+			return false;
+		}
+
 		input = look;
 
 		skip_whitespace(input);
@@ -145,14 +160,19 @@ namespace boxmon
 		};
 
 		char const *look = input;
-		while (!isgraph(*look)) {
+		while (isalnum(*look)) {
 			if (!isnum(*look)) {
-				return false;
+				break;
 			}
 			result <<= 1;
 			result |= tonum(*look);
 			++look;
 		}
+
+		if (input == look) {
+			return false;
+		}
+
 		input = look;
 
 		skip_whitespace(input);
@@ -289,7 +309,7 @@ namespace boxmon
 					return false;
 			}
 		}
-
+		input = look;
 		return true;
 	}
 } // namespace boxmon

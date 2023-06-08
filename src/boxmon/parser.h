@@ -29,6 +29,11 @@ namespace boxmon
 	{
 	public:
 		enum class expression_type {
+			invalid = 0,
+
+			parenthesis,
+			parenthesis_end, // Special-case: This is only used as a token type, not an expression type.
+
 			value,  // 1234
 			symbol, // .@local
 			dereference,
@@ -48,6 +53,10 @@ namespace boxmon
 			left_shift,
 			right_shift,
 
+			logical_and,
+			logical_or,
+			logical_not,
+
 			equal,
 			not_equal,
 			lt,
@@ -55,11 +64,89 @@ namespace boxmon
 			lte,
 			gte,
 
-			logical_and,
-			logical_or,
-			logical_not,
+			// TODO: Handle these someday. Somehow.
+			// assign,
+			// assign_add,
+			// assign_subtract,
+			// assign_multiply,
+			// assign_divide,
+			// assign_bit_and,
+			// assign_bit_or,
+			// assign_bit_xor,
+		};
 
-			parenthesis
+		static constexpr int expression_type_precedence[] = {
+			-1, // invalid,
+
+			0, // parenthesis,
+			0, // parenthesis_end, // Special-case: This is only used as a token type, not an expression type.
+
+			1, // value,  // 1234
+			1, // symbol, // .@local
+			1, // dereference,
+
+			4, // negate,
+			4, // addition,
+			4, // subtraction,
+			3, // multiply,
+			3, // divide,
+			3, // modulo,
+			2, // pow,
+
+			5, // bit_not,
+			6, // bit_and,
+			6, // bit_or,
+			6, // bit_xor,
+			7, // left_shift,
+			7, // right_shift,
+
+			8, // logical_and,
+			8, // logical_or,
+			8, // logical_not,
+
+			9, // equal,
+			9, // not_equal,
+			9, // lt,
+			9, // gt,
+			9, // lte,
+			9, // gte,
+		};
+
+		static constexpr bool expression_type_left_associative[] = {
+			true, // invalid,
+
+			true, // parenthesis,
+			true, // parenthesis_end, // Special-case: This is only used as a token type, not an expression type.
+
+			true,  // value,  // 1234
+			true,  // symbol, // .@local
+			false, // dereference,
+
+			true,  // negate,
+			true,  // addition,
+			true,  // subtraction,
+			true,  // multiply,
+			true,  // divide,
+			true,  // modulo,
+			false, // pow,
+
+			true, // bit_not,
+			true, // bit_and,
+			true, // bit_or,
+			true, // bit_xor,
+			true, // left_shift,
+			true, // right_shift,
+
+			true, // logical_and,
+			true, // logical_or,
+			true, // logical_not,
+
+			true, // equal,
+			true, // not_equal,
+			true, // lt,
+			true, // gt,
+			true, // lte,
+			true, // gte,
 		};
 
 		boxmon_expression(expression_type type);
@@ -148,7 +235,7 @@ namespace boxmon
 		bool parse_address(breakpoint_type &result, char const *&input);
 		bool parse_address_range(breakpoint_type &result0, breakpoint_type &result1, char const *&input);
 		bool parse_bankname(uint8_t &bank, char const *&input);
-		bool parse_expression(boxmon_expression *&expression, char const *&input);
+		bool parse_expression(const boxmon_expression *&expression, char const *&input);
 
 		void set_default_radix(radix_type radix);
 		void set_default_bank(uint8_t bank);

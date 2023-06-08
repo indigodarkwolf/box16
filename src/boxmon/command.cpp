@@ -166,6 +166,17 @@ BOXMON_COMMAND(add_label, "add_label <address> <label>")
 
 BOXMON_ALIAS(al, add_label);
 
+BOXMON_COMMAND(eval, "eval <expression>")
+{
+	const boxmon::boxmon_expression *expr;
+	if (parser.parse_expression(expr, input)) {
+		boxmon_console_printf("%d", expr->evaluate());
+		return true;
+	}
+
+	return false;
+}
+
 //// Machine state commands
 // bool parse_backtrace(char const *&input);
 // bool parse_cpuhistory(char const *&input);
