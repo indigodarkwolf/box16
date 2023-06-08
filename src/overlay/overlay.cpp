@@ -58,6 +58,9 @@ bool Show_VERA_sprites     = false;
 bool Show_VERA_PSG_monitor = false;
 bool Show_YM2151_monitor   = false;
 bool Show_midi_overlay     = false;
+bool Show_display 		   = true;
+
+bool display_focused       = false;
 
 imgui_vram_dump vram_dump;
 
@@ -2420,6 +2423,7 @@ static void draw_menu_bar()
 		}
 
 		if (ImGui::BeginMenu("Windows")) {
+			ImGui::Checkbox("Display", &Show_display);
 			if (ImGui::BeginMenu("CPU Debugging")) {
 				ImGui::Checkbox("Memory Dump 1", &Show_memory_dump_1);
 				ImGui::Checkbox("Memory Dump 2", &Show_memory_dump_2);
@@ -2515,11 +2519,29 @@ static void draw_menu_bar()
 	}
 }
 
+static ImVec2 get_integer_scale_window_size(ImVec2 avail) {
+	float width            = 480.f * display_get_aspect_ratio();
+	float title_bar_height = ImGui::GetFrameHeight();
+	float scale;
+	if (avail.x < avail.y) {
+		scale = avail.x / width;
+	} else {
+		scale = avail.y / 480.f;
+	}
+	if (scale < 1) {
+		scale = floorf(1.f / std::max(scale, 0.125f));
+		return ImVec2(width / scale, 480.f / scale + title_bar_height);
+	} else {
+		scale = floorf(scale);
+		return ImVec2(width * scale, 480.f * scale + title_bar_height);
+	}
+}
+
 void overlay_draw()
 {
 	draw_menu_bar();
 	ImGui::SetNextWindowBgAlpha(0.0f);
-	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+	ImGuiID dock_id = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
 	if (Show_options) {
 		if (ImGui::Begin("Options", &Show_options)) {
@@ -2658,6 +2680,32 @@ void overlay_draw()
 			draw_midi_overlay();
 		}
 		ImGui::End();
+	}
+
+	// Display should be the last one so it gets focused on startup
+	if (Show_display) {
+		float        title_bar_height = ImGui::GetFrameHeight();
+#ifdef __APPLE__
+		const char * window_text      = mouse_captured ? "Display (Cmd+M to release mouse)###display" : "Display###display";
+#else
+		const char * window_text      = mouse_captured ? "Display (Ctrl+M to release mouse)###display" : "Display###display";
+#endif
+		const ImGuiWindowFlags flags  = mouse_captured ? ImGuiWindowFlags_NoMove : 0;
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+		ImGui::SetNextWindowSizeConstraints(ImVec2(80, 60), ImVec2(FLT_MAX, FLT_MAX));
+		ImGui::SetNextWindowDockID(dock_id, ImGuiCond_FirstUseEver);
+		if (ImGui::Begin(window_text, &Show_display, flags)) {
+			display_focused = ImGui::IsWindowFocused();
+			// Shift + click on title bar to resize to the nearest integer scale
+			if(ImGui::IsKeyDown(ImGuiKey_ModShift) && ImGui::IsItemClicked()) {
+				ImGui::SetWindowSize(get_integer_scale_window_size(ImGui::GetContentRegionAvail()));
+			}
+			display_video();
+		} else {
+			display_focused = false;
+		}
+		ImGui::End();
+		ImGui::PopStyleVar();
 	}
 }
 

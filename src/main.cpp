@@ -270,17 +270,8 @@ int main(int argc, char **argv)
 
 	// Initialize display
 	{
-		display_settings init_settings;
-		init_settings.aspect_ratio  = Options.widescreen ? (16.0f / 9.0f) : (4.0f / 3.0f);
-		init_settings.video_rect.x  = 0;
-		init_settings.video_rect.y  = 0;
-		init_settings.video_rect.w  = 640;
-		init_settings.video_rect.h  = 480;
-		init_settings.window_rect.x = 0;
-		init_settings.window_rect.y = 0;
-		init_settings.window_rect.w = (int)(480 * Options.window_scale * init_settings.aspect_ratio);
-		init_settings.window_rect.h = (480 * Options.window_scale) + IMGUI_OVERLAY_MENU_BAR_HEIGHT;
-		if (const bool initd = display_init(init_settings); initd == false) {
+		const bool initd = display_init();
+		if (initd == false) {
 			printf("Could not initialize display, quitting.\n");
 			goto display_quit;
 		}

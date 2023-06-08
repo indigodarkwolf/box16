@@ -42,7 +42,8 @@ SOFTWARE.
 #include "vera/vera_video.h"
 #include "version.h"
 
-static display_settings Display;
+static float  aspect_ratio;
+static ImVec4 display_rect;
 
 static SDL_Window   *Display_window = nullptr;
 static SDL_GLContext Display_context;
@@ -219,12 +220,12 @@ void icon_set::draw(int id, int x, int y, int w, int h, SDL_Color color)
 	glDisable(GL_BLEND);
 }
 
-static void display_video()
+void display_video()
 {
 	if (!vera_video_is_cheat_frame()) {
 		const uint8_t *video_buffer = vera_video_get_framebuffer();
 		glBindTexture(GL_TEXTURE_2D, Video_framebuffer_texture_handle);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, Display.video_rect.w, Display.video_rect.h, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, video_buffer);
+		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, video_buffer);
 		if (Options.scale_quality == scale_quality_t::BEST) {
 			glGenerateMipmap(GL_TEXTURE_2D);
 		}
@@ -234,21 +235,20 @@ static void display_video()
 		}
 	}
 
-	SDL_GetWindowSize(Display_window, &Display.window_rect.w, &Display.window_rect.h);
-	SDL_Rect client_rect = Display.window_rect;
-	client_rect.h -= IMGUI_OVERLAY_MENU_BAR_HEIGHT;
-	client_rect.x = 0;
-	client_rect.y = 0;
+	ImVec2 avail      = ImGui::GetContentRegionAvail();
+	ImVec2 screen_pos = ImGui::GetCursorScreenPos();
+	display_rect      = ImVec4(0, 0, avail.x, avail.y);
 
-	SDL_Rect video_rect = client_rect;
-	float    ratio      = ((float)client_rect.w / (float)client_rect.h) / (Display.aspect_ratio);
+	float ratio = (avail.x / avail.y) / (aspect_ratio);
 	if (ratio > 1.0f) {
-		video_rect.w = (int)(video_rect.w / ratio);
-		video_rect.x = (client_rect.w - video_rect.w) / 2;
+		display_rect.z = avail.x / ratio;
+		display_rect.x = (avail.x - display_rect.z) / 2;
 	} else {
-		video_rect.h = (int)(video_rect.h * ratio);
-		video_rect.y = (client_rect.h - video_rect.h) / 2;
+		display_rect.w = avail.y * ratio;
+		display_rect.y = (avail.y - display_rect.w) / 2;
 	}
+	display_rect.x += screen_pos.x;
+	display_rect.y += screen_pos.y;
 
 	GLint filter = []() {
 		switch (Options.scale_quality) {
@@ -268,32 +268,51 @@ static void display_video()
 		glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY_EXT, (Options.scale_quality == scale_quality_t::BEST) ? Max_anisotropy : 1.0f);
 	}
 #endif
-	glColor3f(1.0f, 1.0f, 1.0f);
-	glBegin(GL_QUADS);
-	glTexCoord2f(0.0f, 0.0f);
-	glVertex2i(video_rect.x, video_rect.y + video_rect.h);
-	glTexCoord2f(1.0f, 0.0f);
-	glVertex2i(video_rect.x + video_rect.w, video_rect.y + video_rect.h);
-	glTexCoord2f(1.0f, 1.0f);
-	glVertex2i(video_rect.x + video_rect.w, video_rect.y);
-	glTexCoord2f(0.0f, 1.0f);
-	glVertex2i(video_rect.x, video_rect.y);
-	glEnd();
 	glBindTexture(GL_TEXTURE_2D, 0);
+
+    ImGui::SetCursorScreenPos(ImVec2(display_rect.x, display_rect.y));
+	ImGui::Image((void *)(intptr_t)Video_framebuffer_texture_handle, ImVec2(display_rect.z, display_rect.w));
+	// Convert size to end position
+	display_rect.z += display_rect.x;
+	display_rect.w += display_rect.y;
 }
 
 static ring_buffer<uint32_t, 600> Display_timing_history;
 
-bool display_init(const display_settings &settings)
+bool display_init()
 {
-	Display = settings;
+	// Initialize ImGUI
+	{
+		IMGUI_CHECKVERSION();
+		if (ImGui::CreateContext() == nullptr) {
+			printf("Unable to create ImGui context\n");
+			return false;
+		}
 
-	if (Display.window_rect.w == 0) {
-		Display.window_rect.w = Display.video_rect.w;
+		ImGuiIO &io = ImGui::GetIO();
+		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
+		// io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+		// io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+
+		if (!options_find_file(Imgui_ini_path, "imgui.ini") || true) {
+			// Initialize layout
+			Show_display = true;
+		}
+		Imgui_ini_path_str = Imgui_ini_path.generic_string();
+		io.IniFilename     = Imgui_ini_path_str.c_str();
+
+		ImGui::StyleColorsDark();
+		// ImGui::StyleColorsClassic();
 	}
+	Initd_imgui = true;
 
-	if (Display.window_rect.h == 0) {
-		Display.window_rect.h = Display.video_rect.h + 10; // Account for menu
+	aspect_ratio = Options.widescreen ? (16.0f / 9.0f) : (4.0f / 3.0f);
+	if (Options.window_width <= 0) {
+		Options.window_width = SCREEN_WIDTH + 2;
+	}
+	if (Options.window_height <= 0) {
+		Options.window_height = SCREEN_HEIGHT + IMGUI_OVERLAY_MENU_BAR_HEIGHT * 2 + 1; // Account for menu
 	}
 
 	// Initialize SDL_GL
@@ -329,7 +348,7 @@ bool display_init(const display_settings &settings)
 		sprintf(title, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
 #endif
 
-		Display_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, Display.window_rect.w, Display.window_rect.h, sdl_window_flags);
+		Display_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, Options.window_width, Options.window_height, sdl_window_flags);
 		if (Display_window == nullptr) {
 			printf("Unable to create SDL window: %s\n", SDL_GetError());
 			return false;
@@ -385,7 +404,7 @@ bool display_init(const display_settings &settings)
 		glBindFramebuffer(GL_FRAMEBUFFER, Display_framebuffer_handle);
 		glGenTextures(1, &Display_framebuffer_texture_handle);
 		glBindTexture(GL_TEXTURE_2D, Display_framebuffer_texture_handle);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Display.video_rect.w, Display.video_rect.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -404,7 +423,7 @@ bool display_init(const display_settings &settings)
 	{
 		glGenTextures(1, &Video_framebuffer_texture_handle);
 		glBindTexture(GL_TEXTURE_2D, Video_framebuffer_texture_handle);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, Display.video_rect.w, Display.video_rect.h, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, SCREEN_WIDTH, SCREEN_HEIGHT, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -418,29 +437,6 @@ bool display_init(const display_settings &settings)
 		}
 	}
 	Initd_video_framebuffer = true;
-
-	// Initialize ImGUI
-	{
-		IMGUI_CHECKVERSION();
-		if (ImGui::CreateContext() == nullptr) {
-			printf("Unable to create ImGui context\n");
-			return false;
-		}
-
-		ImGuiIO &io = ImGui::GetIO();
-		io.ConfigFlags |= ImGuiConfigFlags_NavNoCaptureKeyboard;
-		// io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-		// io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
-
-		options_find_file(Imgui_ini_path, "imgui.ini");
-		Imgui_ini_path_str = Imgui_ini_path.generic_string();
-		io.IniFilename     = Imgui_ini_path_str.c_str();
-
-		ImGui::StyleColorsDark();
-		// ImGui::StyleColorsClassic();
-	}
-	Initd_imgui = true;
 
 	if (!ImGui_ImplSDL2_InitForOpenGL(Display_window, Display_context)) {
 		printf("Unable to init ImGui SDL2\n");
@@ -610,7 +606,7 @@ void display_process()
 	ImGui_ImplSDL2_NewFrame(Display_window);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, Display.window_rect.w, Display.window_rect.h);
+	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 	glClearColor(0.5f, 0.5f, 0.5f, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
 
@@ -619,24 +615,18 @@ void display_process()
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
-	glOrtho(0.0f, (float)Display.window_rect.w, 0.0f, (float)Display.window_rect.h, 0.0f, 1.0f);
+	glOrtho(0.0f, (float)SCREEN_WIDTH, 0.0f, (float)SCREEN_HEIGHT, 0.0f, 1.0f);
 
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
 	glEnable(GL_TEXTURE_2D);
 
-	display_video();
-
-	// back to main framebuffer
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glViewport(0, 0, Display.window_rect.w, Display.window_rect.h);
-	glOrtho(0.0f, (float)Display.window_rect.w, (float)Display.window_rect.h, 0.0f, 0.0f, 1.0f);
-	glMatrixMode(GL_PROJECTION);
-	glLoadIdentity();
-
 	ImGui::NewFrame();
 
 	overlay_draw();
+	if (mouse_captured) {
+		ImGui::SetMouseCursor(ImGuiMouseCursor_None);
+	}
 
 	ImGui::EndFrame();
 	ImGui::Render();
@@ -656,9 +646,14 @@ void display_process()
 	Display_timing_history.add(Last_render_time);
 }
 
-const display_settings &display_get_settings()
+const float display_get_aspect_ratio()
 {
-	return Display;
+	return aspect_ratio;
+}
+
+const ImVec4 &display_get_rect()
+{
+	return display_rect;
 }
 
 SDL_Window *display_get_window()
