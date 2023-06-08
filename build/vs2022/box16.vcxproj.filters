@@ -229,6 +229,9 @@
     <ClCompile Include="..\..\src\files.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\boxmon\expression.cpp">
+      <Filter>Source Files\boxmon</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src\compat\compat.h">
@@ -464,6 +467,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\files.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\boxmon\expression.h">
+      <Filter>Source Files\boxmon</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
