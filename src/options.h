@@ -105,6 +105,9 @@ struct options {
 	bool ym_strict          = false;
 	bool memory_randomize   = true;
 	bool memory_uninit_warn = false;
+
+	int window_width  = 0;
+	int window_height = 0;
 };
 
 extern options Options;

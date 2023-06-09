@@ -22,14 +22,22 @@
 #	define RSHORTCUT_KEY SDL_SCANCODE_RCTRL
 #endif
 
+bool mouse_captured = false;
+
 bool sdl_events_update()
 {
 	static bool cmd_down = false;
 	static bool alt_down = false;
 
 	bool mouse_state_change = false;
+	bool do_capture_mouse   = false;
+	bool do_release_mouse   = false;
 
 	const uint32_t event_handling_start_us = timing_total_microseconds_realtime();
+	SDL_Window *   window                  = display_get_window();
+	const ImVec4   display_rect            = display_get_rect();
+	const int      display_middle_x        = (int)(display_rect.x + display_rect.z) / 2;
+	const int      display_middle_y        = (int)(display_rect.y + display_rect.w) / 2;
 
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {
@@ -51,13 +59,8 @@ bool sdl_events_update()
 
 		ImGui_ImplSDL2_ProcessEvent(&event);
 
-		if (ImGui::GetIO().WantCaptureMouse) {
-			continue;
-		}
-		if (ImGui::GetIO().WantCaptureKeyboard) {
-			continue;
-		}
-		if (ImGui::GetIO().WantTextInput) {
+		if (!display_focused || ImGui::GetIO().WantTextInput) {
+			do_release_mouse = true;
 			continue;
 		}
 
@@ -110,6 +113,14 @@ bool sdl_events_update()
 								sdcard_detach();
 								consumed = true;
 								break;
+							case SDLK_m:
+								if (mouse_captured) {
+									do_release_mouse = true;
+								} else {
+									do_capture_mouse = true;
+								}
+								consumed = true;
+								break;
 						}
 					}
 					if (cmd_down && alt_down) {
@@ -160,17 +171,27 @@ bool sdl_events_update()
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
-				mouse_state_change = true;
-				switch (event.button.button) {
-					case SDL_BUTTON_LEFT:
-						mouse_button_down(0);
-						break;
-					case SDL_BUTTON_RIGHT:
-						mouse_button_down(1);
-						break;
-					case SDL_BUTTON_MIDDLE:
-						mouse_button_down(2);
-						break;
+				// A bit hacky way to exclude resize hitboxes
+				if (
+					ImGui::GetMouseCursor() == ImGuiMouseCursor_Arrow &&
+					event.button.x >= display_rect.x && event.button.x < display_rect.z &&
+					event.button.y >= display_rect.y && event.button.y < display_rect.w
+				) {
+					if (!mouse_captured) {
+						do_capture_mouse = true;
+					}
+					mouse_state_change = true;
+					switch (event.button.button) {
+						case SDL_BUTTON_LEFT:
+							mouse_button_down(0);
+							break;
+						case SDL_BUTTON_RIGHT:
+							mouse_button_down(1);
+							break;
+						case SDL_BUTTON_MIDDLE:
+							mouse_button_down(2);
+							break;
+					}
 				}
 				break;
 
@@ -201,18 +222,25 @@ bool sdl_events_update()
 				}
 				break;
 
-			case SDL_MOUSEMOTION: {
-				mouse_state_change = true;
-				static int mouse_x;
-				static int mouse_y;
-				mouse_move(event.motion.x - mouse_x, event.motion.y - mouse_y);
-				mouse_x = event.motion.x;
-				mouse_y = event.motion.y;
-			} break;
+			case SDL_MOUSEMOTION:
+				if (mouse_captured) {
+					mouse_state_change = true;
+					mouse_move(event.motion.xrel, event.motion.yrel);
+					SDL_WarpMouseInWindow(window, display_middle_x, display_middle_y);
+				}
+			    break;
 
 			default:
 				break;
 		}
+	}
+
+	if (do_capture_mouse) {
+		mouse_captured = true;
+		SDL_WarpMouseInWindow(window, display_middle_x, display_middle_y);
+	}
+	if (do_release_mouse) {
+		mouse_captured = false;
 	}
 
 	const uint32_t event_handling_end_us = timing_total_microseconds_realtime();
