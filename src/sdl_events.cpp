@@ -23,6 +23,8 @@
 #endif
 
 bool mouse_captured = false;
+int  last_x = 0;
+int  last_y = 0;
 
 bool sdl_events_update()
 {
@@ -30,14 +32,10 @@ bool sdl_events_update()
 	static bool alt_down = false;
 
 	bool mouse_state_change = false;
-	bool do_capture_mouse   = false;
-	bool do_release_mouse   = false;
 
 	const uint32_t event_handling_start_us = timing_total_microseconds_realtime();
 	SDL_Window *   window                  = display_get_window();
 	const ImVec4   display_rect            = display_get_rect();
-	const int      display_middle_x        = (int)(display_rect.x + display_rect.z) / 2;
-	const int      display_middle_y        = (int)(display_rect.y + display_rect.w) / 2;
 
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {
@@ -59,8 +57,7 @@ bool sdl_events_update()
 
 		ImGui_ImplSDL2_ProcessEvent(&event);
 
-		if (!display_focused || ImGui::GetIO().WantTextInput) {
-			do_release_mouse = true;
+		if (!mouse_captured && !display_focused || ImGui::GetIO().WantTextInput) {
 			continue;
 		}
 
@@ -115,9 +112,11 @@ bool sdl_events_update()
 								break;
 							case SDLK_m:
 								if (mouse_captured) {
-									do_release_mouse = true;
+									mouse_captured = false;
+									SDL_SetRelativeMouseMode(SDL_FALSE);
 								} else {
-									do_capture_mouse = true;
+									mouse_captured = true;
+									SDL_SetRelativeMouseMode(SDL_TRUE);
 								}
 								consumed = true;
 								break;
@@ -171,27 +170,17 @@ bool sdl_events_update()
 				break;
 
 			case SDL_MOUSEBUTTONDOWN:
-				// A bit hacky way to exclude resize hitboxes
-				if (
-					ImGui::GetMouseCursor() == ImGuiMouseCursor_Arrow &&
-					event.button.x >= display_rect.x && event.button.x < display_rect.z &&
-					event.button.y >= display_rect.y && event.button.y < display_rect.w
-				) {
-					if (!mouse_captured) {
-						do_capture_mouse = true;
-					}
-					mouse_state_change = true;
-					switch (event.button.button) {
-						case SDL_BUTTON_LEFT:
-							mouse_button_down(0);
-							break;
-						case SDL_BUTTON_RIGHT:
-							mouse_button_down(1);
-							break;
-						case SDL_BUTTON_MIDDLE:
-							mouse_button_down(2);
-							break;
-					}
+				mouse_state_change = true;
+				switch (event.button.button) {
+					case SDL_BUTTON_LEFT:
+						mouse_button_down(0);
+						break;
+					case SDL_BUTTON_RIGHT:
+						mouse_button_down(1);
+						break;
+					case SDL_BUTTON_MIDDLE:
+						mouse_button_down(2);
+						break;
 				}
 				break;
 
@@ -223,24 +212,27 @@ bool sdl_events_update()
 				break;
 
 			case SDL_MOUSEMOTION:
+				mouse_state_change = true;
 				if (mouse_captured) {
-					mouse_state_change = true;
+					// send mouse move as-is, no scaling applied
 					mouse_move(event.motion.xrel, event.motion.yrel);
-					SDL_WarpMouseInWindow(window, display_middle_x, display_middle_y);
+				} else {
+					// send mouse move from the last position, syncing with host cursor as much as possible
+					float new_x = event.motion.x - display_rect.x;
+					float new_y = event.motion.y - display_rect.y;
+					new_x = std::min(std::max(new_x, 0.f), display_rect.z) / display_rect.z * 640.f;
+					new_y = std::min(std::max(new_y, 0.f), display_rect.w) / display_rect.w * 480.f;
+					int new_x_i = (int)new_x;
+					int new_y_i = (int)new_y;
+					mouse_move(new_x_i - last_x, new_y_i - last_y);
+					last_x = new_x_i;
+					last_y = new_y_i;
 				}
 			    break;
 
 			default:
 				break;
 		}
-	}
-
-	if (do_capture_mouse) {
-		mouse_captured = true;
-		SDL_WarpMouseInWindow(window, display_middle_x, display_middle_y);
-	}
-	if (do_release_mouse) {
-		mouse_captured = false;
 	}
 
 	const uint32_t event_handling_end_us = timing_total_microseconds_realtime();

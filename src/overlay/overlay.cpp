@@ -2539,6 +2539,13 @@ static ImVec2 get_integer_scale_window_size(ImVec2 avail) {
 
 void overlay_draw()
 {
+	ImGuiIO & io = ImGui::GetIO();
+	if (mouse_captured) {
+		io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+	} else {
+		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+	}
+
 	draw_menu_bar();
 	ImGui::SetNextWindowBgAlpha(0.0f);
 	ImGuiID dock_id = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
@@ -2690,11 +2697,10 @@ void overlay_draw()
 #else
 		const char * window_text      = mouse_captured ? "Display (Ctrl+M to release mouse)###display" : "Display###display";
 #endif
-		const ImGuiWindowFlags flags  = mouse_captured ? ImGuiWindowFlags_NoMove : 0;
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 		ImGui::SetNextWindowSizeConstraints(ImVec2(80, 60), ImVec2(FLT_MAX, FLT_MAX));
 		ImGui::SetNextWindowDockID(dock_id, ImGuiCond_FirstUseEver);
-		if (ImGui::Begin(window_text, &Show_display, flags)) {
+		if (ImGui::Begin(window_text, &Show_display)) {
 			display_focused = ImGui::IsWindowFocused();
 			// Shift + click on title bar to resize to the nearest integer scale
 			if(ImGui::IsKeyDown(ImGuiKey_ModShift) && ImGui::IsItemClicked()) {
