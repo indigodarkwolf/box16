@@ -271,10 +271,10 @@ void display_video()
 	glBindTexture(GL_TEXTURE_2D, 0);
 
     ImGui::SetCursorScreenPos(ImVec2(display_rect.x, display_rect.y));
+	ImGui::BeginChild("display video", ImVec2(display_rect.z, display_rect.w), false, ImGuiWindowFlags_NoMove);
 	ImGui::Image((void *)(intptr_t)Video_framebuffer_texture_handle, ImVec2(display_rect.z, display_rect.w));
-	// Convert size to end position
-	display_rect.z += display_rect.x;
-	display_rect.w += display_rect.y;
+	display_focused = ImGui::IsWindowFocused();
+	ImGui::EndChild();
 }
 
 static ring_buffer<uint32_t, 600> Display_timing_history;
@@ -627,9 +627,6 @@ void display_process()
 	ImGui::NewFrame();
 
 	overlay_draw();
-	if (mouse_captured) {
-		ImGui::SetMouseCursor(ImGuiMouseCursor_None);
-	}
 
 	ImGui::EndFrame();
 	ImGui::Render();
