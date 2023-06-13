@@ -13,7 +13,7 @@
 
 struct _state6502 {
 	uint16_t pc;
-	uint8_t sp_depth;
+	uint8_t  sp_depth;
 	uint8_t  sp, a, x, y, status;
 };
 

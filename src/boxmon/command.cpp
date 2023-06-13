@@ -5,6 +5,8 @@
 
 #include "boxmon.h"
 #include "parser.h"
+#include "cpu/fake6502.h"
+#include "debugger.h"
 
 namespace boxmon
 {
@@ -126,7 +128,7 @@ BOXMON_COMMAND(help, "help")
 
 BOXMON_COMMAND(eval, "eval <expr>")
 {
-	const boxmon::boxmon_expression *expr;
+	const boxmon::expression *expr;
 	if (parser.parse_expression(expr, input)) {
 		boxmon_console_printf("%d", expr->evaluate());
 		return true;
@@ -145,8 +147,8 @@ BOXMON_COMMAND(break, "break [load|store|exec] [address [address] [if <cond_expr
 		breakpoint_flags = DEBUG6502_EXEC;
 	}
 
-	std::list<breakpoint_type> bps;
-	for (breakpoint_type bp; parser.parse_address(bp, input);) {
+	std::list<boxmon::address_type> bps;
+	for (boxmon::address_type bp; parser.parse_address(bp, input);) {
 		bps.push_back(bp);
 	}
 

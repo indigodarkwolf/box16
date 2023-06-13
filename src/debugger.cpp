@@ -1,16 +1,24 @@
 #include "debugger.h"
+#include "boxmon/parser.h"
 #include "cpu/fake6502.h"
 #include "cpu/mnemonics.h"
 #include "glue.h"
 #include "memory.h"
 
+#include <map>
+
 //
 // Breakpoints
 //
 
-static breakpoint_list Breakpoints;
-static breakpoint_list Active_breakpoints;
-static uint8_t        *Breakpoint_flags = nullptr;
+static breakpoint_list                                Breakpoints;
+static breakpoint_list                                Active_breakpoints;
+static uint8_t                                       *Breakpoint_flags = nullptr;
+static std::map<uint32_t, std::string>                Breakpoint_conditions;
+static std::map<uint32_t, const boxmon::expression *> Breakpoint_expressions;
+
+static boxmon::parser Condition_parser;
+static const std::string Empty_string("");
 
 enum debugger_mode {
 	DEBUG_RUN,
@@ -98,12 +106,21 @@ void debugger_init(int max_ram_banks)
 	Breakpoint_flags = new uint8_t[breakpoint_flags_size];
 	memset(Breakpoint_flags, 0, breakpoint_flags_size);
 
+	Breakpoint_conditions.clear();
+	Breakpoint_expressions.clear();
+
 	options_apply_debugger_opts();
 }
 
 void debugger_shutdown()
 {
 	delete[] Breakpoint_flags;
+
+	for (auto [key, value] : Breakpoint_expressions) {
+		delete value;
+	}
+	Breakpoint_expressions.clear();
+	Breakpoint_conditions.clear();
 }
 
 bool debugger_is_paused()
@@ -306,7 +323,56 @@ uint8_t debugger_get_flags(uint16_t address, uint8_t bank)
 	if (address < 0xa000) {
 		bank = 0;
 	}
-	return get_flags(address, bank) & 0x0f;
+	const uint32_t offset = get_offset(address, bank);
+	const uint8_t  flags = Breakpoint_flags[offset];
+	return flags & 0xf;
+}
+
+std::string debugger_get_condition(uint16_t address, uint8_t bank)
+{
+	if (auto condition = Breakpoint_conditions.find(get_offset(address, bank)); condition != Breakpoint_conditions.end()) {
+		return condition->second;
+	}
+	return "";
+}
+
+void debugger_set_condition(uint16_t address, uint8_t bank, const std::string &condition)
+{
+	const uint32_t offset = get_offset(address, bank);
+
+	if (condition.empty()) {
+		Breakpoint_flags[offset] &= ~DEBUG6502_EXPRESSION;
+
+		if (auto citer = Breakpoint_conditions.find(offset); citer != Breakpoint_conditions.end()) {
+			Breakpoint_conditions.erase(citer);
+		}
+		if (auto eiter = Breakpoint_expressions.find(offset); eiter != Breakpoint_expressions.end()) {
+			Breakpoint_expressions.erase(eiter);
+		}
+	} else {
+		Breakpoint_conditions[offset] = condition;
+
+		const boxmon::expression *expression = nullptr;
+		const char               *condition_cstr = condition.c_str();
+		if (Condition_parser.parse_expression(expression, condition_cstr, boxmon::expression_parse_flag_must_consume_all)) {
+			Breakpoint_expressions[offset] = expression;
+			Breakpoint_flags[offset] |= DEBUG6502_EXPRESSION;
+		} else {
+			if (auto eiter = Breakpoint_expressions.find(offset); eiter != Breakpoint_expressions.end()) {
+				Breakpoint_expressions.erase(eiter);
+			}
+			Breakpoint_flags[offset] &= ~DEBUG6502_EXPRESSION;
+		}
+	}
+}
+
+bool debugger_evaluate_condition(uint16_t address, uint8_t bank)
+{
+	const uint32_t offset = get_offset(address, bank);
+	if (auto eiter = Breakpoint_expressions.find(offset); eiter != Breakpoint_expressions.end()) {
+		return (eiter->second->evaluate() != 0);
+	}
+	return false;
 }
 
 void debugger_add_breakpoint(uint16_t address, uint8_t bank /* = 0 */, uint8_t flags /* = DEBUG6502_EXEC */)
@@ -344,6 +410,14 @@ void debugger_remove_breakpoint(uint16_t address, uint8_t bank /* = 0 */, uint8_
 		breakpoint_type old_bp{ address, bank };
 		Breakpoints.erase(old_bp);
 		Active_breakpoints.erase(old_bp);
+
+		const uint32_t offset = get_offset(address, bank);
+		if (auto citer = Breakpoint_conditions.find(offset); citer != Breakpoint_conditions.end()) {
+			Breakpoint_conditions.erase(citer);
+		}
+		if (auto eiter = Breakpoint_expressions.find(offset); eiter != Breakpoint_expressions.end()) {
+			Breakpoint_expressions.erase(eiter);
+		}
 	}
 }
 

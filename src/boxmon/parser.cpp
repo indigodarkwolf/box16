@@ -4,10 +4,40 @@
 #include <stack>
 
 #include "boxmon.h"
+#include "expression.h"
 #include "memory.h"
 
 namespace boxmon
 {
+	class boxmon_expression_internal : public expression
+	{
+	public:
+		boxmon_expression_internal(const std::string &expr_string, const boxmon::expression_base *expr_ptr)
+		    : m_string(expr_string),
+		      m_expression(expr_ptr)
+		{
+		}
+
+		virtual ~boxmon_expression_internal() override
+		{
+			delete m_expression;
+		}
+
+		virtual const std::string &get_string() const
+		{
+			return m_string;
+		}
+
+		virtual int evaluate() const
+		{
+			return m_expression->evaluate();
+		}
+
+	private:
+		const std::string                m_string;
+		const boxmon::expression_base *m_expression;
+	};
+
 	//
 	// Parser
 	//
@@ -282,7 +312,7 @@ namespace boxmon
 		return true;
 	}
 
-	bool parser::parse_address(breakpoint_type &result, char const *&input)
+	bool parser::parse_address(address_type &result, char const *&input)
 	{
 		char const *look = input;
 
@@ -301,7 +331,7 @@ namespace boxmon
 		return true;
 	}
 
-	bool parser::parse_address_range(breakpoint_type &result0, breakpoint_type &result1, char const *&input)
+	bool parser::parse_address_range(address_type &result0, address_type &result1, char const *&input)
 	{
 		char const *look = input;
 
@@ -342,38 +372,41 @@ namespace boxmon
 		return true;
 	}
 
-	bool parser::parse_expression(const boxmon_expression *&expression, char const *&input)
+	bool parser::parse_expression(const expression *&expression, char const *&input, int flags)
 	{
-		std::stack<boxmon_expression::expression_type> operator_stack;
-		std::stack<boxmon_expression *>                expression_stack;
+		std::stack<expression_type>     operator_stack;
+		std::stack<expression_base *> expression_stack;
 
 		char const *look = input;
 
 		auto clear_stacks = [&]() {
-			operator_stack = std::stack<boxmon_expression::expression_type>();
+			operator_stack = std::stack<expression_type>();
 			while (!expression_stack.empty()) {
 				delete expression_stack.top();
 				expression_stack.pop();
 			}
 		};
 
-		auto should_pop_op = [&](const boxmon_expression::expression_type next_op) -> bool {
+		auto should_pop_op = [&](const expression_type next_op) -> bool {
 			if (operator_stack.empty()) {
 				return false;
 			}
 
-			const boxmon_expression::expression_type top_op = operator_stack.top();
+			const expression_type top_op = operator_stack.top();
 
-			if (top_op == boxmon_expression::expression_type::parenthesis) {
+			if (top_op == expression_type::parenthesis) {
 				return false;
 			}
 
-			if (boxmon_expression::expression_type_precedence[static_cast<int>(top_op)] < boxmon_expression::expression_type_precedence[static_cast<int>(next_op)]) {
+			const auto &top_info  = get_expression_type_info(top_op);
+			const auto &next_info = get_expression_type_info(next_op);
+
+			if (top_info.precedence < next_info.precedence) {
 				return true;
 			}
 
-			if (boxmon_expression::expression_type_precedence[static_cast<int>(top_op)] == boxmon_expression::expression_type_precedence[static_cast<int>(next_op)]) {
-				return boxmon_expression::expression_type_left_associative[static_cast<int>(next_op)];
+			if (top_info.precedence == next_info.precedence) {
+				return next_info.left_associative;
 			}
 
 			return false;
@@ -384,31 +417,31 @@ namespace boxmon
 				boxmon_error_printf("Expression parse failed (internal error, popping op with no more ops left) at: \"%s\"\n", look);
 				return false;
 			}
-			const boxmon_expression::expression_type op = operator_stack.top();
+			const expression_type op = operator_stack.top();
 			operator_stack.pop();
 
 			if (expression_stack.empty()) {
 				boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
 				return false;
 			}
-			const boxmon_expression *rhs = expression_stack.top();
+			const expression_base *rhs = expression_stack.top();
 			expression_stack.pop();
 
 			switch (op) {
-				case boxmon_expression::expression_type::dereference: [[fallthrough]];
-				case boxmon_expression::expression_type::negate: [[fallthrough]];
-				case boxmon_expression::expression_type::bit_not: [[fallthrough]];
-				case boxmon_expression::expression_type::logical_not:
-					expression_stack.push(new boxmon_unary_expression(op, rhs));
+				case expression_type::dereference: [[fallthrough]];
+				case expression_type::negate: [[fallthrough]];
+				case expression_type::bit_not: [[fallthrough]];
+				case expression_type::logical_not:
+					expression_stack.push(new unary_expression(op, rhs));
 					break;
 				default:
 					if (expression_stack.empty()) {
 						boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
 						return false;
 					} else {
-						const boxmon_expression *lhs = expression_stack.top();
+						const expression_base *lhs = expression_stack.top();
 						expression_stack.pop();
-						expression_stack.push(new boxmon_binary_expression(op, lhs, rhs));
+						expression_stack.push(new binary_expression(op, lhs, rhs));
 					}
 					break;
 			}
@@ -416,89 +449,89 @@ namespace boxmon
 			return true;
 		};
 
-		auto read_token = [&]() -> boxmon_expression::expression_type {
+		auto read_token = [&]() -> expression_type {
 			switch (*look) {
 				case '@': {
 					++look;
-					return boxmon_expression::expression_type::dereference;
+					return expression_type::dereference;
 				} break;
 
 				case '~': {
 					++look;
-					return boxmon_expression::expression_type::bit_not;
+					return expression_type::bit_not;
 				} break;
 
 				case '(': {
 					++look;
-					return boxmon_expression::expression_type::parenthesis;
+					return expression_type::parenthesis;
 				} break;
 
 				case ')': {
 					++look;
-					return boxmon_expression::expression_type::parenthesis_end;
+					return expression_type::parenthesis_end;
 				} break;
 
 				case '^': {
 					++look;
 					if (*look == '^') {
 						++look;
-						return boxmon_expression::expression_type::pow;
+						return expression_type::pow;
 					} else {
-						return boxmon_expression::expression_type::bit_xor;
+						return expression_type::bit_xor;
 					}
 				} break;
 
 				case '%': {
 					++look;
-					return boxmon_expression::expression_type::modulo;
+					return expression_type::modulo;
 				} break;
 
 				case '*': {
 					++look;
-					return boxmon_expression::expression_type::multiply;
+					return expression_type::multiply;
 				} break;
 
 				case '/': {
 					++look;
-					return boxmon_expression::expression_type::divide;
+					return expression_type::divide;
 				} break;
 
 				case '+': {
 					++look;
-					return boxmon_expression::expression_type::addition;
+					return expression_type::addition;
 				} break;
 
 				case '-': {
 					++look;
-					return boxmon_expression::expression_type::subtraction;
+					return expression_type::subtraction;
 				} break;
 
 				case '&': {
 					++look;
 					if (*look == '&') {
 						++look;
-						return boxmon_expression::expression_type::logical_and;
+						return expression_type::logical_and;
 					} else {
-						return boxmon_expression::expression_type::bit_and;
+						return expression_type::bit_and;
 					}
 				} break;
 				case '|': {
 					++look;
 					if (*look == '|') {
 						++look;
-						return boxmon_expression::expression_type::logical_or;
+						return expression_type::logical_or;
 					} else {
-						return boxmon_expression::expression_type::bit_or;
+						return expression_type::bit_or;
 					}
 				} break;
 				case '=': {
 					++look;
 					if (*look == '=') {
 						++look;
-						return boxmon_expression::expression_type::equal;
+						return expression_type::equal;
 					} else {
-						// return boxmon_expression::expression_type::assign;
-						return boxmon_expression::expression_type::invalid;
+						// return expression_type::assign;
+						return expression_type::invalid;
 					}
 				} break;
 
@@ -506,9 +539,9 @@ namespace boxmon
 					++look;
 					if (*look == '=') {
 						++look;
-						return boxmon_expression::expression_type::not_equal;
+						return expression_type::not_equal;
 					} else {
-						return boxmon_expression::expression_type::logical_not;
+						return expression_type::logical_not;
 					}
 				} break;
 
@@ -516,9 +549,9 @@ namespace boxmon
 					++look;
 					if (*look == '=') {
 						++look;
-						return boxmon_expression::expression_type::lte;
+						return expression_type::lte;
 					} else {
-						return boxmon_expression::expression_type::lt;
+						return expression_type::lt;
 					}
 				} break;
 
@@ -526,45 +559,45 @@ namespace boxmon
 					++look;
 					if (*look == '=') {
 						++look;
-						return boxmon_expression::expression_type::gte;
+						return expression_type::gte;
 					} else {
-						return boxmon_expression::expression_type::gt;
+						return expression_type::gt;
 					}
 				} break;
 
 				default: {
-					boxmon_expression *subexpression = nullptr;
+					expression_base *subexpression = nullptr;
 					if (int num; parse_number(num, look)) {
-						expression_stack.push(new boxmon_value_expression(num));
+						expression_stack.push(new value_expression(num));
 						return expression_stack.top()->get_type();
 					} else if (std::string symbol; parse_word(symbol, look)) {
-						expression_stack.push(new boxmon_symbol_expression(symbol));
+						expression_stack.push(new symbol_expression(symbol));
 						return expression_stack.top()->get_type();
 					} else {
-						return boxmon_expression::expression_type::invalid;
+						return expression_type::invalid;
 					}
 				} break;
 			}
-			return boxmon_expression::expression_type::invalid;
+			return expression_type::invalid;
 		};
 
-		boxmon_expression::expression_type last_parse_type = boxmon_expression::expression_type::invalid;
+		expression_type last_parse_type = expression_type::invalid;
 		while (*look) {
-			boxmon_expression::expression_type parse_type = read_token();
+			expression_type parse_type = read_token();
 			switch (parse_type) {
-				case boxmon_expression::expression_type::invalid:
+				case expression_type::invalid:
 					boxmon_error_printf("Expression parse failed (invalid token) at: \"%s\"\n", look);
 					clear_stacks();
 					return false;
-				case boxmon_expression::expression_type::value:
+				case expression_type::value:
 					[[fallthrough]];
-				case boxmon_expression::expression_type::symbol:
+				case expression_type::symbol:
 					break;
-				case boxmon_expression::expression_type::parenthesis:
+				case expression_type::parenthesis:
 					operator_stack.push(parse_type);
 					break;
-				case boxmon_expression::expression_type::parenthesis_end:
-					while (!operator_stack.empty() && operator_stack.top() != boxmon_expression::expression_type::parenthesis) {
+				case expression_type::parenthesis_end:
+					while (!operator_stack.empty() && operator_stack.top() != expression_type::parenthesis) {
 						if (!pop_op()) {
 							clear_stacks();
 							return false;
@@ -576,9 +609,9 @@ namespace boxmon
 						operator_stack.pop();
 					}
 					break;
-				case boxmon_expression::expression_type::subtraction:
-					if (expression_stack.empty() || last_parse_type == boxmon_expression::expression_type::subtraction) {
-						operator_stack.push(boxmon_expression::expression_type::negate);
+				case expression_type::subtraction:
+					if (expression_stack.empty() || last_parse_type == expression_type::subtraction) {
+						operator_stack.push(expression_type::negate);
 					}
 					[[fallthrough]];
 				default:
@@ -607,13 +640,19 @@ namespace boxmon
 			return false;
 		}
 
-		expression = expression_stack.top();
+		const auto *expression_result = expression_stack.top();
 		expression_stack.pop();
 
 		if (!expression_stack.empty()) {
 			boxmon_error_printf("Expression parse failed (too many expressions) at: \"%s\"\n", look);
 			return false;
 		}
+
+		if ((flags & expression_parse_flag_must_consume_all) != 0 && *look != '\0') {
+			return false;
+		}
+
+		expression = new boxmon_expression_internal(std::string(input, look), expression_result);
 
 		return true;
 	}

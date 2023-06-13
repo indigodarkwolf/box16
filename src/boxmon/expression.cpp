@@ -5,50 +5,92 @@
 
 namespace boxmon
 {
+	static const expression_type_info Expression_type_infos[] = {
+		{ -1, true }, // invalid
+
+		{ 0, true }, // parenthesis,
+		{ 0, true }, // parenthesis_end, // Special-case: This is only used as a token type, not an expression type.
+
+		{ 1, true },  // value,  // 1234
+		{ 1, true },  // symbol, // .@local
+		{ 1, false }, // dereference,
+
+		{ 4, true },  // negate,
+		{ 4, true },  // addition,
+		{ 4, true },  // subtraction,
+		{ 3, true },  // multiply,
+		{ 3, true },  // divide,
+		{ 3, true },  // modulo,
+		{ 2, false }, // pow,
+
+		{ 5, true }, // bit_not,
+		{ 6, true }, // bit_and,
+		{ 6, true }, // bit_or,
+		{ 6, true }, // bit_xor,
+		{ 7, true }, // left_shift,
+		{ 7, true }, // right_shift,
+
+		{ 8, true }, // logical_and,
+		{ 8, true }, // logical_or,
+		{ 8, true }, // logical_not,
+
+		{ 9, true }, // equal,
+		{ 9, true }, // not_equal,
+		{ 9, true }, // lt,
+		{ 9, true }, // gt,
+		{ 9, true }, // lte,
+		{ 9, true }, // gte,
+	};
+
+	const expression_type_info &get_expression_type_info(expression_type type)
+	{
+		return Expression_type_infos[static_cast<int>(type)];
+	}
+
 	//
 	// Expression
 	//
 
-	boxmon_expression::boxmon_expression(expression_type type)
+	expression_base::expression_base(expression_type type)
 	    : m_type(type)
 	{
 	}
 
-	boxmon_expression::~boxmon_expression()
+	expression_base::~expression_base()
 	{
 	}
 
-	boxmon_expression::expression_type boxmon_expression::get_type() const
+	expression_type expression_base::get_type() const
 	{
 		return m_type;
 	}
 
-	boxmon_value_expression::boxmon_value_expression(const int &value)
-	    : boxmon_expression(expression_type::value),
+	value_expression::value_expression(const int &value)
+	    : expression_base(expression_type::value),
 	      m_value(value)
 	{
 	}
 
-	boxmon_value_expression::~boxmon_value_expression()
+	value_expression::~value_expression()
 	{
 	}
 
-	int boxmon_value_expression::evaluate() const
+	int value_expression::evaluate() const
 	{
 		return m_value;
 	}
 
-	boxmon_symbol_expression::boxmon_symbol_expression(const std::string &symbol)
-	    : boxmon_expression(expression_type::symbol),
+	symbol_expression::symbol_expression(const std::string &symbol)
+	    : expression_base(expression_type::symbol),
 	      m_symbol(symbol)
 	{
 	}
 
-	boxmon_symbol_expression::~boxmon_symbol_expression()
+	symbol_expression::~symbol_expression()
 	{
 	}
 
-	int boxmon_symbol_expression::evaluate() const
+	int symbol_expression::evaluate() const
 	{
 		auto namelist = symbols_find(m_symbol);
 		if (namelist.empty()) {
@@ -57,18 +99,18 @@ namespace boxmon
 		return namelist.front();
 	}
 
-	boxmon_unary_expression::boxmon_unary_expression(expression_type type, const boxmon_expression *param)
-	    : boxmon_expression(type),
+	unary_expression::unary_expression(expression_type type, const expression_base *param)
+	    : expression_base(type),
 	      m_param(param)
 	{
 	}
 
-	boxmon_unary_expression::~boxmon_unary_expression()
+	unary_expression::~unary_expression()
 	{
 		delete m_param;
 	}
 
-	int boxmon_unary_expression::evaluate() const
+	int unary_expression::evaluate() const
 	{
 		switch (get_type()) {
 			case expression_type::dereference: {
@@ -87,20 +129,20 @@ namespace boxmon
 		return 0;
 	}
 
-	boxmon_binary_expression::boxmon_binary_expression(expression_type type, const boxmon_expression *lhs, const boxmon_expression *rhs)
-	    : boxmon_expression(type),
+	binary_expression::binary_expression(expression_type type, const expression_base *lhs, const expression_base *rhs)
+	    : expression_base(type),
 	      m_lhs(lhs),
 	      m_rhs(rhs)
 	{
 	}
 
-	boxmon_binary_expression::~boxmon_binary_expression()
+	binary_expression::~binary_expression()
 	{
 		delete m_lhs;
 		delete m_rhs;
 	}
 
-	int boxmon_binary_expression::evaluate() const
+	int binary_expression::evaluate() const
 	{
 		switch (get_type()) {
 			case expression_type::addition:

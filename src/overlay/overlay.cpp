@@ -2009,14 +2009,16 @@ static void draw_breakpoints()
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
 		if (ImGui::TreeNodeEx("Breakpoints", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			if (ImGui::BeginTable("breakpoints", 7)) {
+			if (ImGui::BeginTable("breakpoints", 9, ImGuiTableFlags_Resizable)) {
 				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("R", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("W", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("X", ImGuiTableColumnFlags_WidthFixed, 16);
+				ImGui::TableSetupColumn("C", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 64);
 				ImGui::TableSetupColumn("Bank", ImGuiTableColumnFlags_WidthFixed, 48);
-				ImGui::TableSetupColumn("Symbol");
+				ImGui::TableSetupColumn("Symbol", ImGuiTableColumnFlags_WidthStretch);
+				ImGui::TableSetupColumn("Condition", ImGuiTableColumnFlags_WidthStretch);
 				ImGui::TableHeadersRow();
 
 				const auto &breakpoints = debugger_get_breakpoints();
@@ -2075,6 +2077,19 @@ static void draw_breakpoints()
 					ImGui::PopID();
 
 					ImGui::TableNextColumn();
+					ImGui::PushID(c++);
+					if (debugger_breakpoint_is_active(address, bank, DEBUG6502_CONDITION)) {
+						if (ImGui::TileButton(ICON_CHECKED)) {
+							debugger_deactivate_breakpoint(address, bank, DEBUG6502_CONDITION);
+						}
+					} else {
+						if (ImGui::TileButton(ICON_UNCHECKED)) {
+							debugger_activate_breakpoint(address, bank, DEBUG6502_CONDITION);
+						}
+					}
+					ImGui::PopID();
+
+					ImGui::TableNextColumn();
 					char addr_text[5];
 					sprintf(addr_text, "%04X", address);
 					if (ImGui::Selectable(addr_text, false, ImGuiSelectableFlags_AllowDoubleClick)) {
@@ -2104,6 +2119,19 @@ static void draw_breakpoints()
 							}
 						}
 					}
+
+					ImGui::TableNextColumn();
+					std::string cond = debugger_get_condition(address, bank);
+
+					ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x - 16);
+					if (ImGui::InputText("", cond)) {
+						debugger_set_condition(address, bank, cond);
+					}
+					ImGui::PopItemWidth();
+					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
+					ImGui::SameLine();
+					ImGui::Tile(debugger_evaluate_condition(address, bank) ? display_icons::ICON_YES : display_icons::ICON_NO);
+					ImGui::PopStyleVar();
 
 					ImGui::PopID();
 					ImGui::PopID();

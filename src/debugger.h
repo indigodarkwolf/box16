@@ -6,10 +6,15 @@
 #ifndef DEBUGGER_H
 #	define DEBUGGER_H
 
+#	include <string>
 #	include <set>
 #	include <tuple>
 
-#include "cpu/fake6502.h"
+#	include "boxmon/parser.h"
+#	include "cpu/fake6502.h"
+
+#	define DEBUG6502_EXPRESSION 0x80
+#	define DEBUG6502_CONDITION 0x08
 
 //
 // Breakpoints
@@ -33,9 +38,12 @@ uint64_t debugger_step_clocks();
 void     debugger_interrupt();
 bool     debugger_step_interrupted();
 
-uint8_t  debugger_get_flags(uint16_t address, uint8_t bank);
+uint8_t     debugger_get_flags(uint16_t address, uint8_t bank);
+std::string debugger_get_condition(uint16_t address, uint8_t bank);
+void        debugger_set_condition(uint16_t address, uint8_t bank, const std::string &condition);
+bool        debugger_evaluate_condition(uint16_t address, uint8_t bank);
 
-// Bank parameter is only meaninful for addresses >= $A000.
+    // Bank parameter is only meaninful for addresses >= $A000.
 // Addresses < $A000 will force bank to 0.
 void debugger_add_breakpoint(uint16_t address, uint8_t bank = 0, uint8_t flags = DEBUG6502_EXEC);
 void debugger_remove_breakpoint(uint16_t address, uint8_t bank = 0, uint8_t flags = DEBUG6502_EXEC);
