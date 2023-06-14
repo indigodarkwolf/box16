@@ -24,10 +24,12 @@
 #define RAM_SIZE (0xa000 + (uint32_t)Options.num_ram_banks * 8192) /* $0000-$9FFF + banks at $A000-$BFFF */
 
 #define RAM_BANK (RAM[0])
-#define ROM_BANK (RAM[1])
+#define ROM_BANK (rom_bank_register)
 
 uint8_t *RAM;
 uint8_t  ROM[ROM_SIZE];
+
+uint8_t rom_bank_register;
 
 #define RAM_WRITE_BLOCKS (((RAM_SIZE) + 0x3f) >> 6)
 static uint64_t *RAM_written;
@@ -183,6 +185,8 @@ static void real_ram_write(uint16_t address, uint8_t value)
 	RAM_written[real_address >> 6] |= (uint64_t)1 << (real_address & 0x3f);
 
 	RAM[real_address] = value;
+
+	if (address == 1) ROM_BANK = value;
 }
 
 //
@@ -358,7 +362,7 @@ static void debug_write(uint16_t address, uint8_t bank, uint8_t value)
 {
 	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
 		case MEMMAP_NULL: break;
-		case MEMMAP_DIRECT: RAM[address] = value; break;
+		case MEMMAP_DIRECT: RAM[address] = value; if (address == 1) ROM_BANK = value; break;
 		case MEMMAP_RAMBANK: debug_ram_write(address, bank, value); break;
 		case MEMMAP_ROMBANK: debug_rom_write(address, bank, value); break;
 		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
@@ -376,7 +380,7 @@ static void real_write(uint16_t address, uint8_t value)
 {
 	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
 		case MEMMAP_NULL: break;
-		case MEMMAP_DIRECT: RAM[address] = value; break;
+		case MEMMAP_DIRECT: RAM[address] = value; if (address == 1) ROM_BANK = value; break;
 		case MEMMAP_RAMBANK: real_ram_write(address, value); break;
 		case MEMMAP_ROMBANK: real_rom_write(address, value); break;
 		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
@@ -435,6 +439,11 @@ void write6502(uint16_t address, uint8_t value)
 uint8_t bank6502(uint16_t address)
 {
 	return memory_get_current_bank(address);
+}
+
+void vp6502(void)
+{
+	ROM_BANK = 0;
 }
 
 //

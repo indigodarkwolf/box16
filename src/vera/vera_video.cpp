@@ -456,7 +456,8 @@ static void render_sprite_line(const uint16_t y)
 	}
 }
 
-static void render_layer_line_text(uint8_t layer, uint16_t y)
+template<uint8_t layer>
+static void render_layer_line_text(uint16_t y)
 {
 	const struct vera_video_layer_properties *props = &layer_properties[layer];
 
@@ -554,16 +555,17 @@ static void render_layer_line_text(uint8_t layer, uint16_t y)
 	}
 }
 
-static void render_layer_line_tile(uint8_t layer, uint16_t y)
+template <uint8_t layer, uint8_t bpp>
+static void render_layer_line_tile(uint16_t y)
 {
 	struct vera_video_layer_properties *props = &layer_properties[layer];
 
-	const uint8_t  max_pixels_per_byte = (8 >> props->color_depth) - 1;
+	const uint8_t  max_pixels_per_byte = (8 >> bpp) - 1;
 	const int      eff_y               = calc_layer_eff_y(props, y);
 	const uint8_t  yy                  = eff_y & props->tileh_max;
 	const uint8_t  yy_flip             = yy ^ props->tileh_max;
-	const uint32_t y_add               = (yy << (props->tilew_log2 + props->color_depth - 3));
-	const uint32_t y_add_flip          = (yy_flip << (props->tilew_log2 + props->color_depth - 3));
+	const uint32_t y_add               = (yy << (props->tilew_log2 + bpp - 3));
+	const uint32_t y_add_flip          = (yy_flip << (props->tilew_log2 + bpp - 3));
 
 	uint8_t tile_bytes[512]; // max 256 tiles, 2 bytes each.
 	vera_video_space_read_range(tile_bytes, props->map_base + ((eff_y >> props->tileh_log2) << (props->mapw_log2 + 1)), 2 << props->mapw_log2);
@@ -573,7 +575,6 @@ static void render_layer_line_tile(uint8_t layer, uint16_t y)
 	bool     hflip;
 	uint32_t tile_start;
 	uint8_t  s;
-	uint8_t  color_shift;
 
 	{
 		const int eff_x = calc_layer_eff_x(props, 0);
@@ -600,7 +601,7 @@ static void render_layer_line_tile(uint8_t layer, uint16_t y)
 		}
 
 		// additional bytes to reach the correct column of the tile
-		uint16_t x_add       = (xx << props->color_depth) >> 3;
+		uint16_t x_add       = (xx << bpp) >> 3;
 		uint32_t tile_offset = tile_start + (vflip ? y_add_flip : y_add) + x_add;
 
 		s = vera_video_space_read(props->tile_base + tile_offset);
@@ -640,17 +641,15 @@ static void render_layer_line_tile(uint8_t layer, uint16_t y)
 			}
 
 			// additional bytes to reach the correct column of the tile
-			const uint16_t x_add       = (xx << props->color_depth) >> 3;
+			const uint16_t x_add       = (xx << bpp) >> 3;
 			const uint32_t tile_offset = tile_start + (vflip ? y_add_flip : y_add) + x_add;
 
 			s = vera_video_space_read(props->tile_base + tile_offset);
 		}
 
-		if (hflip) {
-			color_shift = (eff_x & max_pixels_per_byte) << props->color_depth;
-		} else {
-			color_shift = props->first_color_pos - ((eff_x & max_pixels_per_byte) << props->color_depth);
-		}
+		uint8_t color_shift = hflip ?
+			(eff_x & max_pixels_per_byte) << bpp :
+			props->first_color_pos - ((eff_x & max_pixels_per_byte) << bpp);
 		// convert tile byte to indexed color
 		uint8_t col_index = (s >> color_shift) & props->color_mask;
 
@@ -665,7 +664,19 @@ static void render_layer_line_tile(uint8_t layer, uint16_t y)
 	}
 }
 
-static void render_layer_line_bitmap(uint8_t layer, uint16_t y)
+template <uint8_t layer>
+static void render_layer_line_tile(uint16_t y)
+{
+	switch (layer_properties[layer].color_depth) {
+	case 0x0: render_layer_line_tile<layer, 0>(y); break;
+	case 0x1: render_layer_line_tile<layer, 1>(y); break;
+	case 0x2: render_layer_line_tile<layer, 2>(y); break;
+	case 0x3: render_layer_line_tile<layer, 3>(y); break;
+	}
+}
+
+template<uint8_t layer>
+static void render_layer_line_bitmap(uint16_t y)
 {
 	struct vera_video_layer_properties *props = &layer_properties[layer];
 
@@ -762,11 +773,11 @@ static void render_line(uint16_t y)
 
 	if (layer_line_enable[0]) {
 		if (layer_properties[0].text_mode) {
-			render_layer_line_text(0, eff_y);
+			render_layer_line_text<0>(eff_y);
 		} else if (layer_properties[0].bitmap_mode) {
-			render_layer_line_bitmap(0, eff_y);
+			render_layer_line_bitmap<0>(eff_y);
 		} else {
-			render_layer_line_tile(0, eff_y);
+			render_layer_line_tile<0>(eff_y);
 		}
 	} else if (layer0_was_enabled) {
 		memset(layer_line[0], 0, SCREEN_WIDTH);
@@ -774,11 +785,11 @@ static void render_line(uint16_t y)
 
 	if (layer_line_enable[1]) {
 		if (layer_properties[1].text_mode) {
-			render_layer_line_text(1, eff_y);
+			render_layer_line_text<1>(eff_y);
 		} else if (layer_properties[1].bitmap_mode) {
-			render_layer_line_bitmap(1, eff_y);
+			render_layer_line_bitmap<1>(eff_y);
 		} else {
-			render_layer_line_tile(1, eff_y);
+			render_layer_line_tile<1>(eff_y);
 		}
 	} else if (layer1_was_enabled) {
 		memset(layer_line[1], 0, SCREEN_WIDTH);

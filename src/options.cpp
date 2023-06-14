@@ -5,6 +5,7 @@
 
 #include "audio.h"
 #include "debugger.h"
+#include "display.h"
 #include "overlay/overlay.h"
 #include "symbols.h"
 #include "version.h"
@@ -1170,6 +1171,7 @@ static void set_panels(mINI::INIMap<std::string> &ini)
 	get_option("vera_psg_monitor", Show_VERA_PSG_monitor);
 	get_option("ym2151_monitor", Show_YM2151_monitor);
 	get_option("midi_overlay", Show_midi_overlay);
+	get_option("display", Show_display);
 }
 
 static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
@@ -1450,6 +1452,14 @@ void set_ini_panels(mINI::INIMap<std::string> &ini, bool all)
 	set_option("midi_overlay", Show_midi_overlay, false);
 }
 
+void set_ini_window(mINI::INIMap<std::string> &ini)
+{
+	int width, height;
+	SDL_GetWindowSize(display_get_window(), &width, &height);
+	ini["width"] = std::to_string(width);
+	ini["height"] = std::to_string(height);
+}
+
 void apply_ini(mINI::INIStructure &dst, const mINI::INIStructure &src)
 {
 	for (const auto &i : src) {
@@ -1523,6 +1533,14 @@ void options_init(const char *base_path, const char *prefs_path, int argc, char 
 	apply_ini(inifile_main);
 	apply_ini(cmdline_main);
 
+	auto & inifile_window = Inifile_ini["window"];
+	if (inifile_window.has("width")) {
+		Options.window_width = std::stoi(inifile_window["width"]);
+	}
+	if (inifile_window.has("height")) {
+		Options.window_height = std::stoi(inifile_window["height"]);
+	}
+
 	if (!cmdline_main.has("nopanels") || cmdline_main["nopanels"] != "true") {
 		set_panels(Inifile_ini["panels"]);
 	}
@@ -1556,6 +1574,7 @@ void save_options(bool all)
 
 	set_ini_main(ini["main"], all);
 	set_ini_panels(ini["panels"], all);
+	set_ini_window(ini["window"]);
 
 	file.generate(ini);
 
@@ -1569,6 +1588,7 @@ void save_options_on_close(bool all)
 	mINI::INIFile file(Options_ini_path.generic_string());
 
 	set_ini_panels(Inifile_ini["panels"], all);
+	set_ini_window(Inifile_ini["window"]);
 
 	file.generate(Inifile_ini);
 }

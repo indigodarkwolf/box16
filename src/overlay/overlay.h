@@ -22,6 +22,10 @@ extern bool Show_VERA_sprites;
 extern bool Show_VERA_PSG_monitor;
 extern bool Show_YM2151_monitor;
 extern bool Show_midi_overlay;
+extern bool Show_display;
+
+extern bool display_focused;
+extern bool mouse_captured;
 
 void overlay_draw();
 

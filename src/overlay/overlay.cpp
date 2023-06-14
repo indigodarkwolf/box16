@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "imgui/imgui.h"
-#include "imgui/imgui_impl_sdl.h"
+#include "imgui/imgui_impl_sdl2.h"
 
 #include "cpu_visualization.h"
 #include "disasm_overlay.h"
@@ -61,6 +61,9 @@ bool Show_VERA_sprites     = false;
 bool Show_VERA_PSG_monitor = false;
 bool Show_YM2151_monitor   = false;
 bool Show_midi_overlay     = false;
+bool Show_display 		   = true;
+
+bool display_focused       = false;
 
 imgui_vram_dump vram_dump;
 
@@ -2344,7 +2347,7 @@ static void draw_symbols_list()
 			static bool     selected      = false;
 			static uint16_t selected_addr = 0;
 			static uint8_t  selected_bank = 0;
-			if (ImGui::ListBoxHeader("Filtered Symbols")) {
+			if (ImGui::BeginListBox("Filtered Symbols")) {
 				int  id                   = 0;
 				bool any_selected_visible = false;
 
@@ -2385,7 +2388,7 @@ static void draw_symbols_list()
 					}
 				});
 				selected = any_selected_visible;
-				ImGui::ListBoxFooter();
+				ImGui::EndListBox();
 			}
 
 			if (ImGui::Button("Add Breakpoint at Symbol") && selected) {
@@ -2488,10 +2491,10 @@ static void draw_symbols_files()
 static void draw_debugger_controls()
 {
 	bool paused  = debugger_is_paused();
-	bool shifted = ImGui::IsKeyDown(SDL_SCANCODE_LSHIFT) || ImGui::IsKeyDown(SDL_SCANCODE_RSHIFT);
+	bool shifted = ImGui::IsKeyDown(ImGuiKey_LeftShift) || ImGui::IsKeyDown(ImGuiKey_RightShift);
 
 	static bool stop_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_STOP_DISABLED : ICON_STOP, !paused, &stop_hovered) || (shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F5))) {
+	if (ImGui::TileButton(paused ? ICON_STOP_DISABLED : ICON_STOP, !paused, &stop_hovered) || (shifted && ImGui::IsKeyPressed(ImGuiKey_F5))) {
 		debugger_pause_execution();
 		disasm.follow_pc();
 	}
@@ -2502,7 +2505,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	static bool run_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_RUN : ICON_RUN_DISABLED, paused, &run_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F5))) {
+	if (ImGui::TileButton(paused ? ICON_RUN : ICON_RUN_DISABLED, paused, &run_hovered) || (!shifted && ImGui::IsKeyPressed(ImGuiKey_F5))) {
 		debugger_continue_execution();
 		disasm.follow_pc();
 	}
@@ -2512,7 +2515,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	static bool step_over_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_STEP_OVER : ICON_STEP_OVER_DISABLED, paused, &step_over_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F10))) {
+	if (ImGui::TileButton(paused ? ICON_STEP_OVER : ICON_STEP_OVER_DISABLED, paused, &step_over_hovered) || (!shifted && ImGui::IsKeyPressed(ImGuiKey_F10))) {
 		debugger_step_over_execution();
 		disasm.follow_pc();
 	}
@@ -2522,7 +2525,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	static bool step_into_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_STEP_INTO : ICON_STEP_INTO_DISABLED, paused, &step_into_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F11))) {
+	if (ImGui::TileButton(paused ? ICON_STEP_INTO : ICON_STEP_INTO_DISABLED, paused, &step_into_hovered) || (!shifted && ImGui::IsKeyPressed(ImGuiKey_F11))) {
 		debugger_step_execution();
 		disasm.follow_pc();
 	}
@@ -2532,7 +2535,7 @@ static void draw_debugger_controls()
 	ImGui::SameLine();
 
 	static bool step_out_hovered = false;
-	if (ImGui::TileButton(paused ? ICON_STEP_OUT : ICON_STEP_OUT_DISABLED, paused, &step_out_hovered) || (shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F11))) {
+	if (ImGui::TileButton(paused ? ICON_STEP_OUT : ICON_STEP_OUT_DISABLED, paused, &step_out_hovered) || (shifted && ImGui::IsKeyPressed(ImGuiKey_F11))) {
 		debugger_step_out_execution();
 		disasm.follow_pc();
 	}
@@ -2544,7 +2547,7 @@ static void draw_debugger_controls()
 	static bool set_breakpoint_hovered = false;
 	const bool  breakpoint_exists      = debugger_has_breakpoint(state6502.pc, memory_get_current_bank(state6502.pc));
 	const bool  breakpoint_active      = debugger_breakpoint_is_active(state6502.pc, memory_get_current_bank(state6502.pc));
-	if (ImGui::TileButton(paused ? ICON_ADD_BREAKPOINT : ICON_UNCHECKED_DISABLED, paused, &set_breakpoint_hovered) || (!shifted && ImGui::IsKeyPressed(SDL_SCANCODE_F9))) {
+	if (ImGui::TileButton(paused ? ICON_ADD_BREAKPOINT : ICON_UNCHECKED_DISABLED, paused, &set_breakpoint_hovered) || (!shifted && ImGui::IsKeyPressed(ImGuiKey_F9))) {
 		if (breakpoint_active) {
 			debugger_deactivate_breakpoint(state6502.pc, memory_get_current_bank(state6502.pc));
 		} else if (breakpoint_exists) {
@@ -2714,7 +2717,7 @@ static void draw_menu_bar()
 		}
 
 		if (ImGui::BeginMenu("Windows")) {
-			ImGui::Checkbox("Monitor Console", &Show_monitor_console);
+			ImGui::Checkbox("Display", &Show_display);
 			if (ImGui::BeginMenu("CPU Debugging")) {
 				ImGui::Checkbox("Memory Dump 1", &Show_memory_dump_1);
 				ImGui::Checkbox("Memory Dump 2", &Show_memory_dump_2);
@@ -2737,6 +2740,7 @@ static void draw_menu_bar()
 				ImGui::Checkbox("Sprite Settings", &Show_VERA_sprites);
 				ImGui::EndMenu();
 			}
+			ImGui::Checkbox("Monitor Console", &Show_monitor_console);
 			ImGui::Checkbox("PSG Monitor", &Show_VERA_PSG_monitor);
 			ImGui::Checkbox("YM2151 Monitor", &Show_YM2151_monitor);
 			ImGui::Separator();
@@ -2810,11 +2814,36 @@ static void draw_menu_bar()
 	}
 }
 
+static ImVec2 get_integer_scale_window_size(ImVec2 avail) {
+	float width            = 480.f * display_get_aspect_ratio();
+	float title_bar_height = ImGui::GetFrameHeight();
+	float scale;
+	if (avail.x < avail.y) {
+		scale = avail.x / width;
+	} else {
+		scale = avail.y / 480.f;
+	}
+	if (scale < 1) {
+		scale = floorf(1.f / std::max(scale, 0.125f));
+		return ImVec2(width / scale, 480.f / scale + title_bar_height);
+	} else {
+		scale = floorf(scale);
+		return ImVec2(width * scale, 480.f * scale + title_bar_height);
+	}
+}
+
 void overlay_draw()
 {
+	ImGuiIO & io = ImGui::GetIO();
+	if (mouse_captured) {
+		io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
+	} else {
+		io.ConfigFlags &= ~ImGuiConfigFlags_NoMouse;
+	}
+
 	draw_menu_bar();
 	ImGui::SetNextWindowBgAlpha(0.0f);
-	ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+	ImGuiID dock_id = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
 	if (Show_monitor_console) {
 		if (ImGui::Begin("Monitor", &Show_monitor_console)) {
@@ -2960,6 +2989,31 @@ void overlay_draw()
 			draw_midi_overlay();
 		}
 		ImGui::End();
+	}
+
+	// Display should be the last one so it gets focused on startup
+	if (Show_display) {
+		float        title_bar_height = ImGui::GetFrameHeight();
+#ifdef __APPLE__
+		const char * window_text      = mouse_captured ? "Display (Cmd+M to release mouse)###display" : "Display###display";
+#else
+		const char * window_text      = mouse_captured ? "Display (Ctrl+M to release mouse)###display" : "Display###display";
+#endif
+		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+		ImGui::SetNextWindowSizeConstraints(ImVec2(80, 60), ImVec2(FLT_MAX, FLT_MAX));
+		ImGui::SetNextWindowDockID(dock_id, ImGuiCond_FirstUseEver);
+		if (ImGui::Begin(window_text, &Show_display)) {
+			display_focused = ImGui::IsWindowFocused();
+			// Shift + click on title bar to resize to the nearest integer scale
+			if(ImGui::IsKeyDown(ImGuiKey_ModShift) && ImGui::IsItemClicked()) {
+				ImGui::SetWindowSize(get_integer_scale_window_size(ImGui::GetContentRegionAvail()));
+			}
+			display_video();
+		} else {
+			display_focused = false;
+		}
+		ImGui::End();
+		ImGui::PopStyleVar();
 	}
 }
 

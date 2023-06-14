@@ -17,12 +17,6 @@ struct SDL_FRect {
 };
 #endif
 
-struct display_settings {
-	SDL_Rect window_rect;
-	SDL_Rect video_rect;
-	float    aspect_ratio;
-};
-
 class icon_set
 {
 public:
@@ -49,14 +43,16 @@ private:
 	int      map_height     = 0;
 };
 
-bool  display_init(const display_settings &);
+bool  display_init();
 void  display_shutdown();
 void  display_process();
 float display_get_fps();
 void  display_refund_render_time(uint32_t time_us);
+void  display_video();
 
-const display_settings &display_get_settings();
-SDL_Window             *display_get_window();
+const float    display_get_aspect_ratio();
+SDL_Window *   display_get_window();
+const ImVec4 & display_get_rect();
 
 void display_toggle_fullscreen();
 

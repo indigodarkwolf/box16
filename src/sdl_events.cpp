@@ -5,7 +5,7 @@
 #include "debugger.h"
 #include "display.h"
 #include "glue.h"
-#include "imgui/imgui_impl_sdl.h"
+#include "imgui/imgui_impl_sdl2.h"
 #include "joystick.h"
 #include "keyboard.h"
 #include "options.h"
@@ -22,6 +22,10 @@
 #	define RSHORTCUT_KEY SDL_SCANCODE_RCTRL
 #endif
 
+bool mouse_captured = false;
+int  last_x = 0;
+int  last_y = 0;
+
 bool sdl_events_update()
 {
 	static bool cmd_down = false;
@@ -30,6 +34,8 @@ bool sdl_events_update()
 	bool mouse_state_change = false;
 
 	const uint32_t event_handling_start_us = timing_total_microseconds_realtime();
+	SDL_Window *   window                  = display_get_window();
+	const ImVec4   display_rect            = display_get_rect();
 
 	SDL_Event event;
 	while (SDL_PollEvent(&event)) {
@@ -51,13 +57,7 @@ bool sdl_events_update()
 
 		ImGui_ImplSDL2_ProcessEvent(&event);
 
-		if (ImGui::GetIO().WantCaptureMouse) {
-			continue;
-		}
-		if (ImGui::GetIO().WantCaptureKeyboard) {
-			continue;
-		}
-		if (ImGui::GetIO().WantTextInput) {
+		if (!mouse_captured && !display_focused || ImGui::GetIO().WantTextInput) {
 			continue;
 		}
 
@@ -108,6 +108,16 @@ bool sdl_events_update()
 								break;
 							case SDLK_d:
 								sdcard_detach();
+								consumed = true;
+								break;
+							case SDLK_m:
+								if (mouse_captured) {
+									mouse_captured = false;
+									SDL_SetRelativeMouseMode(SDL_FALSE);
+								} else {
+									mouse_captured = true;
+									SDL_SetRelativeMouseMode(SDL_TRUE);
+								}
 								consumed = true;
 								break;
 						}
@@ -205,14 +215,24 @@ bool sdl_events_update()
 				}
 				break;
 
-			case SDL_MOUSEMOTION: {
+			case SDL_MOUSEMOTION:
 				mouse_state_change = true;
-				static int mouse_x;
-				static int mouse_y;
-				mouse_move(event.motion.x - mouse_x, event.motion.y - mouse_y);
-				mouse_x = event.motion.x;
-				mouse_y = event.motion.y;
-			} break;
+				if (mouse_captured) {
+					// send mouse move as-is, no scaling applied
+					mouse_move(event.motion.xrel, event.motion.yrel);
+				} else {
+					// send mouse move from the last position, syncing with host cursor as much as possible
+					float new_x = event.motion.x - display_rect.x;
+					float new_y = event.motion.y - display_rect.y;
+					new_x = std::min(std::max(new_x, 0.f), display_rect.z) / display_rect.z * 640.f;
+					new_y = std::min(std::max(new_y, 0.f), display_rect.w) / display_rect.w * 480.f;
+					int new_x_i = (int)new_x;
+					int new_y_i = (int)new_y;
+					mouse_move(new_x_i - last_x, new_y_i - last_y);
+					last_x = new_x_i;
+					last_y = new_y_i;
+				}
+			    break;
 
 			default:
 				break;
