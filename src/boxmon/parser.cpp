@@ -266,20 +266,19 @@ namespace boxmon
 	{
 		char const *look = input;
 
-		if (*look != '.') {
-			return false;
-		}
-
 		std::stringstream rs;
-		rs << *look;
-		++look;
+
+		if (*look == '.') {
+			rs << *look;
+			++look;
+		}
 
 		while (isalnum(*look) || *look == '_' || *look == '@') {
 			rs << *look;
 			++look;
 		}
 
-		if (!isprint(*look)) {
+		if (*look != '\0' && !isprint(*look)) {
 			return false;
 		}
 
@@ -372,7 +371,7 @@ namespace boxmon
 		return true;
 	}
 
-	bool parser::parse_expression(const expression *&expression, char const *&input, int flags)
+	bool parser::parse_expression(const expression *&expression, char const *&input, expression_parse_flags flags)
 	{
 		std::stack<expression_type>     operator_stack;
 		std::stack<expression_base *> expression_stack;
@@ -414,14 +413,18 @@ namespace boxmon
 
 		auto pop_op = [&]() -> bool {
 			if (operator_stack.empty()) {
-				boxmon_error_printf("Expression parse failed (internal error, popping op with no more ops left) at: \"%s\"\n", look);
+				if ((flags & expression_parse_flags_suppress_errors) == 0) {
+					boxmon_error_printf("Expression parse failed (internal error, popping op with no more ops left) at: \"%s\"\n", look);
+				}
 				return false;
 			}
 			const expression_type op = operator_stack.top();
 			operator_stack.pop();
 
 			if (expression_stack.empty()) {
-				boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
+				if ((flags & expression_parse_flags_suppress_errors) == 0) {
+					boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
+				}
 				return false;
 			}
 			const expression_base *rhs = expression_stack.top();
@@ -436,7 +439,9 @@ namespace boxmon
 					break;
 				default:
 					if (expression_stack.empty()) {
-						boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
+						if ((flags & expression_parse_flags_suppress_errors) == 0) {
+							boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
+						}
 						return false;
 					} else {
 						const expression_base *lhs = expression_stack.top();
@@ -586,7 +591,9 @@ namespace boxmon
 			expression_type parse_type = read_token();
 			switch (parse_type) {
 				case expression_type::invalid:
-					boxmon_error_printf("Expression parse failed (invalid token) at: \"%s\"\n", look);
+					if ((flags & expression_parse_flags_suppress_errors) == 0) {
+						boxmon_error_printf("Expression parse failed (invalid token) at: \"%s\"\n", look);
+					}
 					clear_stacks();
 					return false;
 				case expression_type::value:
@@ -604,7 +611,9 @@ namespace boxmon
 						}
 					}
 					if (operator_stack.empty()) {
-						boxmon_error_printf("Expression parse failed (mismatched parenthesis) at: \"%s\"\n", look);
+						if ((flags & expression_parse_flags_suppress_errors) == 0) {
+							boxmon_error_printf("Expression parse failed (mismatched parenthesis) at: \"%s\"\n", look);
+						}
 					} else {
 						operator_stack.pop();
 					}
@@ -636,7 +645,9 @@ namespace boxmon
 		}
 
 		if (expression_stack.empty()) {
-			boxmon_error_printf("Expression parse failed (internal error, no final expression) at: \"%s\"\n", look);
+			if ((flags & expression_parse_flags_suppress_errors) == 0) {
+				boxmon_error_printf("Expression parse failed (internal error, no final expression) at: \"%s\"\n", look);
+			}
 			return false;
 		}
 
@@ -644,11 +655,16 @@ namespace boxmon
 		expression_stack.pop();
 
 		if (!expression_stack.empty()) {
-			boxmon_error_printf("Expression parse failed (too many expressions) at: \"%s\"\n", look);
+			if ((flags & expression_parse_flags_suppress_errors) == 0) {
+				boxmon_error_printf("Expression parse failed (too many expressions) at: \"%s\"\n", look);
+			}
 			return false;
 		}
 
-		if ((flags & expression_parse_flag_must_consume_all) != 0 && *look != '\0') {
+		if ((flags & expression_parse_flags_must_consume_all) != 0 && *look != '\0') {
+			if ((flags & expression_parse_flags_suppress_errors) == 0) {
+				boxmon_error_printf("Expression parse failed (invalid token) at: \"%s\"\n", look);
+			}
 			return false;
 		}
 

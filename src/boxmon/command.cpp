@@ -129,7 +129,7 @@ BOXMON_COMMAND(help, "help")
 BOXMON_COMMAND(eval, "eval <expr>")
 {
 	const boxmon::expression *expr;
-	if (parser.parse_expression(expr, input)) {
+	if (parser.parse_expression(expr, input, boxmon::expression_parse_flags_must_consume_all)) {
 		boxmon_console_printf("%d", expr->evaluate());
 		return true;
 	}
@@ -152,8 +152,18 @@ BOXMON_COMMAND(break, "break [load|store|exec] [address [address] [if <cond_expr
 		bps.push_back(bp);
 	}
 
-	for (auto bp : bps) {
-		debugger_add_breakpoint(std::get<0>(bp), std::get<1>(bp), breakpoint_flags);
+	if (int option; parser.parse_option(option, { "if" }, input)) {
+		if (const boxmon::expression *expr = nullptr; parser.parse_expression(expr, input, boxmon::expression_parse_flags_must_consume_all)) {
+			for (auto bp : bps) {
+				breakpoint_flags |= DEBUG6502_CONDITION;
+				debugger_add_breakpoint(std::get<0>(bp), std::get<1>(bp), breakpoint_flags);
+				debugger_set_condition(std::get<0>(bp), std::get<1>(bp), expr->get_string());
+			}
+		}
+	} else {
+		for (auto bp : bps) {
+			debugger_add_breakpoint(std::get<0>(bp), std::get<1>(bp), breakpoint_flags);
+		}	
 	}
 
 	return true;
@@ -163,7 +173,7 @@ BOXMON_ALIAS(br, break);
 
 BOXMON_COMMAND(add_label, "add_label <address> <label>")
 {
-	breakpoint_type addr;
+	boxmon::address_type addr;
 	if (!parser.parse_address(addr, input)) {
 		return false;
 	}
@@ -173,7 +183,7 @@ BOXMON_COMMAND(add_label, "add_label <address> <label>")
 		return false;
 	}
 
-	// symbols_add_label(addr, label);
+	symbols_add(std::get<0>(addr), std::get<1>(addr), label);
 	return true;
 }
 

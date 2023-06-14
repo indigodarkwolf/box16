@@ -257,6 +257,23 @@ const symbol_namelist_type &symbols_find(const std::string &name)
 	return entry->second;
 }
 
+void symbols_add(uint16_t addr, symbol_bank_type bank, const std::string &name)
+{
+	const auto &table_entry = Symbols_table.find(addr);
+	if (table_entry != Symbols_table.end()) {
+		table_entry->second.push_back(name);
+	} else {
+		Symbols_table.insert({ addr, std::list<std::string>{ name } });
+	}
+
+	const auto &nametable_entry = Symbols_nametable.find(name);
+	if (nametable_entry != Symbols_nametable.end()) {
+		nametable_entry->second.push_back(addr);
+	} else {
+		Symbols_nametable.insert({ name, std::list<symbol_address_type>{ addr } });
+	}
+}
+
 const symbol_list_type &symbols_find(uint32_t address, symbol_bank_type bank)
 {
 	if (address < 0xa000) {

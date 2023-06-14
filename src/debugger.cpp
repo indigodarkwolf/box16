@@ -354,7 +354,7 @@ void debugger_set_condition(uint16_t address, uint8_t bank, const std::string &c
 
 		const boxmon::expression *expression = nullptr;
 		const char               *condition_cstr = condition.c_str();
-		if (Condition_parser.parse_expression(expression, condition_cstr, boxmon::expression_parse_flag_must_consume_all)) {
+		if (Condition_parser.parse_expression(expression, condition_cstr, boxmon::expression_parse_flags_must_consume_all | boxmon::expression_parse_flags_suppress_errors)) {
 			Breakpoint_expressions[offset] = expression;
 			Breakpoint_flags[offset] |= DEBUG6502_EXPRESSION;
 		} else {

@@ -24,15 +24,20 @@ namespace boxmon
 	class expression
 	{
 	public:
-		virtual ~expression() { }
+		virtual ~expression()
+		{
+		}
 		virtual const std::string &get_string() const = 0;
 		virtual int                evaluate() const   = 0;
 	};
 
-	enum expression_parse_flags {
-		expression_parse_flag_none = 0,
-		expression_parse_flag_must_consume_all = 1
+	enum expression_parse_flags_ {
+		expression_parse_flags_none             = 0,
+		expression_parse_flags_must_consume_all = 1 << 0,
+		expression_parse_flags_suppress_errors  = 1 << 1
 	};
+
+	typedef int expression_parse_flags; //
 
 	//
 	// Parser
@@ -66,7 +71,7 @@ namespace boxmon
 		bool parse_address(address_type &, char const *&input);
 		bool parse_address_range(address_type &result0, address_type &result1, char const *&input);
 		bool parse_bankname(uint8_t &bank, char const *&input);
-		bool parse_expression(const expression *&expression, char const *&input, int flags = expression_parse_flag_none);
+		bool parse_expression(const expression *&expression, char const *&input, expression_parse_flags flags = expression_parse_flags_none);
 
 		void set_default_radix(radix_type radix);
 		void set_default_bank(uint8_t bank);
