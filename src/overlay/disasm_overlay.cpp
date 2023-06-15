@@ -368,11 +368,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, uint8_t bank)
 			ImGui::Text("%s ", mnemonic);
 			ImGui::SameLine();
 
-			if (show_hex) {
-				ImGui::Text("$%02X", value);
-			} else {
-				ImGui::Text("%d", (int)value);
-			}
+			ImGui::disasm_label(value, bank, is_branch, "$%02X");
 		} break;
 
 		case op_mode::MODE_REL: {
