@@ -112,10 +112,10 @@ static bool ieee_hypercalls_allowed()
 		return false;
 	}
 
-	//if (sdcard_is_attached()) {
-	//	// if should emulate an SD card, we'll always skip host fs
-	//	return false;
-	//}
+	if (sdcard_is_attached()) {
+		// if should emulate an SD card, we'll always skip host fs
+		return false;
+	}
 
 	if (sdcard_is_attached() && !Options.prg_path.empty() && prg_finished_loading) {
 		return false;
