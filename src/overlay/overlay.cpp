@@ -61,9 +61,9 @@ bool Show_VERA_sprites     = false;
 bool Show_VERA_PSG_monitor = false;
 bool Show_YM2151_monitor   = false;
 bool Show_midi_overlay     = false;
-bool Show_display 		   = true;
+bool Show_display          = true;
 
-bool display_focused       = false;
+bool display_focused = false;
 
 imgui_vram_dump vram_dump;
 
@@ -71,11 +71,11 @@ imgui_vram_dump vram_dump;
 // Demonstrate creating a simple console window, with scrolling, filtering, completion and history.
 // For the console example, we are using a more C++ like approach of declaring a class to hold both data and functions.
 struct BoxmonAppConsole {
-	char                   InputBuf[512];
-	int                    HistoryPos; // -1: new line, 0..History.Size-1 browsing history.
-	ImGuiTextFilter        Filter;
-	bool                   AutoScroll;
-	bool                   ScrollToBottom;
+	char            InputBuf[512];
+	int             HistoryPos; // -1: new line, 0..History.Size-1 browsing history.
+	ImGuiTextFilter Filter;
+	bool            AutoScroll;
+	bool            ScrollToBottom;
 
 	BoxmonAppConsole()
 	{
@@ -441,7 +441,7 @@ static void draw_debugger_cpu_status()
 			for (uint16_t i = state6502.sp_depth - 1; i < state6502.sp_depth; --i) {
 				ImGui::TableNextColumn();
 				auto do_label = [](uint16_t pc, uint8_t bank, bool allow_disabled) {
-					char const *label = disasm_get_label(pc);
+					char const *label  = disasm_get_label(pc);
 					bool        pushed = false;
 
 					if (pc >= 0xa000) {
@@ -467,7 +467,7 @@ static void draw_debugger_cpu_status()
 							char stack_line[256];
 							snprintf(stack_line, sizeof(stack_line), "$%04X: %s", pc, label);
 							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
-						}					
+						}
 					}
 
 					if (pushed) {
@@ -880,10 +880,10 @@ static void draw_debugger_vera_sprite()
 		const bool    hflip  = spr->prop.hflip;
 		const bool    vflip  = spr->prop.vflip;
 		uint16_t      box[4]{
-			     (uint16_t)((spr->prop.sprite_x) & 0x3FF),
-			     (uint16_t)((spr->prop.sprite_x + width) & 0x3FF),
-			     (uint16_t)((spr->prop.sprite_y) & 0x3FF),
-			     (uint16_t)((spr->prop.sprite_y + height) & 0x3FF),
+            (uint16_t)((spr->prop.sprite_x) & 0x3FF),
+            (uint16_t)((spr->prop.sprite_x + width) & 0x3FF),
+            (uint16_t)((spr->prop.sprite_y) & 0x3FF),
+            (uint16_t)((spr->prop.sprite_y + height) & 0x3FF),
 		}; // l, r, t, b
 		// this might sounds hacky but it works
 		if (box[1] < box[0])
@@ -2011,8 +2011,10 @@ static void draw_breakpoints()
 	ImGui::BeginGroup();
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
-		if (ImGui::TreeNodeEx("Breakpoints", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			if (ImGui::BeginTable("breakpoints", 9, ImGuiTableFlags_Resizable)) {
+		{
+			ImVec2 table_size = ImGui::GetContentRegionAvail();
+			table_size.y      = 0.0f;
+			if (ImGui::BeginTable("breakpoints", 9, ImGuiTableFlags_Resizable, table_size)) {
 				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("R", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("W", ImGuiTableColumnFlags_WidthFixed, 16);
@@ -2152,9 +2154,6 @@ static void draw_breakpoints()
 			if (ImGui::Button("Add")) {
 				debugger_add_breakpoint(new_address, new_bank);
 			}
-
-			ImGui::Dummy(ImVec2(0, 5));
-			ImGui::TreePop();
 		}
 		ImGui::PopStyleVar();
 	}
@@ -2166,11 +2165,11 @@ static void draw_watch_list()
 	ImGui::BeginGroup();
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
-		if (ImGui::TreeNodeEx("Watch List", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		{
 			static bool show_hex = true;
 			ImGui::Checkbox("Show Hex Values", &show_hex);
 
-			if (ImGui::BeginTable("watch list", 6)) {
+			if (ImGui::BeginTable("watch list", 6, 0, ImVec2(ImGui::GetContentRegionAvail().x, 0.0f))) {
 				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("Address", ImGuiTableColumnFlags_WidthFixed, 64);
 				ImGui::TableSetupColumn("Bank", ImGuiTableColumnFlags_WidthFixed, 48);
@@ -2326,9 +2325,6 @@ static void draw_watch_list()
 			if (ImGui::Button("Add")) {
 				debugger_add_watch(new_address, new_bank, size_type);
 			}
-
-			ImGui::Dummy(ImVec2(0, 5));
-			ImGui::TreePop();
 		}
 		ImGui::PopStyleVar();
 	}
@@ -2340,39 +2336,54 @@ static void draw_symbols_list()
 	ImGui::BeginGroup();
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
-		if (ImGui::TreeNodeEx("Loaded Symbols", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		{
 			static char symbol_filter[64] = "";
-			ImGui::InputText("Filter", symbol_filter, 64);
+
+			auto search_filter_contains = [&](const char *value) -> bool {
+				char filter[64];
+				strcpy(filter, symbol_filter);
+				char *token    = strtok(filter, " ");
+				bool  included = true;
+				while (token != nullptr) {
+					if (strstr(value, token) == nullptr) {
+						included = false;
+						break;
+					}
+					token = strtok(nullptr, " ");
+				}
+				return included;
+			};
+
+			static std::vector<std::tuple<uint16_t, symbol_bank_type, std::string>> Filtered_results;
+			static bool                                                             initd = false;
+			if (ImGui::InputText("Filter", symbol_filter, 64) || !initd) {
+				initd = true;
+				Filtered_results.clear();
+				symbols_for_each([&](uint16_t address, symbol_bank_type bank, const std::string &name) {
+					if (search_filter_contains(name.c_str())) {
+						Filtered_results.push_back(std::make_tuple(address, bank, name));
+					}
+				});
+			}
 
 			static bool     selected      = false;
 			static uint16_t selected_addr = 0;
 			static uint8_t  selected_bank = 0;
-			if (ImGui::BeginListBox("Filtered Symbols")) {
+			if (ImGui::BeginListBox("Filtered Symbols", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y - ImGui::GetFrameHeight() - ImGui::GetStyle().FramePadding.y * 2.0f))) {
 				int  id                   = 0;
 				bool any_selected_visible = false;
 
-				auto search_filter_contains = [&](const char *value) -> bool {
-					char filter[64];
-					strcpy(filter, symbol_filter);
-					char *token    = strtok(filter, " ");
-					bool  included = true;
-					while (token != nullptr) {
-						if (strstr(value, token) == nullptr) {
-							included = false;
-							break;
-						}
-						token = strtok(nullptr, " ");
-					}
-					return included;
-				};
+				ImGuiListClipper clipper;
+				clipper.Begin((int)Filtered_results.size());
+				while (clipper.Step()) {
+					for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++) {
+						auto [address, bank, name] = Filtered_results[row];
 
-				symbols_for_each([&](uint16_t address, symbol_bank_type bank, const std::string &name) {
-					if (search_filter_contains(name.c_str())) {
 						ImGui::PushID(id++);
 						bool is_selected = selected && (selected_addr == address) && (selected_bank == bank);
 						char display_name[128];
 						sprintf(display_name, "%04x %s", address, name.c_str());
-						if (ImGui::Selectable(display_name, is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+						if (ImGui::Selectable(display_name, is_selected, ImGuiSelectableFlags_AllowDoubleClick | ImGuiSelectableFlags_DontClosePopups)) {
 							selected      = true;
 							selected_addr = address;
 							selected_bank = bank;
@@ -2383,10 +2394,63 @@ static void draw_symbols_list()
 								disasm.set_rom_bank(bank);
 							}
 						}
+						if (ImGui::BeginPopupContextItem("add watch bp", ImGuiPopupFlags_MouseButtonRight)) {
+							if (ImGui::Button("Add Breakpoint")) {
+								debugger_add_breakpoint(address, bank, DEBUG6502_EXEC);
+								printf("add bp\n");
+								ImGui::CloseCurrentPopup();
+								Show_breakpoints = true;
+							}
+							if (ImGui::Button("Add Watch")) {
+								debugger_add_watch(address, bank, DEBUGGER_SIZE_TYPE_U8);
+								printf("add w\n");
+								ImGui::CloseCurrentPopup();
+								Show_watch_list = true;
+							}
+							ImGui::EndPopup();
+						}
 						any_selected_visible = any_selected_visible || is_selected;
 						ImGui::PopID();
 					}
-				});
+				}
+
+				//symbols_for_each([&](uint16_t address, symbol_bank_type bank, const std::string &name) {
+				//	if (search_filter_contains(name.c_str())) {
+				//		ImGui::PushID(id++);
+				//		bool is_selected = selected && (selected_addr == address) && (selected_bank == bank);
+				//		char display_name[128];
+				//		sprintf(display_name, "%04x %s", address, name.c_str());
+				//		if (ImGui::Selectable(display_name, is_selected, ImGuiSelectableFlags_AllowDoubleClick | ImGuiSelectableFlags_DontClosePopups)) {
+				//			selected      = true;
+				//			selected_addr = address;
+				//			selected_bank = bank;
+				//			is_selected   = true;
+
+				//			if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+				//				disasm.set_dump_start(address);
+				//				disasm.set_rom_bank(bank);
+				//			}
+				//		} else if (ImGui::IsMouseClicked(ImGuiMouseButton_Right)) {
+				//			ImGui::OpenPopup("add watch bp");
+				//			printf("rclick\n");
+				//		}
+				//		if (ImGui::BeginPopup("add watch bp")) {
+				//			if (ImGui::Button("Add Breakpoint")) {
+				//				debugger_add_breakpoint(address, bank, DEBUG6502_EXEC);
+				//				printf("add bp\n");
+				//				ImGui::CloseCurrentPopup();
+				//			}
+				//			if (ImGui::Button("Add Watch")) {
+				//				debugger_add_watch(address, bank, 1);
+				//				printf("add w\n");
+				//				ImGui::CloseCurrentPopup();
+				//			}
+				//			ImGui::EndPopup();
+				//		}
+				//		any_selected_visible = any_selected_visible || is_selected;
+				//		ImGui::PopID();
+				//	}
+				//});
 				selected = any_selected_visible;
 				ImGui::EndListBox();
 			}
@@ -2398,9 +2462,6 @@ static void draw_symbols_list()
 			if (ImGui::Button("Add Watch at Symbol") && selected) {
 				debugger_add_watch(selected_addr, selected_bank, 1);
 			}
-
-			ImGui::Dummy(ImVec2(0, 5));
-			ImGui::TreePop();
 		}
 		ImGui::PopStyleVar();
 	}
@@ -2412,8 +2473,8 @@ static void draw_symbols_files()
 	ImGui::BeginGroup();
 	{
 		ImGui::PushStyleVar(ImGuiStyleVar_IndentSpacing, 0.0f);
-		if (ImGui::TreeNodeEx("Loaded Symbol Files", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
-			if (ImGui::BeginTable("symbols", 3)) {
+		{
+			if (ImGui::BeginTable("symbols", 3, 0, ImVec2(ImGui::GetContentRegionAvail().x, 0.0f))) {
 				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 16);
 				ImGui::TableSetupColumn("Path");
@@ -2479,9 +2540,6 @@ static void draw_symbols_files()
 			}
 
 			ImGui::InputHexLabel("Bank", ram_bank);
-
-			ImGui::Dummy(ImVec2(0, 5));
-			ImGui::TreePop();
 		}
 		ImGui::PopStyleVar();
 	}
@@ -2814,7 +2872,8 @@ static void draw_menu_bar()
 	}
 }
 
-static ImVec2 get_integer_scale_window_size(ImVec2 avail) {
+static ImVec2 get_integer_scale_window_size(ImVec2 avail)
+{
 	float width            = 480.f * display_get_aspect_ratio();
 	float title_bar_height = ImGui::GetFrameHeight();
 	float scale;
@@ -2834,7 +2893,7 @@ static ImVec2 get_integer_scale_window_size(ImVec2 avail) {
 
 void overlay_draw()
 {
-	ImGuiIO & io = ImGui::GetIO();
+	ImGuiIO &io = ImGui::GetIO();
 	if (mouse_captured) {
 		io.ConfigFlags |= ImGuiConfigFlags_NoMouse;
 	} else {
@@ -2993,11 +3052,11 @@ void overlay_draw()
 
 	// Display should be the last one so it gets focused on startup
 	if (Show_display) {
-		float        title_bar_height = ImGui::GetFrameHeight();
+		float title_bar_height = ImGui::GetFrameHeight();
 #ifdef __APPLE__
-		const char * window_text      = mouse_captured ? "Display (Cmd+M to release mouse)###display" : "Display###display";
+		const char *window_text = mouse_captured ? "Display (Cmd+M to release mouse)###display" : "Display###display";
 #else
-		const char * window_text      = mouse_captured ? "Display (Ctrl+M to release mouse)###display" : "Display###display";
+		const char *window_text = mouse_captured ? "Display (Ctrl+M to release mouse)###display" : "Display###display";
 #endif
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 		ImGui::SetNextWindowSizeConstraints(ImVec2(80, 60), ImVec2(FLT_MAX, FLT_MAX));
@@ -3005,7 +3064,7 @@ void overlay_draw()
 		if (ImGui::Begin(window_text, &Show_display)) {
 			display_focused = ImGui::IsWindowFocused();
 			// Shift + click on title bar to resize to the nearest integer scale
-			if(ImGui::IsKeyDown(ImGuiKey_ModShift) && ImGui::IsItemClicked()) {
+			if (ImGui::IsKeyDown(ImGuiKey_ModShift) && ImGui::IsItemClicked()) {
 				ImGui::SetWindowSize(get_integer_scale_window_size(ImGui::GetContentRegionAvail()));
 			}
 			display_video();
