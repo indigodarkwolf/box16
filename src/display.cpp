@@ -355,6 +355,9 @@ bool display_init()
 		}
 
 		// SDL_SetWindowTitle(Display_window, "Box16 Emulator for Commander X16");
+		
+		if(Options.fullscreen)
+		    display_toggle_fullscreen();
 	}
 	Initd_sdl_gl = true;
 
