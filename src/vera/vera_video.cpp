@@ -151,7 +151,7 @@ static uint8_t fx_cache[4];
 
 static int32_t fx_mult_accumulator;
 
-static const uint8_t vera_version_string[] = {'V', 
+static const uint8_t vera_version_string[] = {'V',
 	VERA_VERSION_MAJOR,
 	VERA_VERSION_MINOR,
 	VERA_VERSION_PATCH
@@ -1156,7 +1156,7 @@ static uint32_t get_and_inc_address(uint8_t sel, bool write)
 			}
 			io_addr[1] += increments[io_inc[0]];
 		}
-	} else if (fx_addr1_mode == 2 && write == false) { // FX polygon fill mode 
+	} else if (fx_addr1_mode == 2 && write == false) { // FX polygon fill mode
 		fx_x_pixel_position += fx_x_pixel_increment;
 		fx_y_pixel_position += fx_y_pixel_increment;
 		fx_poly_fill_length = ((int32_t) fx_y_pixel_position >> 16) - ((int32_t) fx_x_pixel_position >> 16);
@@ -1355,7 +1355,7 @@ uint8_t vera_debug_video_read(uint8_t reg)
 								((fx_poly_fill_length & 0x0007) << 1);
 						}
 					} else {
-						return ((!!(fx_poly_fill_length & 0xfff0)) << 7) | 
+						return ((!!(fx_poly_fill_length & 0xfff0)) << 7) |
 							((fx_x_pixel_position >> 11) & 0x60) |
 							((fx_poly_fill_length & 0x000f) << 1);
 					}
@@ -1487,7 +1487,7 @@ uint8_t vera_video_read(uint8_t reg)
 								((fx_poly_fill_length & 0x0007) << 1);
 						}
 					} else {
-						return ((!!(fx_poly_fill_length & 0xfff0)) << 7) | 
+						return ((!!(fx_poly_fill_length & 0xfff0)) << 7) |
 							((fx_x_pixel_position >> 11) & 0x60) |
 							((fx_poly_fill_length & 0x000f) << 1);
 					}
@@ -1636,7 +1636,7 @@ void vera_video_write(uint8_t reg, uint8_t value)
 				} else {
 					fx_vera_video_space_write(address, nibble, value); // Normal write
 				}
-			}			
+			}
 
 			io_rddata[reg - 3] = vera_video_space_read(io_addr[reg - 3]);
 			break;
