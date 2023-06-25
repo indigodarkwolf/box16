@@ -1220,8 +1220,7 @@ void fx_affine_prefetch(void)
 	io_rddata[1] = vera_video_space_read(address);
 }
 
-void
-fx_vram_cache_write(uint32_t address, uint8_t value, uint8_t mask)
+void fx_vram_cache_write(uint32_t address, uint8_t value, uint8_t mask)
 {
 	if (!fx_trans_writes || value > 0) {
 		switch (mask) {
@@ -1595,7 +1594,7 @@ void vera_video_write(uint8_t reg, uint8_t value)
 				}
 				break; // break out of the enclosing switch statement early, too
 			}
-			bool nibble = fx_nibble_bit[reg -3];
+			bool nibble = fx_nibble_bit[reg - 3];
 			uint32_t address = get_and_inc_address(reg - 3, true);
 			if (log_video) {
 				printf("WRITE video_space[$%X] = $%02X\n", address, value);
