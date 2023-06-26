@@ -190,8 +190,10 @@ static std::filesystem::path wildcard_match(const std::filesystem::path &origin,
 
 		bool matched = [&]() {
 			// in a wildcard match that starts at first position, leading dot filenames are not considered
-			if (pattern[0] == '?' || pattern[0] == '*' && dpname[0] == '.') {
-				return false;
+			if (pattern[0] == '?' || pattern[0] == '*') {
+				if(dpname[0] == '.') {
+					return false;
+				}
 			} else if (pattern[0] != dpname[0]) {
 				return false;
 			}
