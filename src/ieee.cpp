@@ -244,8 +244,12 @@ static std::filesystem::path resolve_path(const std::string &name, bool must_exi
 	const auto  relative_name = is_absolute ? name.substr(1) : name;
 
 	const auto resolved_path = is_wildcard ? wildcard_match(old_path, relative_name) : old_path / relative_name;
-	const auto resolved_absolute_path = std::filesystem::absolute(resolved_path);
+	if (resolved_path.empty()) {
+		set_error(0x62, 0, 0);
+		return "";
+	}
 
+	const auto resolved_absolute_path = std::filesystem::absolute(resolved_path);
 	if (must_exist && !std::filesystem::exists(resolved_absolute_path)) {
 		set_error(0x62, 0, 0);
 		return "";
