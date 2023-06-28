@@ -229,6 +229,9 @@ static void usage()
 	printf("-widescreen\n");
 	printf("\tDisplay the emulated X16 in a 16:9 aspect ratio instead of 4:3.\n");
 
+	printf("-fullscreen\n");
+	printf("\tStart up in fullscreen mode instead of in a window.\n");
+
 	printf("-wuninit\n");
 	printf("\tPrint a warning whenever uninitialized RAM is accessed.\n");
 
@@ -794,6 +797,11 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argv++;
 			ini["widescreen"] = "true";
 
+		} else if (!strcmp(argv[0], "-fullscreen")) {
+			argc--;
+			argv++;
+			ini["fullscreen"] = "true";
+		    
 		} else if (!strcmp(argv[0], "-wuninit")) {
 			argc--;
 			argv++;
@@ -1134,6 +1142,10 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.widescreen = true;
 	}
 
+	if (ini.has("fullscreen") && ini["fullscreen"] == "true") {
+		opts.fullscreen = true;
+	}
+
 	if (ini.has("zeroram") && ini["zeroram"] == "true") {
 		opts.memory_randomize = false;
 	}
@@ -1388,6 +1400,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	set_option("ymirq", Options.ym_irq, Default_options.ym_irq);
 	set_option("ymstrict", Options.ym_strict, Default_options.ym_strict);
 	set_option("widescreen", Options.widescreen, Default_options.widescreen);
+	set_option("fullscreen", Options.fullscreen, Default_options.fullscreen);
 	set_option("zeroram", Options.memory_randomize, Default_options.memory_randomize);
 	set_option("wuninit", Options.memory_uninit_warn, Default_options.memory_uninit_warn);
 }

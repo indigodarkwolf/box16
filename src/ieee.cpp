@@ -190,8 +190,10 @@ static std::filesystem::path wildcard_match(const std::filesystem::path &origin,
 
 		bool matched = [&]() {
 			// in a wildcard match that starts at first position, leading dot filenames are not considered
-			if (pattern[0] == '?' || pattern[0] == '*' && dpname[0] == '.') {
-				return false;
+			if (pattern[0] == '?' || pattern[0] == '*') {
+				if(dpname[0] == '.') {
+					return false;
+				}
 			} else if (pattern[0] != dpname[0]) {
 				return false;
 			}
@@ -242,8 +244,12 @@ static std::filesystem::path resolve_path(const std::string &name, bool must_exi
 	const auto  relative_name = is_absolute ? name.substr(1) : name;
 
 	const auto resolved_path = is_wildcard ? wildcard_match(old_path, relative_name) : old_path / relative_name;
-	const auto resolved_absolute_path = std::filesystem::absolute(resolved_path);
+	if (resolved_path.empty()) {
+		set_error(0x62, 0, 0);
+		return "";
+	}
 
+	const auto resolved_absolute_path = std::filesystem::absolute(resolved_path);
 	if (must_exist && !std::filesystem::exists(resolved_absolute_path)) {
 		set_error(0x62, 0, 0);
 		return "";
@@ -409,7 +415,7 @@ static int continue_directory_listing(uint8_t *data)
 			}
 		}
 
-		int file_size = static_cast<int>((std::filesystem::file_size(dp.path()) + 255) / 256);
+		int file_size = std::filesystem::is_directory(st) ? 0 : static_cast<int>((std::filesystem::file_size(dp.path()) + 255) / 256);
 		if (file_size > 0xFFFF) {
 			file_size = 0xFFFF;
 		}
