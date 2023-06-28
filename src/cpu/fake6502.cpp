@@ -69,6 +69,7 @@
 #include "../debugger.h"
 #include <stdint.h>
 #include <stdio.h>
+#include <ring_buffer.h>
 
 #define FLAG_CARRY 0x01
 #define FLAG_ZERO 0x02
@@ -94,7 +95,7 @@ uint8_t  debug6502 = 0;
 uint8_t penaltyop, penaltyaddr;
 uint8_t waiting = 0;
 
-_smart_stack  stack6502[256];
+ring_buffer<_smart_stack, 256>  stack6502;
 
 // externally supplied functions
 extern uint8_t read6502(uint16_t address);
@@ -128,9 +129,10 @@ static void putvalue(uint16_t saveval)
 
 void nmi6502()
 {
-	auto &ss     = stack6502[state6502.sp_depth++];
+	auto &ss     = stack6502.allocate();
 	ss.source_pc = state6502.pc;
 	ss.source_bank = bank6502(state6502.pc);
+	ss.state       = state6502;
 
 	push16(state6502.pc);
 	push8(state6502.status & ~FLAG_BREAK);
@@ -149,10 +151,10 @@ void nmi6502()
 void irq6502()
 {
 	if (!(state6502.status & FLAG_INTERRUPT)) {
-		auto &ss     = stack6502[state6502.sp_depth++];
+		auto &ss     = stack6502.allocate();
 		ss.source_pc = state6502.pc;
 		ss.source_bank = bank6502(state6502.pc);
-
+		ss.state       = state6502;
 		push16(state6502.pc);
 		push8(state6502.status & ~FLAG_BREAK);
 		setinterrupt();

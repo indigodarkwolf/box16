@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string.h>
 #include <algorithm>
-#include <functional>
 #include <atomic>
+#include <functional>
+#include <string.h>
 
 template <typename T, int SIZE, bool ALLOW_OVERWRITE = true>
 class ring_buffer
@@ -21,7 +21,7 @@ public:
 		m_count  = 0;
 	}
 
-	void add(const T &item)
+	T &allocate()
 	{
 		const size_t index = (m_oldest + m_count) % SIZE;
 		if constexpr (ALLOW_OVERWRITE) {
@@ -36,7 +36,13 @@ public:
 			}
 			++m_count;
 		}
-		m_elems[index] = item;
+		return m_elems[index];
+	}
+
+	void add(const T &item)
+	{
+		auto &elem = allocate();
+		elem       = item;
 	}
 
 	const T &get_oldest() const
@@ -57,6 +63,12 @@ public:
 	const T &get_newest() const
 	{
 		return m_elems[(m_oldest + m_count - 1) % SIZE];
+	}
+
+	const T &pop_newest()
+	{
+		m_count -= !!m_count;
+		return get(m_count);
 	}
 
 	const T &get(int index) const
@@ -119,7 +131,6 @@ public:
 		}
 	}
 
-
 private:
 	size_t m_oldest;
 	size_t m_count;
@@ -136,7 +147,7 @@ public:
 		// Nothing to do.
 	}
 
-	void add(const T &item)
+	T &allocate()
 	{
 		const size_t index = (m_oldest + m_count) % m_size;
 		if constexpr (ALLOW_OVERWRITE) {
@@ -151,7 +162,13 @@ public:
 			}
 			++m_count;
 		}
-		m_elems[index] = item;
+		return m_elems[index];
+	}
+
+	void add(const T &item)
+	{
+		auto &elem = allocate();
+		elem       = item;
 	}
 
 	const T &get_oldest() const
@@ -172,6 +189,12 @@ public:
 	const T &get_newest() const
 	{
 		return m_elems[(m_oldest + m_count - 1) & m_size];
+	}
+
+	const T &pop_newest()
+	{
+		m_count -= !!m_count;
+		return get(m_count);
 	}
 
 	const T &get(int index) const
@@ -196,9 +219,9 @@ public:
 
 private:
 	const size_t m_size;
-	size_t m_oldest;
-	size_t m_count;
-	T      *m_elems;
+	size_t       m_oldest;
+	size_t       m_count;
+	T           *m_elems;
 };
 
 template <typename T, int SIZE, bool ALLOW_OVERWRITE = true>
@@ -211,7 +234,7 @@ public:
 		// Nothing to do.
 	}
 
-	T* allocate()
+	T *allocate()
 	{
 		const size_t index = (m_oldest + m_count) % SIZE;
 		if constexpr (ALLOW_OVERWRITE) {
@@ -268,5 +291,5 @@ public:
 private:
 	std::atomic<size_t> m_oldest;
 	std::atomic<size_t> m_count;
-	T      m_elems[SIZE];
+	T                   m_elems[SIZE];
 };

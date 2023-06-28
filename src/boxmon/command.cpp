@@ -5,8 +5,11 @@
 
 #include "boxmon.h"
 #include "parser.h"
+
 #include "cpu/fake6502.h"
+#include "cpu/mnemonics.h"
 #include "debugger.h"
+#include "glue.h"
 
 namespace boxmon
 {
@@ -189,8 +192,45 @@ BOXMON_COMMAND(add_label, "add_label <address> <label>")
 
 BOXMON_ALIAS(al, add_label);
 
+BOXMON_COMMAND(backtrace, "backtrace")
+{
+	char const *names[] = { "N", "V", "-", "B", "D", "I", "Z", "C" };
+	for (size_t i = 0; i < stack6502.count(); ++i) {
+		const auto &ss = stack6502[i];
+		char const *op = [&]() -> char const * {
+			switch (ss.op_type) {
+				case _stack_op_type::nmi:
+					return "NMI";
+					break;
+				case _stack_op_type::irq:
+					return "IRQ";
+					break;
+				case _stack_op_type::op:
+					return mnemonics[ss.opcode];
+					break;
+				default:
+					break;
+			}
+			return "???";
+		}();
+
+		boxmon_console_printf("% 3d: %s PC:%02x:%04X -> %02x:%04X A:%02X X:%02X Y:%02X SP:%02X ST:%c%c-%c%c%c%c%c", 
+			i, 
+			op, ss.source_bank, ss.source_pc, ss.dest_bank, ss.dest_pc, ss.state.a, ss.state.x, ss.state.y, ss.state.sp, 
+			ss.state.status & 0x80 ? 'N' : '-', 
+			ss.state.status & 0x40 ? 'V' : '-', 
+			ss.state.status & 0x10 ? 'B' : '-', 
+			ss.state.status & 0x08 ? 'D' : '-', 
+			ss.state.status & 0x04 ? 'I' : '-', 
+			ss.state.status & 0x02 ? 'Z' : '-', 
+			ss.state.status & 0x01 ? 'C' : '-');
+	}
+	return true;
+}
+
+BOXMON_ALIAS(bt, backtrace);
+
 //// Machine state commands
-// bool parse_backtrace(char const *&input);
 // bool parse_cpuhistory(char const *&input);
 // bool parse_dump(char const *&input);
 // bool parse_goto(char const *&input);

@@ -372,9 +372,10 @@ jmp()
 static void
 jsr()
 {
-	auto &ss       = stack6502[state6502.sp_depth++];
+	auto &ss       = stack6502.allocate();
 	ss.source_pc   = state6502.pc;
 	ss.source_bank = bank6502(state6502.pc);
+	ss.state       = state6502;
 
 	push16(state6502.pc - 1);
 	state6502.pc = ea;
@@ -524,7 +525,7 @@ rti()
 	state6502.status = pull8();
 	value            = pull16();
 	state6502.pc     = value;
-	state6502.sp_depth -= !!state6502.sp_depth;
+	stack6502.pop_newest();
 }
 
 static void
@@ -532,7 +533,7 @@ rts()
 {
 	value        = pull16();
 	state6502.pc = value + 1;
-	state6502.sp_depth -= !!state6502.sp_depth;
+	stack6502.pop_newest();
 }
 
 static void

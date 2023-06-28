@@ -13,7 +13,6 @@
 
 struct _state6502 {
 	uint16_t pc;
-	uint8_t  sp_depth;
 	uint8_t  sp, a, x, y, status;
 };
 
@@ -30,6 +29,7 @@ struct _smart_stack {
 	uint8_t        dest_bank;
 	_stack_op_type op_type;
 	uint8_t        opcode;
+	_state6502     state;
 };
 
 extern void     init6502();

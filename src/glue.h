@@ -11,6 +11,7 @@
 
 #include "cpu/fake6502.h"
 #include "options.h"
+#include "ring_buffer.h"
 
 #define LOAD_HYPERCALLS
 //#define TRACE
@@ -27,7 +28,7 @@
 
 extern _state6502   state6502;
 extern uint8_t      waiting;
-extern _smart_stack stack6502[256];
+extern ring_buffer<_smart_stack, 256> stack6502;
 
 extern uint8_t *RAM;
 extern uint8_t  ROM[ROM_SIZE];

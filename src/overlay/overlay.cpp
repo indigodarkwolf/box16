@@ -438,7 +438,7 @@ static void draw_debugger_cpu_status()
 		ImGui::TableNextColumn();
 
 		if (ImGui::BeginTable("smart stack", 1, ImGuiTableFlags_ScrollY)) {
-			for (uint16_t i = state6502.sp_depth - 1; i < state6502.sp_depth; --i) {
+			for (uint16_t i = 0; i < stack6502.count(); ++i) {
 				ImGui::TableNextColumn();
 				auto do_label = [](uint16_t pc, uint8_t bank, bool allow_disabled) {
 					char const *label  = disasm_get_label(pc);
@@ -479,7 +479,9 @@ static void draw_debugger_cpu_status()
 						}
 					}
 				};
-				switch (stack6502[i].op_type) {
+
+				const auto &ss = stack6502[i];
+				switch (ss.op_type) {
 					case _stack_op_type::nmi:
 						ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF003388);
 						ImGui::PushStyleColor(ImGuiCol_Text, 0xFF0077FF);
@@ -496,7 +498,7 @@ static void draw_debugger_cpu_status()
 						break;
 				}
 				ImGui::PushID(i);
-				do_label(stack6502[i].dest_pc, stack6502[i].dest_bank, true);
+				do_label(ss.dest_pc, ss.dest_bank, true);
 				ImGui::PopID();
 				ImGui::PopStyleColor(2);
 
@@ -508,20 +510,20 @@ static void draw_debugger_cpu_status()
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Source address:");
 						ImGui::TableSetColumnIndex(1);
-						do_label(stack6502[i].source_pc, stack6502[i].source_bank, false);
+						do_label(ss.source_pc, ss.source_bank, false);
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Destination address:");
 						ImGui::TableSetColumnIndex(1);
-						do_label(stack6502[i].dest_pc, stack6502[i].dest_bank, false);
+						do_label(ss.dest_pc, ss.dest_bank, false);
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Cause:");
 						ImGui::TableSetColumnIndex(1);
 
-						switch (stack6502[i].op_type) {
+						switch (ss.op_type) {
 							case _stack_op_type::nmi:
 								ImGui::Text("%s", "NMI");
 								break;
@@ -529,7 +531,7 @@ static void draw_debugger_cpu_status()
 								ImGui::Text("%s", "IRQ");
 								break;
 							case _stack_op_type::op:
-								ImGui::Text("%s", mnemonics[stack6502[i].opcode]);
+								ImGui::Text("%s", mnemonics[ss.opcode]);
 								break;
 							default:
 								break;
