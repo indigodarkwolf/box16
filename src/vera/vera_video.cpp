@@ -961,11 +961,11 @@ bool vera_video_get_irq_out()
 
 void vera_video_save(x16file *f)
 {
-	x16write(f, &video_ram[0], sizeof(uint8_t), sizeof(video_ram));
-	x16write(f, &reg_composer[0], sizeof(uint8_t), sizeof(reg_composer));
-	x16write(f, &palette[0], sizeof(uint8_t), sizeof(palette));
-	x16write(f, &reg_layer[0][0], sizeof(uint8_t), sizeof(reg_layer));
-	x16write(f, &sprite_data[0], sizeof(uint8_t), sizeof(sprite_data));
+	x16write_memdump(f, "VERA VRAM", video_ram, 0, sizeof(video_ram), 5);
+	x16write_memdump(f, "VERA COMPOSER", reg_composer, 0, sizeof(reg_composer), 2);
+	x16write_memdump(f, "VERA PALETTE", palette, 0, sizeof(palette), 3);
+	x16write_bankdump(f, "VERA LAYERS", reg_layer, 0, sizeof(reg_layer[0]), sizeof(reg_layer)/sizeof(reg_layer[0]), 0, 0);
+	x16write_bankdump(f, "VERA SPRITES", sprite_data, 0, sizeof(sprite_data[0]), sizeof(sprite_data) / sizeof(sprite_data[0]), 0, 0);
 }
 
 static const int increments[32] = {

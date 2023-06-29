@@ -71,29 +71,50 @@ void machine_dump(const char *reason)
 	char filename[22];
 	for (;;) {
 		if (!index) {
-			strcpy(filename, "dump.bin");
+			strcpy(filename, "dump.txt");
 		} else {
-			sprintf(filename, "dump-%i.bin", index);
+			sprintf(filename, "dump-%i.txt", index);
 		}
 		if (access(filename, F_OK) == -1) {
 			break;
 		}
 		index++;
 	}
-	x16file *f = x16open(filename, "wb");
+	x16file *f = x16open(filename, "w");
 	if (!f) {
 		printf("Cannot write to %s!\n", filename);
 		return;
 	}
 
 	if (Options.dump_cpu) {
-		x16write(f, &state6502.a, sizeof(uint8_t), 1);
-		x16write(f, &state6502.x, sizeof(uint8_t), 1);
-		x16write(f, &state6502.y, sizeof(uint8_t), 1);
-		x16write(f, &state6502.sp, sizeof(uint8_t), 1);
-		x16write(f, &state6502.status, sizeof(uint8_t), 1);
-		x16write(f, &state6502.pc, sizeof(uint16_t), 1);
+		std::stringstream ss;
+		ss << "[CPU]\n";
+		ss << std::setw(0) << "PC:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.pc);
+		ss << std::setw(0) << " A:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.a);
+		ss << std::setw(0) << " X:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.x);
+		ss << std::setw(0) << " Y:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.y);
+		ss << std::setw(0) << " SP:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.sp);
+		ss << std::setw(0) << " ST:";
+		ss << ((state6502.status & 0x80) ? 'N' : '-');
+		ss << ((state6502.status & 0x40) ? 'V' : '-');
+		ss << '-';
+		ss << ((state6502.status & 0x10) ? 'B' : '-');
+		ss << ((state6502.status & 0x08) ? 'D' : '-');
+		ss << ((state6502.status & 0x04) ? 'I' : '-');
+		ss << ((state6502.status & 0x02) ? 'Z' : '-');
+		ss << ((state6502.status & 0x01) ? 'C' : '-');
+		ss << "\n\n";
+
+		x16write(f, ss.str());
+
+		//x16write(f, &state6502.a, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.x, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.y, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.sp, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.status, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.pc, sizeof(uint16_t), 1);
 	}
+
 	memory_save(f, Options.dump_ram, Options.dump_bank);
 
 	if (Options.dump_vram) {

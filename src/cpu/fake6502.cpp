@@ -67,9 +67,9 @@
 #include "fake6502.h"
 
 #include "../debugger.h"
+#include <ring_buffer.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <ring_buffer.h>
 
 #define FLAG_CARRY 0x01
 #define FLAG_ZERO 0x02
@@ -83,7 +83,7 @@
 #define BASE_STACK 0x100
 
 // 6502 CPU registers
-_state6502 state6502, debug_state6502;
+_state6502 state6502;
 
 // helper variables
 uint32_t instructions   = 0; // keep track of total instructions executed
@@ -95,7 +95,8 @@ uint8_t  debug6502 = 0;
 uint8_t penaltyop, penaltyaddr;
 uint8_t waiting = 0;
 
-ring_buffer<_smart_stack, 256>  stack6502;
+ring_buffer<_smart_stack, 256> stack6502;
+ring_buffer<_cpuhistory, 256>  history6502;
 
 // externally supplied functions
 extern uint8_t read6502(uint16_t address);
@@ -129,8 +130,8 @@ static void putvalue(uint16_t saveval)
 
 void nmi6502()
 {
-	auto &ss     = stack6502.allocate();
-	ss.source_pc = state6502.pc;
+	auto &ss       = stack6502.allocate();
+	ss.source_pc   = state6502.pc;
 	ss.source_bank = bank6502(state6502.pc);
 	ss.state       = state6502;
 
@@ -142,17 +143,17 @@ void nmi6502()
 	state6502.pc = (uint16_t)read6502(0xFFFA) | ((uint16_t)read6502(0xFFFB) << 8);
 	waiting      = 0;
 
-	ss.dest_pc = state6502.pc;
+	ss.dest_pc   = state6502.pc;
 	ss.dest_bank = bank6502(state6502.pc);
-	ss.op_type = _stack_op_type::nmi;
-	ss.opcode  = 0;
+	ss.op_type   = _stack_op_type::nmi;
+	ss.opcode    = 0;
 }
 
 void irq6502()
 {
 	if (!(state6502.status & FLAG_INTERRUPT)) {
-		auto &ss     = stack6502.allocate();
-		ss.source_pc = state6502.pc;
+		auto &ss       = stack6502.allocate();
+		ss.source_pc   = state6502.pc;
 		ss.source_bank = bank6502(state6502.pc);
 		ss.state       = state6502;
 		push16(state6502.pc);
@@ -162,10 +163,10 @@ void irq6502()
 		vp6502();
 		state6502.pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
 
-		ss.dest_pc = state6502.pc;
+		ss.dest_pc   = state6502.pc;
 		ss.dest_bank = bank6502(state6502.pc);
 		ss.op_type   = _stack_op_type::irq;
-		ss.opcode  = 0;
+		ss.opcode    = 0;
 	}
 	waiting = 0;
 }
@@ -183,8 +184,8 @@ void exec6502(uint32_t tickcount)
 	clockgoal6502 += tickcount;
 
 	while (clockticks6502 < clockgoal6502) {
-		debug_state6502                     = state6502;
-		const uint64_t debug_clockticks6502 = clockticks6502;
+		const _state6502 debug_state6502      = state6502;
+		const uint64_t   debug_clockticks6502 = clockticks6502;
 
 		opcode = read6502(state6502.pc++);
 		if (debug6502 & DEBUG6502_EXEC) {
@@ -212,6 +213,11 @@ void exec6502(uint32_t tickcount)
 
 		instructions++;
 		debug6502 = 0;
+
+		auto &history = history6502.allocate();
+		history.state = debug_state6502;
+		history.opcode = opcode;
+		history.bank   = bank6502(debug_state6502.pc);
 	}
 }
 
@@ -225,8 +231,8 @@ void step6502()
 		return;
 	}
 
-	debug_state6502                     = state6502;
-	const uint64_t debug_clockticks6502 = clockticks6502;
+	const _state6502 debug_state6502      = state6502;
+	const uint64_t   debug_clockticks6502 = clockticks6502;
 
 	opcode = read6502(state6502.pc++);
 	if (debug6502 & DEBUG6502_EXEC) {
@@ -255,6 +261,11 @@ void step6502()
 
 	instructions++;
 	debug6502 = 0;
+
+	auto &history  = history6502.allocate();
+	history.state  = debug_state6502;
+	history.opcode = opcode;
+	history.bank   = bank6502(debug_state6502.pc);
 }
 
 void force6502()

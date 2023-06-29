@@ -32,6 +32,12 @@ struct _smart_stack {
 	_state6502     state;
 };
 
+struct _cpuhistory {
+	_state6502 state;
+	uint8_t    bank;
+	uint8_t    opcode;
+};
+
 extern void     init6502();
 extern void     reset6502();
 extern void     step6502();

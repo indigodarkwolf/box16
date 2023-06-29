@@ -152,7 +152,6 @@ static uint8_t effective_rom_bank()
 	return ROM_BANK % TOTAL_ROM_BANKS;
 }
 
-
 static uint8_t debug_ram_read(uint16_t address, uint8_t bank)
 {
 	const int ramBank      = bank % Options.num_ram_banks;
@@ -186,7 +185,8 @@ static void real_ram_write(uint16_t address, uint8_t value)
 
 	RAM[real_address] = value;
 
-	if (address == 1) ROM_BANK = value;
+	if (address == 1)
+		ROM_BANK = value;
 }
 
 //
@@ -212,16 +212,15 @@ static void debug_rom_write(uint16_t address, uint8_t bank, uint8_t value)
 }
 
 static void real_rom_write(uint16_t address, uint8_t value)
-{	
+{
 	const int romBank = effective_rom_bank();
 	if (romBank >= NUM_ROM_BANKS) {
 		const int real_address = (romBank << 14) + address - 0xc000;
 
 		ROM[real_address] = value;
 
-		//printf("Writing to hidden ram at addr: $%hx, bank $%hhx\n", address, romBank);
+		// printf("Writing to hidden ram at addr: $%hx, bank $%hhx\n", address, romBank);
 	}
-	
 }
 
 //
@@ -362,7 +361,11 @@ static void debug_write(uint16_t address, uint8_t bank, uint8_t value)
 {
 	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
 		case MEMMAP_NULL: break;
-		case MEMMAP_DIRECT: RAM[address] = value; if (address == 1) ROM_BANK = value; break;
+		case MEMMAP_DIRECT:
+			RAM[address] = value;
+			if (address == 1)
+				ROM_BANK = value;
+			break;
 		case MEMMAP_RAMBANK: debug_ram_write(address, bank, value); break;
 		case MEMMAP_ROMBANK: debug_rom_write(address, bank, value); break;
 		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
@@ -380,7 +383,11 @@ static void real_write(uint16_t address, uint8_t value)
 {
 	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
 		case MEMMAP_NULL: break;
-		case MEMMAP_DIRECT: RAM[address] = value; if (address == 1) ROM_BANK = value; break;
+		case MEMMAP_DIRECT:
+			RAM[address] = value;
+			if (address == 1)
+				ROM_BANK = value;
+			break;
 		case MEMMAP_RAMBANK: real_ram_write(address, value); break;
 		case MEMMAP_ROMBANK: real_rom_write(address, value); break;
 		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
@@ -453,10 +460,55 @@ void vp6502(void)
 void memory_save(x16file *f, bool dump_ram, bool dump_bank)
 {
 	if (dump_ram) {
-		x16write(f, &RAM[0], sizeof(uint8_t), 0xa000);
+		x16write_memdump(f, "LOMEM", RAM, 0, 0xa000);
+
+		//std::stringstream ss;
+		//ss << "[LOMEM]";
+		//ss << std::hex;
+		//for (int i = 0; i < 0xa000; ++i) {
+		//	if ((i & 0xf) == 0) {
+		//		ss << std::setw(0) << "\n";
+		//		ss << std::setw(4) << std::setfill('0') << i;
+		//		ss << std::setw(0) << " ";
+		//	} else if ((i & 0x7) == 0) {
+		//		ss << std::setw(0) << "   ";
+		//	} else {
+		//		ss << std::setw(0) << " ";
+		//	}
+		//	ss << std::setw(2) << std::setfill('0') << static_cast<int>(RAM[i]);
+		//}
+		//ss << std::setw(0) << "\n\n";
+		//x16write(f, ss.str());
+
+		// x16write(f, &RAM[0], sizeof(uint8_t), 0xa000);
 	}
 	if (dump_bank) {
-		x16write(f, &RAM[0xa000], sizeof(uint8_t), (Options.num_ram_banks * 8192));
+		x16write_bankdump(f, "BANKMEM", RAM + 0xa000, 0xa000, 0xc000, Options.num_ram_banks);
+
+		//std::stringstream ss;
+		//ss << "[BANKMEM]";
+		//ss << std::hex;
+
+		//for (int b = 0; b < Options.num_ram_banks; ++b) {
+		//	for (int i = 0xa000; i <= 0xffff; ++i) {
+		//		if ((i & 0xf) == 0) {
+		//			ss << std::setw(0) << "\n";
+		//			ss << std::setw(2) << std::setfill('0') << 0;
+		//			ss << std::setw(0) << ":";
+		//			ss << std::setw(4) << std::setfill('0') << i;
+		//			ss << std::setw(0) << " ";
+		//		} else if ((i & 0x7) == 0) {
+		//			ss << std::setw(0) << "   ";
+		//		} else {
+		//			ss << std::setw(0) << " ";
+		//		}
+		//		ss << std::setw(2) << std::setfill('0') << static_cast<int>(debug_read6502(static_cast<uint16_t>(i), static_cast<uint8_t>(b)));
+		//	}
+		//}
+		//ss << std::setw(0) << "\n\n";
+		//x16write(f, ss.str());
+
+		// x16write(f, &RAM[0xa000], sizeof(uint8_t), (Options.num_ram_banks * 8192));
 	}
 }
 

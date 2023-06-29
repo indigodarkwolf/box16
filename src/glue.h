@@ -29,7 +29,7 @@
 extern _state6502   state6502;
 extern uint8_t      waiting;
 extern ring_buffer<_smart_stack, 256> stack6502;
-
+extern ring_buffer<_cpuhistory, 256, true> history6502;
 extern uint8_t *RAM;
 extern uint8_t  ROM[ROM_SIZE];
 extern uint32_t instructions;

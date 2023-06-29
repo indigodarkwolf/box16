@@ -196,7 +196,7 @@ BOXMON_COMMAND(backtrace, "backtrace")
 {
 	char const *names[] = { "N", "V", "-", "B", "D", "I", "Z", "C" };
 	for (size_t i = 0; i < stack6502.count(); ++i) {
-		const auto &ss = stack6502[i];
+		const auto &ss = stack6502[static_cast<int>(i)];
 		char const *op = [&]() -> char const * {
 			switch (ss.op_type) {
 				case _stack_op_type::nmi:
@@ -231,8 +231,27 @@ BOXMON_COMMAND(backtrace, "backtrace")
 BOXMON_ALIAS(bt, backtrace);
 
 //// Machine state commands
-// bool parse_cpuhistory(char const *&input);
-// bool parse_dump(char const *&input);
+BOXMON_COMMAND(cpuhistory, "cpuhistory")
+{
+	for (size_t i = 0; i < history6502.count(); ++i) {
+		const auto &history = history6502[static_cast<int>(i)];
+
+		char const *op = mnemonics[history.opcode];
+
+		boxmon_console_printf("% 3d: %s PC:%02x:%04X A:%02X X:%02X Y:%02X SP:%02X ST:%c%c-%c%c%c%c%c", i, op, history.bank, history.state.pc, history.state.a, history.state.x, history.state.y, history.state.sp, history.state.status & 0x80 ? 'N' : '-', history.state.status & 0x40 ? 'V' : '-', history.state.status & 0x10 ? 'B' : '-', history.state.status & 0x08 ? 'D' : '-', history.state.status & 0x04 ? 'I' : '-', history.state.status & 0x02 ? 'Z' : '-', history.state.status & 0x01 ? 'C' : '-');
+	}
+	return true;
+}
+
+BOXMON_ALIAS(chis, cpuhistory);
+
+BOXMON_COMMAND(dump, "dump")
+{
+	extern void machine_dump(const char *reason);
+	machine_dump("monitor command");
+	return true;
+}
+
 // bool parse_goto(char const *&input);
 // bool parse_io(char const *&input);
 // bool parse_next(char const *&input);

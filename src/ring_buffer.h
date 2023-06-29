@@ -68,7 +68,7 @@ public:
 	const T &pop_newest()
 	{
 		m_count -= !!m_count;
-		return get(m_count);
+		return get(static_cast<int>(m_count));
 	}
 
 	const T &get(int index) const
@@ -188,13 +188,13 @@ public:
 
 	const T &get_newest() const
 	{
-		return m_elems[(m_oldest + m_count - 1) & m_size];
+		return m_elems[(m_oldest + m_count - 1) % m_size];
 	}
 
 	const T &pop_newest()
 	{
 		m_count -= !!m_count;
-		return get(m_count);
+		return get(static_cast<int>(m_count));
 	}
 
 	const T &get(int index) const
