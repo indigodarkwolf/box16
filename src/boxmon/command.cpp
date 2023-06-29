@@ -10,6 +10,7 @@
 #include "cpu/mnemonics.h"
 #include "debugger.h"
 #include "glue.h"
+#include "memory.h"
 
 namespace boxmon
 {
@@ -231,9 +232,16 @@ BOXMON_COMMAND(backtrace, "backtrace")
 BOXMON_ALIAS(bt, backtrace);
 
 //// Machine state commands
-BOXMON_COMMAND(cpuhistory, "cpuhistory")
+BOXMON_COMMAND(cpuhistory, "cpuhistory [length]")
 {
-	for (size_t i = 0; i < history6502.count(); ++i) {
+	int history_length = 0;
+	if (parser.parse_dec_number(history_length, input)) {
+		history_length = history_length <= static_cast<int>(history6502.count()) ? history_length : static_cast<int>(history6502.count());
+	} else {
+		history_length = static_cast<int>(history6502.count());
+	}
+
+	for (size_t i = 0; i < history_length; ++i) {
 		const auto &history = history6502[static_cast<int>(i)];
 
 		char const *op = mnemonics[history.opcode];
@@ -252,7 +260,22 @@ BOXMON_COMMAND(dump, "dump")
 	return true;
 }
 
-// bool parse_goto(char const *&input);
+BOXMON_COMMAND(goto, "goto <address>")
+{
+	boxmon::address_type addr;
+	if (!parser.parse_address(addr, input)) {
+		return false;
+	}
+
+	const auto &[pc, bank] = addr;
+	state6502.pc = pc;
+	memory_set_bank(pc, bank);
+
+	return true;
+}
+
+BOXMON_ALIAS(g, goto);
+
 // bool parse_io(char const *&input);
 // bool parse_next(char const *&input);
 // bool parse_registers(char const *&input);

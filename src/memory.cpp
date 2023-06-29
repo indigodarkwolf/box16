@@ -516,6 +516,15 @@ void memory_save(x16file *f, bool dump_ram, bool dump_bank)
 // Banking access/mutates
 //
 
+void memory_set_bank(uint16_t address, uint8_t bank)
+{
+	if (address >= 0xc000) {
+		memory_set_rom_bank(bank);
+	} else if(address >= 0xa000) {
+		memory_set_ram_bank(bank);
+	}
+}
+
 void memory_set_ram_bank(uint8_t bank)
 {
 	RAM_BANK = bank & (NUM_MAX_RAM_BANKS - 1);

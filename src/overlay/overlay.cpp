@@ -384,7 +384,10 @@ static void draw_debugger_cpu_status()
 
 			ImGui::NewLine();
 			ImGui::InputHexLabel("RAM Bank", RAM[0]);
-			ImGui::InputHexLabel("ROM Bank", RAM[1]);
+			uint8_t rom_bank = memory_get_rom_bank();
+			if (ImGui::InputHexLabel("ROM Bank", rom_bank)) {
+				memory_set_rom_bank(rom_bank);
+			}
 
 			ImGui::NewLine();
 
