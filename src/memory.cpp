@@ -291,6 +291,20 @@ void emu_write(uint8_t reg, uint8_t value)
 		case 5: gif_recorder_set((gif_recorder_command_t)value); break;
 		case 6: wav_recorder_set((wav_recorder_command_t)value); break;
 		case 7: Options.no_keybinds = v; break;
+		// case 8: clock_base = clockticks6502; break;
+		case 9: printf("User debug 1: $%02x\n", value); break;
+		case 10: printf("User debug 2: $%02x\n", value); break;
+		case 11: {
+		    if (value == 0x09 || value == 0x0a || value == 0x0d || (value >= 0x20 && value < 0x7f)) {
+			putchar(value);
+		    } else if (value >= 0xa1) {
+			putchar(value);   // print_iso8859_15_char((char) value);
+		    } else {
+			printf("\xef\xbf\xbd"); // �
+		    }
+		    fflush(stdout);
+		    break;
+		}
 		default: break; // printf("WARN: Invalid register %x\n", DEVICE_EMULATOR + reg);
 	}
 }
