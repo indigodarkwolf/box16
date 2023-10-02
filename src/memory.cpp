@@ -16,6 +16,7 @@
 #include "gif_recorder.h"
 #include "glue.h"
 #include "hypercalls.h"
+#include "unicode.h"
 #include "vera/vera_video.h"
 #include "via.h"
 #include "wav_recorder.h"
@@ -298,7 +299,7 @@ void emu_write(uint8_t reg, uint8_t value)
 		    if (value == 0x09 || value == 0x0a || value == 0x0d || (value >= 0x20 && value < 0x7f)) {
 			putchar(value);
 		    } else if (value >= 0xa1) {
-			putchar(value);   // print_iso8859_15_char((char) value);
+			print_iso8859_15_char((char) value);
 		    } else {
 			printf("\xef\xbf\xbd"); // �
 		    }
