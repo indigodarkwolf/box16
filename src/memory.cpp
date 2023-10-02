@@ -36,6 +36,8 @@ uint8_t rom_bank_register;
 static uint64_t *RAM_written;
 
 static uint8_t addr_ym = 0;
+static uint32_t clock_snap = 0UL;
+static uint32_t clock_base = 0UL;
 
 #define DEVICE_EMULATOR (0x9fb0)
 
@@ -240,7 +242,7 @@ uint8_t debug_emu_read(uint8_t reg)
 		case 5: return gif_recorder_get_state();
 		case 6: return wav_recorder_get_state();
 		case 7: return Options.no_keybinds ? 1 : 0;
-		case 8: return (clockticks6502 >> 0) & 0xff;
+		case 8: return (clockticks6502 >> 0) & 0xff;	// don't do snapshotting here because no state should be changed
 		case 9: return (clockticks6502 >> 8) & 0xff;
 		case 10: return (clockticks6502 >> 16) & 0xff;
 		case 11: return (clockticks6502 >> 24) & 0xff;
@@ -263,10 +265,12 @@ uint8_t real_emu_read(uint8_t reg)
 		case 5: return gif_recorder_get_state();
 		case 6: return wav_recorder_get_state();
 		case 7: return Options.no_keybinds ? 1 : 0;
-		case 8: return (clockticks6502 >> 0) & 0xff;
-		case 9: return (clockticks6502 >> 8) & 0xff;
-		case 10: return (clockticks6502 >> 16) & 0xff;
-		case 11: return (clockticks6502 >> 24) & 0xff;
+		case 8: 
+		    clock_snap = clockticks6502 - clock_base;
+		    return (clock_snap >> 0) & 0xff;
+		case 9: return (clock_snap >> 8) & 0xff;
+		case 10: return (clock_snap >> 16) & 0xff;
+		case 11: return (clock_snap >> 24) & 0xff;
 		// case 12: return -1;
 		case 13: return Options.keymap;
 		case 14: return '1'; // emulator detection
@@ -292,7 +296,7 @@ void emu_write(uint8_t reg, uint8_t value)
 		case 5: gif_recorder_set((gif_recorder_command_t)value); break;
 		case 6: wav_recorder_set((wav_recorder_command_t)value); break;
 		case 7: Options.no_keybinds = v; break;
-		// case 8: clock_base = clockticks6502; break;
+		case 8: clock_base = clockticks6502; break;
 		case 9: printf("User debug 1: $%02x\n", value); break;
 		case 10: printf("User debug 2: $%02x\n", value); break;
 		case 11: {
