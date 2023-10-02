@@ -36,8 +36,8 @@ uint8_t rom_bank_register;
 static uint64_t *RAM_written;
 
 static uint8_t addr_ym = 0;
-static uint32_t clock_snap = 0UL;
-static uint32_t clock_base = 0UL;
+static uint64_t clock_snap = 0UL;
+static uint64_t clock_base = 0UL;
 
 #define DEVICE_EMULATOR (0x9fb0)
 
