@@ -242,10 +242,10 @@ uint8_t debug_emu_read(uint8_t reg)
 		case 5: return gif_recorder_get_state();
 		case 6: return wav_recorder_get_state();
 		case 7: return Options.no_keybinds ? 1 : 0;
-		case 8: return (clockticks6502 >> 0) & 0xff;	// don't do snapshotting here because no state should be changed
-		case 9: return (clockticks6502 >> 8) & 0xff;
-		case 10: return (clockticks6502 >> 16) & 0xff;
-		case 11: return (clockticks6502 >> 24) & 0xff;
+		case 8: return (clock_snap >> 0) & 0xff;	// don't do snapshotting here because no state should be changed
+		case 9: return (clock_snap >> 8) & 0xff;
+		case 10: return (clock_snap >> 16) & 0xff;
+		case 11: return (clock_snap >> 24) & 0xff;
 		// case 12: return -1;
 		case 13: return Options.keymap;
 		case 14: return '1'; // emulator detection
