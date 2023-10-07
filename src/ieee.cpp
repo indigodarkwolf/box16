@@ -1277,7 +1277,7 @@ int ACPTR(uint8_t *a)
 
 int CIOUT(uint8_t a)
 {
-	int ret = -1;
+	int ret = 0;
 	if (log_ieee) {
 		printf("%s $%02x\n", __func__, a);
 	}
@@ -1386,12 +1386,47 @@ int MACPTR(uint16_t addr, uint16_t *c, uint8_t stream_mode)
 					write6502(0, ram_bank);
 				}
 			}
-			if (ret >= 0) {
+			if (ret > 0) {
 				break;
 			}
 		} while (i < count);
 	} else {
 		ret = 0x42;
+	}
+	*c = i;
+	return ret;
+}
+
+int MCIOUT(uint16_t addr, uint16_t *c, uint8_t stream_mode)
+{
+	if (log_ieee) {
+		printf("%s $%04x $%04x $%02x\n", __func__, addr, *c, stream_mode);
+	}
+
+	int ret = 0;
+	int count = (*c != 0) ? (*c) : 256;
+	uint8_t ram_bank = read6502(0);
+	int i = 0;
+	if (channels[channel].f && channels[channel].write) {
+		do {
+			uint8_t byte;
+			byte = read6502(addr);
+			i++;
+			if (!stream_mode) {
+				addr++;
+				if (addr == 0xc000) {
+					addr = 0xa000;
+					ram_bank++;
+					write6502(0, ram_bank);
+				}
+			}
+			ret = CIOUT(byte);
+			if (ret > 0) {
+				break;
+			}
+		} while(i < count);
+	} else {
+		ret = -2;
 	}
 	*c = i;
 	return ret;
