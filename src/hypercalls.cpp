@@ -16,6 +16,7 @@
 #include "vera/sdcard.h"
 #include "zlib.h"
 
+#define KERNAL_MCIOUT (0xfeb1)
 #define KERNAL_MACPTR (0xff44)
 #define KERNAL_SECOND (0xff93)
 #define KERNAL_TKSA (0xff96)
@@ -35,7 +36,7 @@ static uint16_t Kernal_status  = 0;
 static bool     Has_boot_tasks = false;
 static bool     prg_finished_loading = false;
 
-static bool (*Hypercall_table[0x100])(void);
+static bool (*Hypercall_table[0x200])(void);
 
 static bool is_kernal()
 {
@@ -159,7 +160,22 @@ void hypercalls_update()
 	memset(Hypercall_table, 0, sizeof(Hypercall_table));
 
 	if (ieee_hypercalls_allowed()) {
-		Hypercall_table[KERNAL_MACPTR & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_MCIOUT & 0x1ff] = []() -> bool {
+			uint16_t count = state6502.a;
+			const int s = MCIOUT(state6502.y << 8 | state6502.x, &count, state6502.status & 0x01);
+			state6502.x = count & 0xff;
+			state6502.y = count >> 8;
+			if (s == -2) {
+				state6502.status |= 1; // SEC (unsupported, or in this case, no open context)
+			} else {
+				state6502.status &= 0xfe; // clear C -> supported
+			}
+
+			set_kernal_status(s);
+			return true;
+		};
+
+		Hypercall_table[KERNAL_MACPTR & 0x1ff] = []() -> bool {
 			uint16_t count = state6502.a;
 
 			const int s = MACPTR(state6502.y << 8 | state6502.x, &count, state6502.status & 0x01);
@@ -172,19 +188,19 @@ void hypercalls_update()
 			return true;
 		};
 
-		Hypercall_table[KERNAL_SECOND & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_SECOND & 0x1ff] = []() -> bool {
 			const int s = SECOND(state6502.a);
 
 			set_kernal_status(s);
 			return true;
 		};
 
-		Hypercall_table[KERNAL_TKSA & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_TKSA & 0x1ff] = []() -> bool {
 			TKSA(state6502.a);
 			return true;
 		};
 
-		Hypercall_table[KERNAL_ACPTR & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_ACPTR & 0x1ff] = []() -> bool {
 			const int s = ACPTR(&state6502.a);
 
 			state6502.status = (state6502.status & ~3) | (!state6502.a << 1);
@@ -193,19 +209,19 @@ void hypercalls_update()
 			return true;
 		};
 
-		Hypercall_table[KERNAL_CIOUT & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_CIOUT & 0x1ff] = []() -> bool {
 			const int s = CIOUT(state6502.a);
 
 			set_kernal_status(s);
 			return true;
 		};
 
-		Hypercall_table[KERNAL_UNTLK & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_UNTLK & 0x1ff] = []() -> bool {
 			UNTLK();
 			return true;
 		};
 
-		Hypercall_table[KERNAL_UNLSN & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_UNLSN & 0x1ff] = []() -> bool {
 			const int s = UNLSN();
 			if (s == -2) {             // special error behavior
 				state6502.status = (state6502.status | 1); // SEC
@@ -226,19 +242,19 @@ void hypercalls_update()
 			return true;
 		};
 
-		Hypercall_table[KERNAL_LISTEN & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_LISTEN & 0x1ff] = []() -> bool {
 			LISTEN(state6502.a);
 			return true;
 		};
 
-		Hypercall_table[KERNAL_TALK & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_TALK & 0x1ff] = []() -> bool {
 			TALK(state6502.a);
 			return true;
 		};
 	}
 
 	// if (!sdcard_is_attached()) {
-	// 	Hypercall_table[KERNAL_LOAD & 0xff] = []() -> bool {
+	// 	Hypercall_table[KERNAL_LOAD & 0x1ff] = []() -> bool {
 	// 		if (RAM[FA] == 8) {
 	// 			LOAD();
 	// 			return true;
@@ -246,7 +262,7 @@ void hypercalls_update()
 	// 		return false;
 	// 	};
 
-	// 	Hypercall_table[KERNAL_SAVE & 0xff] = []() -> bool {
+	// 	Hypercall_table[KERNAL_SAVE & 0x1ff] = []() -> bool {
 	// 		if (RAM[FA] == 8) {
 	// 			SAVE();
 	// 			return true;
@@ -256,7 +272,7 @@ void hypercalls_update()
 	// }
 
 	if (Has_boot_tasks) {
-		Hypercall_table[KERNAL_CHRIN & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_CHRIN & 0x1ff] = []() -> bool {
 			// as soon as BASIC starts reading a line...
 			if (!Options.prg_path.empty()) {
 				std::filesystem::path prg_path = options_get_hyper_path() / Options.prg_path;
@@ -327,7 +343,7 @@ void hypercalls_update()
 	}
 
 	if (Options.echo_mode != echo_mode_t::ECHO_MODE_NONE) {
-		Hypercall_table[KERNAL_CHROUT & 0xff] = []() -> bool {
+		Hypercall_table[KERNAL_CHROUT & 0x1ff] = []() -> bool {
 			uint8_t c = state6502.a;
 			if (Options.echo_mode == echo_mode_t::ECHO_MODE_COOKED) {
 				if (c == 0x0d) {
@@ -360,11 +376,11 @@ void hypercalls_update()
 
 void hypercalls_process()
 {
-	if (!is_kernal() || state6502.pc < 0xFF44) {
+	if (!is_kernal() || state6502.pc < 0xFEB1) {
 		return;
 	}
 
-	const auto hypercall = Hypercall_table[state6502.pc & 0xff];
+	const auto hypercall = Hypercall_table[state6502.pc & 0x1ff];
 	if (hypercall != nullptr) {
 		if (hypercall()) {
 			state6502.pc = (RAM[0x100 + state6502.sp + 1] | (RAM[0x100 + state6502.sp + 2] << 8)) + 1;
