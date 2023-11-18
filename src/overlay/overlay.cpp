@@ -1399,8 +1399,12 @@ public:
 
 			for (uint32_t i = 0; i < num_dots; i++) {
 				uint8_t tdat = tile_data[i];
-				if (tdat > 0 && tdat < 16) // 8bpp quirk handling
+				if (tdat > 0 && tdat < 16) { // 8bpp quirk handling
 					tdat += palette_offset;
+					if (t256c) {
+						tdat |= 0x80;
+					}
+				}
 				pixels[i] = palette[tdat];
 			}
 		} else {
@@ -1450,8 +1454,13 @@ public:
 							for (int tj = 0; tj < tile_width; tj++) {
 								uint8_t tdat = tile_data[src2];
 								src2 += src2_add;
-								if (tdat > 0 && tdat < 16)
+								if (tdat > 0 && tdat < 16) {
 									tdat += pal;
+									if (t256c) {
+										tdat |= 0x80;
+									}
+								}
+									
 								pixels[dst2++] = palette[tdat];
 							}
 						}
