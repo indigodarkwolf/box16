@@ -56,7 +56,7 @@
 // Version
 #define VERA_VERSION_MAJOR  0x00
 #define VERA_VERSION_MINOR  0x03
-#define VERA_VERSION_PATCH  0x01
+#define VERA_VERSION_PATCH  0x02
 
 static bool is_fullscreen = false;
 
@@ -761,8 +761,11 @@ static void render_layer_line_tile(uint16_t y)
 		uint8_t col_index = (s >> color_shift) & props->color_mask;
 
 		// Apply Palette Offset
-		if (palette_offset && col_index > 0 && col_index < 16) {
+		if (col_index > 0 && col_index < 16) {
 			col_index += palette_offset;
+			if (props->text_mode_256c) {
+				col_index |= 0x80;
+			}
 		}
 		layer_line[layer][i] = col_index;
 
@@ -810,8 +813,11 @@ static void render_layer_line_bitmap(uint16_t y)
 		uint8_t col_index = (s >> (props->first_color_pos - ((xx & props->color_fields_max) << props->color_depth))) & props->color_mask;
 
 		// Apply Palette Offset
-		if (palette_offset && col_index > 0 && col_index < 16) {
+		if (col_index > 0 && col_index < 16) {
 			col_index += palette_offset << 4;
+			if (props->text_mode_256c) {
+				col_index |= 0x80;
+			}
 		}
 		layer_line[layer][i] = col_index;
 
