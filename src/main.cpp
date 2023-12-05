@@ -418,7 +418,7 @@ void emulator_loop()
 
 		uint64_t old_clockticks6502 = clockticks6502;
 		step6502();
-		if (debug6502 || stack6502_underflow) {
+		if (debug6502) {
 			debugger_process_cpu();
 			if (debugger_is_paused()) {
 				continue;

@@ -205,7 +205,7 @@ void exec6502(uint32_t tickcount)
 		(*addrtable[opcode])();
 		(*optable[opcode])();
 
-		if ((debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) || stack6502_underflow) {
+		if (debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) {
 			state6502      = debug_state6502;
 			clockticks6502 = debug_clockticks6502;
 			return;
@@ -247,7 +247,7 @@ void step6502()
 	(*addrtable[opcode])();
 	(*optable[opcode])();
 
-	if ((debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) || stack6502_underflow) {
+	if (debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) {
 		state6502      = debug_state6502;
 		clockticks6502 = debug_clockticks6502;
 		return;
