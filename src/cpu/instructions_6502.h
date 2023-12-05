@@ -372,10 +372,11 @@ jmp()
 static void
 jsr()
 {
-	auto &ss       = stack6502[state6502.sp_depth++];
-	ss.source_pc   = state6502.pc;
-	ss.source_bank = bank6502(state6502.pc);
-	ss.push_depth  = 0;
+	auto &ss                  = stack6502[state6502.sp_depth++];
+	ss.source_pc              = state6502.pc;
+	ss.source_bank            = bank6502(state6502.pc);
+	ss.push_depth             = 0;
+	ss.push_unwind_depth      = 0;
 	state6502.sp_unwind_depth = state6502.sp_depth;
 
 	push16(state6502.pc - 1);
@@ -469,30 +470,39 @@ static void
 pha()
 {
 	push8(state6502.a);
-	auto &ss = stack6502[(state6502.sp_depth + 255) & 0xff];
-	auto &ssx = ss.pushed_bytes[ss.push_depth++];
-	ssx.push_type = _push_op_type::a;
-	ssx.pull_type = _push_op_type::unknown;
-	ssx.value     = state6502.a;
+	auto &ss             = stack6502[(state6502.sp_depth + 255) & 0xff];
+	auto &ssx            = ss.pushed_bytes[ss.push_depth++];
+	ssx.push_type        = _push_op_type::a;
+	ssx.pull_type        = _push_op_type::unknown;
+	ssx.value            = state6502.a;
+	ssx.pc               = state6502.pc - 1;
+	ssx.bank             = bank6502(state6502.pc - 1);
+	ss.push_unwind_depth = ss.push_depth;
 }
 
 static void
 php()
 {
 	push8(state6502.status | FLAG_BREAK);
-	auto &ss                      = stack6502[(state6502.sp_depth + 255) & 0xff];
-	auto &ssx                     = ss.pushed_bytes[ss.push_depth++];
-	ssx.push_type                 = _push_op_type::status;
-	ssx.pull_type                 = _push_op_type::unknown;
-	ssx.value                     = state6502.status | FLAG_BREAK;
+	auto &ss             = stack6502[(state6502.sp_depth + 255) & 0xff];
+	auto &ssx            = ss.pushed_bytes[ss.push_depth++];
+	ssx.push_type        = _push_op_type::status;
+	ssx.pull_type        = _push_op_type::unknown;
+	ssx.value            = state6502.status | FLAG_BREAK;
+	ssx.pc               = state6502.pc - 1;
+	ssx.bank             = bank6502(state6502.pc - 1);
+	ss.push_unwind_depth = ss.push_depth;
 
 	if (ss.op_type != _stack_op_type::jsr && ss.push_depth == 5) {
 		ss.push_depth -= 3;
-
-		auto &ss2 = stack6502[state6502.sp_depth++];
-		ss2.source_pc              = (static_cast<uint16_t>(ss.pushed_bytes[ss.push_depth].value) << 8) | static_cast<uint16_t>(ss.pushed_bytes[ss.push_depth+1].value);
-		ss2.source_bank            = bank6502(state6502.pc);
-		ss2.push_depth             = 0;
+		for (int i = 0; i < 3; ++i) {
+			ss.pushed_bytes[ss.push_depth + i].pull_type = _push_op_type::smart;
+		}
+		auto &ss2                 = stack6502[state6502.sp_depth++];
+		ss2.source_pc             = (static_cast<uint16_t>(ss.pushed_bytes[ss.push_depth].value) << 8) | static_cast<uint16_t>(ss.pushed_bytes[ss.push_depth + 1].value);
+		ss2.source_bank           = bank6502(state6502.pc);
+		ss2.push_depth            = 0;
+		ss2.push_unwind_depth     = 0;
 		state6502.sp_unwind_depth = state6502.sp_depth;
 
 		ss2.dest_pc   = state6502.pc;
@@ -561,13 +571,13 @@ static void
 rti()
 {
 	const uint16_t old_pc = state6502.pc;
-	state6502.status = pull8();
-	value            = pull16();
-	state6502.pc     = value;
+	state6502.status      = pull8();
+	value                 = pull16();
+	state6502.pc          = value;
 	stack6502_underflow |= !state6502.sp_depth;
 	state6502.sp_depth -= !!state6502.sp_depth;
 
-	auto &ss  = stack6502[state6502.sp_depth];	
+	auto &ss    = stack6502[state6502.sp_depth];
 	ss.pop_type = _stack_pop_type::rti;
 	ss.pop_pc   = old_pc - 1;
 	ss.pop_bank = bank6502(old_pc);
@@ -578,7 +588,7 @@ rts()
 {
 	const uint16_t old_pc = state6502.pc;
 
-	value                 = pull16();
+	value        = pull16();
 	state6502.pc = value + 1;
 	stack6502_underflow |= !state6502.sp_depth;
 	state6502.sp_depth -= !!state6502.sp_depth;

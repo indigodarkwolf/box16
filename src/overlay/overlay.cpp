@@ -171,10 +171,15 @@ static void draw_debugger_cpu_status()
 
 		ImGui::TableNextColumn();
 
-		if (ImGui::BeginTable("smart stack", 1, ImGuiTableFlags_ScrollY)) {
+		if (ImGui::BeginTable("smart stack", 2, ImGuiTableFlags_ScrollY)) {
+			ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 10);
+			ImGui::TableSetupColumn("Address");
+
+			ImGui::TableHeadersRow();
+
 			if (stack6502_underflow) {
 				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
+				ImGui::TableSetColumnIndex(1);
 				ImGui::TextDisabled("%s", "(Underflow)");
 				if (ImGui::IsItemHovered()) {
 					ImGui::BeginTooltip();
@@ -184,7 +189,14 @@ static void draw_debugger_cpu_status()
 				ImGui::TableNextRow();
 			}
 			for (uint16_t i = state6502.sp_unwind_depth - 1; i < state6502.sp_unwind_depth; --i) {
-				ImGui::TableNextColumn();
+				const auto &ss = stack6502[i];
+
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				if (i == state6502.sp_depth - 1) {
+					ImGui::Text("%s", ">");
+				}
+				ImGui::TableSetColumnIndex(1);
 				auto do_label = [](uint16_t pc, uint8_t bank, bool allow_disabled) {
 					char const *label = disasm_get_label(pc);
 					bool        pushed = false;
@@ -224,11 +236,11 @@ static void draw_debugger_cpu_status()
 						}
 					}
 				};
-				if (i > state6502.sp_depth) {
+				if (i >= state6502.sp_depth) {
 					ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 					ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 				} else {
-					switch (stack6502[i].op_type) {
+					switch (ss.op_type) {
 						case _stack_op_type::nmi:
 							ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF003388);
 							ImGui::PushStyleColor(ImGuiCol_Text, 0xFF0077FF);
@@ -250,7 +262,7 @@ static void draw_debugger_cpu_status()
 					}
 				}
 				ImGui::PushID(i);
-				do_label(stack6502[i].dest_pc, stack6502[i].dest_bank, true);
+				do_label(ss.dest_pc, ss.dest_bank, true);
 				ImGui::PopID();
 				ImGui::PopStyleColor(2);
 
@@ -262,20 +274,20 @@ static void draw_debugger_cpu_status()
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Source address:");
 						ImGui::TableSetColumnIndex(1);
-						do_label(stack6502[i].source_pc, stack6502[i].source_bank, false);
+						do_label(ss.source_pc, ss.source_bank, false);
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Destination address:");
 						ImGui::TableSetColumnIndex(1);
-						do_label(stack6502[i].dest_pc, stack6502[i].dest_bank, false);
+						do_label(ss.dest_pc, ss.dest_bank, false);
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Cause:");
 						ImGui::TableSetColumnIndex(1);
 
-						switch (stack6502[i].op_type) {
+						switch (ss.op_type) {
 							case _stack_op_type::nmi:
 								ImGui::Text("%s", "NMI");
 								break;
@@ -283,7 +295,10 @@ static void draw_debugger_cpu_status()
 								ImGui::Text("%s", "IRQ");
 								break;
 							case _stack_op_type::jsr:
-								ImGui::Text("%s", mnemonics[stack6502[i].opcode]);
+								ImGui::Text("%s", mnemonics[ss.opcode]);
+								break;
+							case _stack_op_type::smart:
+								ImGui::Text("%s", "smart");
 								break;
 							default:
 								break;
@@ -294,13 +309,13 @@ static void draw_debugger_cpu_status()
 							ImGui::TableSetColumnIndex(0);
 							ImGui::TextDisabled("%s", "Pop Address:");
 							ImGui::TableSetColumnIndex(1);
-							do_label(stack6502[i].pop_pc, stack6502[i].pop_bank, false);
+							do_label(ss.pop_pc, ss.pop_bank, false);
 
 							ImGui::TableNextRow();
 							ImGui::TableSetColumnIndex(0);
 							ImGui::TextDisabled("%s", "Pop Cause:");
 							ImGui::TableSetColumnIndex(1);
-							switch (stack6502[i].pop_type) {
+							switch (ss.pop_type) {
 								case _stack_pop_type::rti:
 									ImGui::Text("%s", "rti");
 									break;
@@ -314,6 +329,79 @@ static void draw_debugger_cpu_status()
 						}
 
 						ImGui::EndTable();
+					}
+
+					if (ss.push_unwind_depth > 0) {
+						ImGui::TextDisabled("%s", "Additional byte pushes in this frame:");
+						if (ImGui::BeginTable("additional pushes table", 5, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX)) {
+							ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 10);
+							ImGui::TableSetupColumn("Address");
+							ImGui::TableSetupColumn("Push Op");
+							ImGui::TableSetupColumn("Value");
+							ImGui::TableSetupColumn("Pull Op");
+							ImGui::TableHeadersRow();
+
+							for (uint16_t j = ss.push_unwind_depth - 1; j < ss.push_unwind_depth; --j) {
+								const auto &ssx = ss.pushed_bytes[j];
+								ImGui::TableNextRow();
+
+								ImGui::TableSetColumnIndex(0);
+								ImGui::Text("%s", (j == ss.push_depth - 1) ? ">" : " ");
+
+								ImGui::TableSetColumnIndex(1);
+								do_label(ssx.pc, ssx.bank, false);
+
+								ImGui::TableSetColumnIndex(2);
+								switch (ssx.push_type) {
+									case _push_op_type::a:
+										ImGui::Text("%s", "pha");
+										break;
+									case _push_op_type::x:
+										ImGui::Text("%s", "phx");
+										break;
+									case _push_op_type::y:
+										ImGui::Text("%s", "phy");
+										break;
+									case _push_op_type::status:
+										ImGui::Text("%s", "php");
+										break;
+									case _push_op_type::unknown:
+										ImGui::Text("%s", "(?)");
+										break;
+									case _push_op_type::smart:
+										ImGui::Text("%s", "smart");
+										break;
+								}
+
+								ImGui::TableSetColumnIndex(3);
+								ImGui::Text("$%02x", ssx.value);
+
+								if (j >= ss.push_depth) {
+									ImGui::TableSetColumnIndex(4);
+									switch (ssx.pull_type) {
+										case _push_op_type::a:
+											ImGui::Text("%s", "pla");
+											break;
+										case _push_op_type::x:
+											ImGui::Text("%s", "plx");
+											break;
+										case _push_op_type::y:
+											ImGui::Text("%s", "ply");
+											break;
+										case _push_op_type::status:
+											ImGui::Text("%s", "plp");
+											break;
+										case _push_op_type::unknown:
+											ImGui::Text("%s", "(?)");
+											break;
+										case _push_op_type::smart:
+											ImGui::Text("%s", "smart");
+											break;
+									}
+								}
+							}
+							ImGui::EndTable();
+						}
 					}
 
 					ImGui::EndTooltip();

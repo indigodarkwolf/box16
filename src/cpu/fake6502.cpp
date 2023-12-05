@@ -133,6 +133,7 @@ void nmi6502()
 	ss.source_pc   = state6502.pc;
 	ss.source_bank = bank6502(state6502.pc);
 	ss.push_depth  = 0;
+	ss.push_unwind_depth      = 0;
 	state6502.sp_unwind_depth = state6502.sp_depth;
 
 	push16(state6502.pc);
@@ -157,6 +158,7 @@ void irq6502()
 		ss.source_pc   = state6502.pc;
 		ss.source_bank = bank6502(state6502.pc);
 		ss.push_depth  = 0;
+		ss.push_unwind_depth      = 0;
 		state6502.sp_unwind_depth = state6502.sp_depth;
 
 		push16(state6502.pc);

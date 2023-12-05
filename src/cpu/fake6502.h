@@ -36,13 +36,16 @@ enum class _push_op_type : uint8_t {
 	a,
 	x,
 	y,
-	status
+	status,
+	smart,
 };
 
 struct _smart_stack_ex {
 	_push_op_type push_type;
 	_push_op_type pull_type;
 	uint8_t       value;
+	uint16_t      pc;
+	uint8_t       bank;
 };
 
 struct _smart_stack {
@@ -56,6 +59,7 @@ struct _smart_stack {
 	uint8_t         pop_bank;
 	uint8_t         opcode;
 	uint8_t         push_depth;
+	uint8_t         push_unwind_depth;
 	_smart_stack_ex pushed_bytes[256];
 };
 

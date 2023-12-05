@@ -89,6 +89,9 @@ phx()
 	ssx.push_type                 = _push_op_type::x;
 	ssx.pull_type                 = _push_op_type::unknown;
 	ssx.value                     = state6502.x;
+	ssx.pc                        = state6502.pc - 1;
+	ssx.bank                      = bank6502(state6502.pc - 1);
+	ss.push_unwind_depth          = ss.push_depth;
 }
 
 static void
@@ -114,6 +117,9 @@ phy()
 	ssx.push_type                 = _push_op_type::y;
 	ssx.pull_type                 = _push_op_type::unknown;
 	ssx.value                     = state6502.y;
+	ssx.pc                        = state6502.pc - 1;
+	ssx.bank                      = bank6502(state6502.pc - 1);
+	ss.push_unwind_depth          = ss.push_depth;
 }
 
 static void
