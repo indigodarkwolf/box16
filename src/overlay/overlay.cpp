@@ -172,7 +172,18 @@ static void draw_debugger_cpu_status()
 		ImGui::TableNextColumn();
 
 		if (ImGui::BeginTable("smart stack", 1, ImGuiTableFlags_ScrollY)) {
-			for (uint16_t i = state6502.sp_depth - 1; i < state6502.sp_depth; --i) {
+			if (stack6502_underflow) {
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::TextDisabled("%s", "(Underflow)");
+				if (ImGui::IsItemHovered()) {
+					ImGui::BeginTooltip();
+					ImGui::Text("%s", "There appears to have been a smartstack underflow.\nThis usually means there was a mismatched jsr / rts pair,\nor an rti executed outside of an interrupt.\n\nBox16's SmartStack cannot currently track manual stack manipulation very well.");
+					ImGui::EndTooltip();
+				}
+				ImGui::TableNextRow();
+			}
+			for (uint16_t i = state6502.sp_unwind_depth - 1; i < state6502.sp_unwind_depth; --i) {
 				ImGui::TableNextColumn();
 				auto do_label = [](uint16_t pc, uint8_t bank, bool allow_disabled) {
 					char const *label = disasm_get_label(pc);
@@ -213,21 +224,30 @@ static void draw_debugger_cpu_status()
 						}
 					}
 				};
-				switch (stack6502[i].op_type) {
-					case _stack_op_type::nmi:
-						ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF003388);
-						ImGui::PushStyleColor(ImGuiCol_Text, 0xFF0077FF);
-						break;
-					case _stack_op_type::irq:
-						ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF007788);
-						ImGui::PushStyleColor(ImGuiCol_Text, 0xFF00FFFF);
-						break;
-					case _stack_op_type::op:
-						ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-						ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
-						break;
-					default:
-						break;
+				if (i > state6502.sp_depth) {
+					ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+					ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+				} else {
+					switch (stack6502[i].op_type) {
+						case _stack_op_type::nmi:
+							ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF003388);
+							ImGui::PushStyleColor(ImGuiCol_Text, 0xFF0077FF);
+							break;
+						case _stack_op_type::irq:
+							ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF007788);
+							ImGui::PushStyleColor(ImGuiCol_Text, 0xFF00FFFF);
+							break;
+						case _stack_op_type::smart:
+							ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF883300);
+							ImGui::PushStyleColor(ImGuiCol_Text, 0xFFFFFF00);
+							break;
+						case _stack_op_type::jsr:
+							ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
+							break;
+						default:
+							break;
+					}
 				}
 				ImGui::PushID(i);
 				do_label(stack6502[i].dest_pc, stack6502[i].dest_bank, true);
@@ -262,11 +282,35 @@ static void draw_debugger_cpu_status()
 							case _stack_op_type::irq:
 								ImGui::Text("%s", "IRQ");
 								break;
-							case _stack_op_type::op:
+							case _stack_op_type::jsr:
 								ImGui::Text("%s", mnemonics[stack6502[i].opcode]);
 								break;
 							default:
 								break;
+						}
+
+						if (i >= state6502.sp_depth) {
+							ImGui::TableNextRow();
+							ImGui::TableSetColumnIndex(0);
+							ImGui::TextDisabled("%s", "Pop Address:");
+							ImGui::TableSetColumnIndex(1);
+							do_label(stack6502[i].pop_pc, stack6502[i].pop_bank, false);
+
+							ImGui::TableNextRow();
+							ImGui::TableSetColumnIndex(0);
+							ImGui::TextDisabled("%s", "Pop Cause:");
+							ImGui::TableSetColumnIndex(1);
+							switch (stack6502[i].pop_type) {
+								case _stack_pop_type::rti:
+									ImGui::Text("%s", "rti");
+									break;
+								case _stack_pop_type::rts:
+									ImGui::Text("%s", "rts");
+									break;
+								case _stack_pop_type::unknown:
+									ImGui::Text("%s", "(unknown)");
+									break;
+							}
 						}
 
 						ImGui::EndTable();

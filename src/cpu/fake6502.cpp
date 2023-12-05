@@ -94,7 +94,8 @@ uint8_t  debug6502 = 0;
 uint8_t penaltyop, penaltyaddr;
 uint8_t waiting = 0;
 
-_smart_stack  stack6502[256];
+_smart_stack stack6502[256];
+uint8_t      stack6502_underflow = 0;
 
 // externally supplied functions
 extern uint8_t read6502(uint16_t address);
@@ -128,9 +129,11 @@ static void putvalue(uint16_t saveval)
 
 void nmi6502()
 {
-	auto &ss     = stack6502[state6502.sp_depth++];
-	ss.source_pc = state6502.pc;
+	auto &ss       = stack6502[state6502.sp_depth++];
+	ss.source_pc   = state6502.pc;
 	ss.source_bank = bank6502(state6502.pc);
+	ss.push_depth  = 0;
+	state6502.sp_unwind_depth = state6502.sp_depth;
 
 	push16(state6502.pc);
 	push8(state6502.status & ~FLAG_BREAK);
@@ -140,18 +143,21 @@ void nmi6502()
 	state6502.pc = (uint16_t)read6502(0xFFFA) | ((uint16_t)read6502(0xFFFB) << 8);
 	waiting      = 0;
 
-	ss.dest_pc = state6502.pc;
+	ss.dest_pc   = state6502.pc;
 	ss.dest_bank = bank6502(state6502.pc);
-	ss.op_type = _stack_op_type::nmi;
-	ss.opcode  = 0;
+	ss.op_type   = _stack_op_type::nmi;
+	ss.pop_type  = _stack_pop_type::unknown;
+	ss.opcode    = 0;
 }
 
 void irq6502()
 {
 	if (!(state6502.status & FLAG_INTERRUPT)) {
-		auto &ss     = stack6502[state6502.sp_depth++];
-		ss.source_pc = state6502.pc;
+		auto &ss       = stack6502[state6502.sp_depth++];
+		ss.source_pc   = state6502.pc;
 		ss.source_bank = bank6502(state6502.pc);
+		ss.push_depth  = 0;
+		state6502.sp_unwind_depth = state6502.sp_depth;
 
 		push16(state6502.pc);
 		push8(state6502.status & ~FLAG_BREAK);
@@ -160,10 +166,11 @@ void irq6502()
 		vp6502();
 		state6502.pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
 
-		ss.dest_pc = state6502.pc;
+		ss.dest_pc   = state6502.pc;
 		ss.dest_bank = bank6502(state6502.pc);
 		ss.op_type   = _stack_op_type::irq;
-		ss.opcode  = 0;
+		ss.pop_type  = _stack_pop_type::unknown;
+		ss.opcode    = 0;
 	}
 	waiting = 0;
 }
@@ -198,7 +205,7 @@ void exec6502(uint32_t tickcount)
 		(*addrtable[opcode])();
 		(*optable[opcode])();
 
-		if (debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) {
+		if ((debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) || stack6502_underflow) {
 			state6502      = debug_state6502;
 			clockticks6502 = debug_clockticks6502;
 			return;
@@ -240,7 +247,7 @@ void step6502()
 	(*addrtable[opcode])();
 	(*optable[opcode])();
 
-	if (debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) {
+	if ((debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) || stack6502_underflow) {
 		state6502      = debug_state6502;
 		clockticks6502 = debug_clockticks6502;
 		return;

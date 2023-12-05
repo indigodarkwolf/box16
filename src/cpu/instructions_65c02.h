@@ -84,6 +84,11 @@ static void
 phx()
 {
 	push8(state6502.x);
+	auto &ss                      = stack6502[(state6502.sp_depth + 255) & 0xff];
+	auto &ssx                     = ss.pushed_bytes[ss.push_depth++];
+	ssx.push_type                 = _push_op_type::x;
+	ssx.pull_type                 = _push_op_type::unknown;
+	ssx.value                     = state6502.x;
 }
 
 static void
@@ -93,12 +98,22 @@ plx()
 
 	zerocalc(state6502.x);
 	signcalc(state6502.x);
+
+	auto &ss = stack6502[(state6502.sp_depth + 255) & 0xff];
+	ss.push_depth -= !!ss.push_depth;
+	auto &ssx     = ss.pushed_bytes[ss.push_depth];
+	ssx.pull_type = _push_op_type::x;
 }
 
 static void
 phy()
 {
 	push8(state6502.y);
+	auto &ss                      = stack6502[(state6502.sp_depth + 255) & 0xff];
+	auto &ssx                     = ss.pushed_bytes[ss.push_depth++];
+	ssx.push_type                 = _push_op_type::y;
+	ssx.pull_type                 = _push_op_type::unknown;
+	ssx.value                     = state6502.y;
 }
 
 static void
@@ -108,6 +123,11 @@ ply()
 
 	zerocalc(state6502.y);
 	signcalc(state6502.y);
+
+	auto &ss  = stack6502[(state6502.sp_depth + 255) & 0xff];
+	ss.push_depth -= !!ss.push_depth;
+	auto &ssx = ss.pushed_bytes[ss.push_depth];
+	ssx.pull_type = _push_op_type::y;
 }
 
 // *******************************************************************************************

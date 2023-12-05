@@ -28,6 +28,7 @@
 extern _state6502   state6502;
 extern uint8_t      waiting;
 extern _smart_stack stack6502[256];
+extern uint8_t      stack6502_underflow;
 
 extern uint8_t *RAM;
 extern uint8_t  ROM[ROM_SIZE];

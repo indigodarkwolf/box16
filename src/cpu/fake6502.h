@@ -13,23 +13,50 @@
 
 struct _state6502 {
 	uint16_t pc;
-	uint8_t sp_depth;
+	uint8_t  sp_depth;
+	uint8_t  sp_unwind_depth;
 	uint8_t  sp, a, x, y, status;
 };
 
 enum class _stack_op_type : uint8_t {
-	op,
 	nmi,
 	irq,
+	jsr,
+	smart,
+};
+
+enum class _stack_pop_type : uint8_t {
+	unknown,
+	rts,
+	rti
+};
+
+enum class _push_op_type : uint8_t {
+	unknown,
+	a,
+	x,
+	y,
+	status
+};
+
+struct _smart_stack_ex {
+	_push_op_type push_type;
+	_push_op_type pull_type;
+	uint8_t       value;
 };
 
 struct _smart_stack {
-	uint16_t       source_pc;
-	uint16_t       dest_pc;
-	uint8_t        source_bank;
-	uint8_t        dest_bank;
-	_stack_op_type op_type;
-	uint8_t        opcode;
+	uint16_t        source_pc;
+	uint16_t        dest_pc;
+	uint8_t         source_bank;
+	uint8_t         dest_bank;
+	_stack_op_type  op_type;
+	_stack_pop_type pop_type;
+	uint16_t        pop_pc;
+	uint8_t         pop_bank;
+	uint8_t         opcode;
+	uint8_t         push_depth;
+	_smart_stack_ex pushed_bytes[256];
 };
 
 extern void     init6502();
