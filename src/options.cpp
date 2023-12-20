@@ -81,9 +81,6 @@ static void usage()
 	printf("-hypercall_path <path>\n");
 	printf("\tSet the base path for hypercalls (effectively, the current working directory when no SD card is attached).\n");
 
-	printf("-geos\n");
-	printf("\tLaunch GEOS at startup.\n");
-
 	printf("-gif <file.gif>[,wait]\n");
 	printf("\tRecord a gif for the video output.\n");
 	printf("\tUse ,wait to start paused.\n");
@@ -450,11 +447,6 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			ini["hypercall_path"] = argv[0];
 			argc--;
 			argv++;
-
-		} else if (!strcmp(argv[0], "-geos")) {
-			argc--;
-			argv++;
-			ini["geos"] = "true";
 
 		} else if (!strcmp(argv[0], "-gif")) {
 			argc--;
@@ -902,10 +894,6 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		opts.bas_path = ini["bas"];
 	}
 
-	if (ini.has("geos") && ini["geos"] == "true") {
-		opts.run_geos = true;
-	}
-
 	if (ini.has("test")) {
 		opts.test_number = atoi(ini["test"].c_str());
 		opts.run_test    = opts.test_number >= 0;
@@ -1344,7 +1332,6 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	set_comma_option("prg", Options.prg_path, Default_options.prg_path, Options.prg_override_start, Default_options.prg_override_start);
 	set_option("run", Options.run_after_load, Default_options.run_after_load);
 	set_option("bas", Options.bas_path, Default_options.bas_path);
-	set_option("geos", Options.run_geos, Default_options.run_geos);
 	set_option("test", Options.test_number, Default_options.test_number);
 	set_option("nvram", Options.nvram_path, Default_options.nvram_path);
 	set_option("sdcard", Options.sdcard_path, Default_options.sdcard_path);

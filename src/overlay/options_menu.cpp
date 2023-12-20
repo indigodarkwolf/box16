@@ -101,7 +101,6 @@ void draw_options_menu()
 	file_option("bas", Options.bas_path, "BAS path", "Text BAS file to automatically type into the console after boot, if any.\nCommand line: -bas <path>");
 
 	bool_option(Options.run_after_load, "Run after load", "If a PRG or BAS file is set to be loaded, run it immediately.\nCommand line: -run");
-	bool_option(Options.run_geos, "Run GEOS", "Run GEOS after boot.\nCommand line: -geos");
 	bool_option(Options.run_test, "Run tests", "Run tests after boot.\nCommand line: -test");
 	ImGui::InputInt("Test ID", &Options.test_number);
 	if (ImGui::IsItemHovered()) {

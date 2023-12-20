@@ -61,7 +61,6 @@ struct options {
 	wav_recorder_start_t wav_start = wav_recorder_start_t::WAV_RECORDER_START_NOW;
 
 	bool run_after_load = false;
-	bool run_geos       = false;
 	bool run_test       = false;
 
 	bool load_standard_symbols = false;
