@@ -80,12 +80,12 @@ static float Max_anisotropy = 1.0f;
 
 static bool vsync_is_enabled()
 {
-	return static_cast<int>(Options.vsync_mode) > static_cast<int>(vsync_mode_t::VSYNC_MODE_DISABLED);
+	return static_cast<int>(Options.vsync_mode) > static_cast<int>(vsync_mode_t::VSYNC_MODE_NONE);
 }
 
 static bool vsync_is_disabled()
 {
-	return static_cast<int>(Options.vsync_mode) < static_cast<int>(vsync_mode_t::VSYNC_MODE_DISABLED);
+	return static_cast<int>(Options.vsync_mode) < static_cast<int>(vsync_mode_t::VSYNC_MODE_NONE);
 }
 
 bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
