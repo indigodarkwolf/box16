@@ -678,8 +678,7 @@ static void set_activity(bool active)
 
 static void set_error(int e, int t, int s)
 {
-	snprintf(error, sizeof(error), "%02x,%s,%02d,%02d\r", e, error_string(e), t, s);
-	error_len           = static_cast<int>(strlen(error));
+	error_len = snprintf(error, sizeof(error), "%02x,%s,%02d,%02d\r", e, error_string(e), t, s);
 	error_pos           = 0;
 	uint8_t cbdos_flags = get_kernal_cbdos_flags();
 	if (e < 0x10 || e == 0x73) {

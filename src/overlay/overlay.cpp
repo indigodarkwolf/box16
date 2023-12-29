@@ -206,11 +206,13 @@ static void draw_debugger_cpu_status()
 							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 							char stack_line[256];
 							snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X", bank, pc);
+							stack_line[255] = '\0';
 							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 							ImGui::PopStyleColor();
 						} else {
 							char stack_line[256];
 							snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X: %s", bank, pc, label);
+							stack_line[255] = '\0';
 							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 						}
 					} else {
@@ -218,11 +220,13 @@ static void draw_debugger_cpu_status()
 							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 							char stack_line[256];
 							snprintf(stack_line, sizeof(stack_line), "$%04X", pc);
+							stack_line[255] = '\0';
 							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 							ImGui::PopStyleColor();
 						} else {
 							char stack_line[256];
 							snprintf(stack_line, sizeof(stack_line), "$%04X: %s", pc, label);
+							stack_line[255] = '\0';
 							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 						}					
 					}

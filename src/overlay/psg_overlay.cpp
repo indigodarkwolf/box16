@@ -314,6 +314,7 @@ void draw_debugger_vera_psg()
 		char rate_txt[15];
 		float rate_hz = rate <= 128 ? (float)SAMPLERATE * rate / 128 : 0;
 		snprintf(rate_txt, 15, "%d (%.0f Hz)", rate, rate_hz);
+		rate_txt[14] = '\0';
 		ImGui::SetNextItemWidth(avail / 2 - 48);
 		if (ImGui::SliderInt("Rate", &rate_i, 0, 128, rate_txt, ImGuiSliderFlags_AlwaysClamp)) {
 			pcm_write_rate(rate_i);
