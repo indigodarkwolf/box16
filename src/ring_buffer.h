@@ -5,7 +5,7 @@
 #include <functional>
 #include <string.h>
 
-template <typename T, int SIZE, bool ALLOW_OVERWRITE = true>
+template <typename T, int SIZE>
 class ring_buffer
 {
 public:
@@ -24,17 +24,10 @@ public:
 	T &allocate()
 	{
 		const size_t index = (m_oldest + m_count) % SIZE;
-		if constexpr (ALLOW_OVERWRITE) {
-			if (m_count < SIZE) {
-				++m_count;
-			} else {
-				m_oldest = (m_oldest + 1) % SIZE;
-			}
-		} else {
-			if (m_count >= SIZE) {
-				return;
-			}
+		if (m_count < SIZE) {
 			++m_count;
+		} else {
+			m_oldest = (m_oldest + 1) % SIZE;
 		}
 		return m_elems[index];
 	}
@@ -137,7 +130,7 @@ private:
 	T      m_elems[SIZE];
 };
 
-template <typename T, bool ALLOW_OVERWRITE = true>
+template <typename T>
 class dynamic_ring_buffer
 {
 public:
@@ -150,17 +143,10 @@ public:
 	T &allocate()
 	{
 		const size_t index = (m_oldest + m_count) % m_size;
-		if constexpr (ALLOW_OVERWRITE) {
-			if (m_count < m_size) {
-				++m_count;
-			} else {
-				m_oldest = (m_oldest + 1) % m_size;
-			}
-		} else {
-			if (m_count >= m_size) {
-				return;
-			}
+		if (m_count < m_size) {
 			++m_count;
+		} else {
+			m_oldest = (m_oldest + 1) % m_size;
 		}
 		return m_elems[index];
 	}

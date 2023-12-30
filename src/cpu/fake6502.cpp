@@ -84,6 +84,7 @@
 
 // 6502 CPU registers
 _state6502 state6502;
+_state6502 debug_state6502;
 
 // helper variables
 uint32_t instructions   = 0; // keep track of total instructions executed
@@ -95,7 +96,8 @@ uint8_t  debug6502 = 0;
 uint8_t penaltyop, penaltyaddr;
 uint8_t waiting = 0;
 
-ring_buffer<_smart_stack, 256> stack6502;
+_smart_stack stack6502[256];
+uint8_t      stack6502_underflow = 0;
 ring_buffer<_cpuhistory, 256>  history6502;
 
 // externally supplied functions
@@ -130,10 +132,12 @@ static void putvalue(uint16_t saveval)
 
 void nmi6502()
 {
-	auto &ss       = stack6502.allocate();
+	auto &ss       = stack6502[state6502.sp_depth++];
 	ss.source_pc   = state6502.pc;
 	ss.source_bank = bank6502(state6502.pc);
-	ss.state       = state6502;
+	ss.push_depth  = 0;
+	ss.push_unwind_depth      = 0;
+	state6502.sp_unwind_depth = state6502.sp_depth;
 
 	push16(state6502.pc);
 	push8(state6502.status & ~FLAG_BREAK);
@@ -146,16 +150,21 @@ void nmi6502()
 	ss.dest_pc   = state6502.pc;
 	ss.dest_bank = bank6502(state6502.pc);
 	ss.op_type   = _stack_op_type::nmi;
+	ss.pop_type  = _stack_pop_type::unknown;
 	ss.opcode    = 0;
+	ss.state     = debug_state6502;
 }
 
 void irq6502()
 {
 	if (!(state6502.status & FLAG_INTERRUPT)) {
-		auto &ss       = stack6502.allocate();
+		auto &ss       = stack6502[state6502.sp_depth++];
 		ss.source_pc   = state6502.pc;
 		ss.source_bank = bank6502(state6502.pc);
-		ss.state       = state6502;
+		ss.push_depth  = 0;
+		ss.push_unwind_depth      = 0;
+		state6502.sp_unwind_depth = state6502.sp_depth;
+
 		push16(state6502.pc);
 		push8(state6502.status & ~FLAG_BREAK);
 		setinterrupt();
@@ -166,7 +175,9 @@ void irq6502()
 		ss.dest_pc   = state6502.pc;
 		ss.dest_bank = bank6502(state6502.pc);
 		ss.op_type   = _stack_op_type::irq;
+		ss.pop_type  = _stack_pop_type::unknown;
 		ss.opcode    = 0;
+		ss.state     = debug_state6502;
 	}
 	waiting = 0;
 }
@@ -184,7 +195,7 @@ void exec6502(uint32_t tickcount)
 	clockgoal6502 += tickcount;
 
 	while (clockticks6502 < clockgoal6502) {
-		const _state6502 debug_state6502      = state6502;
+		debug_state6502      = state6502;
 		const uint64_t   debug_clockticks6502 = clockticks6502;
 
 		opcode = read6502(state6502.pc++);
@@ -231,7 +242,7 @@ void step6502()
 		return;
 	}
 
-	const _state6502 debug_state6502      = state6502;
+	debug_state6502      = state6502;
 	const uint64_t   debug_clockticks6502 = clockticks6502;
 
 	opcode = read6502(state6502.pc++);

@@ -23,7 +23,6 @@ enum class parse_command_result {
 
 void boxmon_system_init()
 {
-	boxmon::boxmon_command::finalize_list();
 }
 
 void boxmon_system_shutdown()

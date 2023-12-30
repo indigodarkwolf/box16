@@ -99,6 +99,13 @@ namespace boxmon
 		return namelist.front();
 	}
 
+	bool symbol_expression::is_valid() const
+	{
+		auto namelist = symbols_find(m_symbol);
+		return !namelist.empty();
+	}
+
+
 	unary_expression::unary_expression(expression_type type, const expression_base *param)
 	    : expression_base(type),
 	      m_param(param)

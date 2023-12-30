@@ -42,6 +42,7 @@ uint8_t     debugger_get_flags(uint16_t address, uint8_t bank);
 std::string debugger_get_condition(uint16_t address, uint8_t bank);
 void        debugger_set_condition(uint16_t address, uint8_t bank, const std::string &condition);
 bool        debugger_evaluate_condition(uint16_t address, uint8_t bank);
+bool        debugger_has_valid_expression(uint16_t address, uint8_t bank);
 
     // Bank parameter is only meaninful for addresses >= $A000.
 // Addresses < $A000 will force bank to 0.

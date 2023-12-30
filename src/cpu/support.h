@@ -85,12 +85,15 @@ uint8_t pull8()
 void reset6502()
 {
 	vp6502();
-	state6502.pc       = (uint16_t)read6502(0xFFFC) | ((uint16_t)read6502(0xFFFD) << 8);
-	state6502.a        = 0;
-	state6502.x        = 0;
-	state6502.y        = 0;
-	state6502.sp       = 0xFD;
+	state6502.pc              = (uint16_t)read6502(0xFFFC) | ((uint16_t)read6502(0xFFFD) << 8);
+	state6502.sp_depth        = 0;
+	state6502.sp_unwind_depth = 0;
+	state6502.a               = 0;
+	state6502.x               = 0;
+	state6502.y               = 0;
+	state6502.sp              = 0xFD;
 	state6502.status |= FLAG_CONSTANT | FLAG_BREAK;
+	stack6502_underflow = 0;
 	setinterrupt();
 	cleardecimal();
 	waiting = 0;

@@ -576,8 +576,15 @@ namespace boxmon
 						expression_stack.push(new value_expression(num));
 						return expression_stack.top()->get_type();
 					} else if (std::string symbol; parse_word(symbol, look)) {
-						expression_stack.push(new symbol_expression(symbol));
-						return expression_stack.top()->get_type();
+						symbol_expression *new_symbol = new symbol_expression(symbol);
+						if (new_symbol->is_valid()) {
+							expression_stack.push(new_symbol);
+							return expression_stack.top()->get_type();
+						}
+						if ((flags & expression_parse_flags_suppress_errors) == 0) {
+							boxmon_error_printf("Expression parse failed (invalid symbol name) at: \"%s\"\n", look);
+						}
+						return expression_type::invalid;
 					} else {
 						return expression_type::invalid;
 					}

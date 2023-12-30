@@ -93,6 +93,8 @@ namespace boxmon
 		virtual ~symbol_expression() override final;
 		virtual int evaluate() const override final;
 
+		bool is_valid() const;
+
 	private:
 		std::string m_symbol;
 	};

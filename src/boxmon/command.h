@@ -2,6 +2,7 @@
 
 #include <compare>
 #include <functional>
+#include <map>
 
 #include "parser.h"
 
@@ -19,7 +20,6 @@ namespace boxmon
 		char const *get_name() const;
 		char const *get_description() const;
 
-		static void                  finalize_list();
 		static const boxmon_command *find(char const *name);
 		static void                  for_each(std::function<void(const boxmon_command *cmd)> fn);
 		static void                  for_each_partial(char const *name, std::function<void(const boxmon_command *cmd)> fn);
@@ -30,7 +30,7 @@ namespace boxmon
 
 		std::function<bool(char const *, parser &)> m_run;
 
-		static std::vector<const boxmon_command *> &get_command_list();
+		static std::map<const std::string, const boxmon_command *> &get_command_list();
 	};
 
 	class boxmon_alias : public boxmon_command

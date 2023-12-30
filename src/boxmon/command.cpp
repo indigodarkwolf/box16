@@ -1,7 +1,7 @@
 #include "command.h"
 
 #include <algorithm>
-#include <string.h>
+#include <string>
 
 #include "boxmon.h"
 #include "parser.h"
@@ -20,7 +20,7 @@ namespace boxmon
 	      m_run(fn)
 	{
 		auto &command_list = get_command_list();
-		command_list.push_back(this);
+		command_list.insert({ name, this });
 	}
 
 	std::strong_ordering boxmon_command::operator<=>(char const *name) const
@@ -48,35 +48,13 @@ namespace boxmon
 		return m_description;
 	}
 
-	void boxmon_command::finalize_list()
-	{
-		auto &command_list = get_command_list();
-		std::sort(begin(command_list), end(command_list), [](const boxmon_command *a, const boxmon_command *b) { return *a > *b; });
-	}
-
 	const boxmon_command *boxmon_command::find(char const *name)
 	{
 		const auto &command_list = get_command_list();
-
-		size_t search_min = 0;
-		size_t search_max = command_list.size()-1;
-
-		while (search_min != search_max) {
-			const auto search_i = (search_min + search_max) >> 1;
-			const auto cmp_i    = *command_list[search_i] <=> name;
-			if (is_eq(cmp_i)) {
-				return command_list[search_i];
-			} else if (is_lt(cmp_i)) {
-				search_max = std::max(search_min, search_i - 1);
-			} else {
-				search_min = std::min(search_max, search_i + 1);
-			}
+		const auto icmd = command_list.find(name);
+		if (icmd != command_list.end()) {
+			return icmd->second;
 		}
-
-		if (is_eq(*command_list[search_min] <=> name)) {
-			return command_list[search_min];
-		}
-
 		return nullptr;
 	}
 
@@ -84,7 +62,7 @@ namespace boxmon
 	{
 		const auto &command_list = get_command_list();
 		for (auto cmd : command_list) {
-			fn(cmd);
+			fn(cmd.second);
 		}
 	}
 
@@ -92,17 +70,17 @@ namespace boxmon
 	{
 		const auto &command_list = get_command_list();
 		for (auto cmd : command_list) {
-			if (strstr(cmd->get_name(), name) != nullptr) {
-				fn(cmd);
-			} else if (strstr(cmd->get_description(), name) != nullptr) {
-				fn(cmd);
+			if (strstr(cmd.second->get_name(), name) != nullptr) {
+				fn(cmd.second);
+			} else if (strstr(cmd.second->get_description(), name) != nullptr) {
+				fn(cmd.second);
 			}
 		}
 	}
 
-	std::vector<const boxmon_command *> &boxmon_command::get_command_list()
+	std::map<const std::string, const boxmon_command *> &boxmon_command::get_command_list()
 	{
-		static std::vector<const boxmon_command *> command_list;
+		static std::map<const std::string, const boxmon_command *> command_list;
 		return command_list;
 	}
 
@@ -196,7 +174,7 @@ BOXMON_ALIAS(al, add_label);
 BOXMON_COMMAND(backtrace, "backtrace")
 {
 	char const *names[] = { "N", "V", "-", "B", "D", "I", "Z", "C" };
-	for (size_t i = 0; i < stack6502.count(); ++i) {
+	for (size_t i = 0; i < state6502.sp_depth; ++i) {
 		const auto &ss = stack6502[static_cast<int>(i)];
 		char const *op = [&]() -> char const * {
 			switch (ss.op_type) {
@@ -205,6 +183,9 @@ BOXMON_COMMAND(backtrace, "backtrace")
 					break;
 				case _stack_op_type::irq:
 					return "IRQ";
+					break;
+				case _stack_op_type::smart:
+					return "---";
 					break;
 				case _stack_op_type::op:
 					return mnemonics[ss.opcode];

@@ -223,6 +223,18 @@ void debugger_process_cpu()
 		return;
 	}
 
+	const auto [addr, bank] = get_current_pc();
+	const auto flags        = get_flags(addr, bank);
+	if (flags & DEBUG6502_CONDITION) {
+		if (flags & DEBUG6502_EXPRESSION) {
+			if (!debugger_evaluate_condition(addr, bank)) {
+				return;
+			}
+		} else {
+			return;
+		}
+	}
+
 	debugger_pause_execution();
 }
 
@@ -373,6 +385,12 @@ bool debugger_evaluate_condition(uint16_t address, uint8_t bank)
 		return (eiter->second->evaluate() != 0);
 	}
 	return false;
+}
+
+bool debugger_has_valid_expression(uint16_t address, uint8_t bank)
+{
+	const uint32_t offset = get_offset(address, bank);
+	return (Breakpoint_flags[offset] & DEBUG6502_EXPRESSION);
 }
 
 void debugger_add_breakpoint(uint16_t address, uint8_t bank /* = 0 */, uint8_t flags /* = DEBUG6502_EXEC */)

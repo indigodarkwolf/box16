@@ -53,6 +53,11 @@
 // When rendering a layer line, we can amortize some of the cost by calculating multiple pixels at a time.
 #define LAYER_PIXELS_PER_ITERATION 8
 
+// Version
+#define VERA_VERSION_MAJOR  0x00
+#define VERA_VERSION_MINOR  0x03
+#define VERA_VERSION_PATCH  0x02
+
 static bool is_fullscreen = false;
 
 static uint8_t video_ram[0x20000];
@@ -72,7 +77,9 @@ static uint8_t isr;
 static uint16_t irq_line;
 
 static uint8_t reg_layer[2][7];
-static uint8_t reg_composer[8];
+
+#define COMPOSER_SLOTS 4*64
+static uint8_t reg_composer[COMPOSER_SLOTS];
 
 static uint8_t layer_line[2][SCREEN_WIDTH];
 static uint8_t sprite_line_col[SCREEN_WIDTH];
@@ -92,6 +99,63 @@ static int cheat_mask  = 0;
 
 static bool log_video              = false;
 static bool shadow_safety_frame[4] = { false, false, true, true };
+
+////////////////////////////////////////////////////////////
+// FX registers
+////////////////////////////////////////////////////////////
+static uint8_t fx_addr1_mode;
+
+// These are all 16.16 fixed point in the emulator
+// even though the VERA uses smaller bit widths
+// for the whole and fractional parts.
+//
+// Sign extension is done manually when assigning negative numbers
+//
+// Native VERA bit widths are shown below.
+static uint32_t fx_x_pixel_increment;  // 11.9 fixed point (6.9 without 32x multiplier, 11.4 with 32x multiplier on)
+static uint32_t fx_y_pixel_increment;  // 11.9 fixed point (6.9 without 32x multiplier, 11.4 with 32x multiplier on)
+static uint32_t fx_x_pixel_position;   // 11.9 fixed point
+static uint32_t fx_y_pixel_position;   // 11.9 fixed point
+
+static uint16_t fx_poly_fill_length;      // 10 bits
+
+static uint32_t fx_affine_tile_base;
+static uint32_t fx_affine_map_base;
+
+static uint8_t fx_affine_map_size;
+
+static bool fx_4bit_mode;
+static bool fx_16bit_hop;
+static bool fx_cache_byte_cycling;
+static bool fx_cache_fill;
+static bool fx_cache_write;
+static bool fx_trans_writes;
+
+static bool fx_2bit_poly;
+static bool fx_2bit_poking;
+
+static bool fx_cache_increment_mode;
+static bool fx_cache_nibble_index;
+static uint8_t fx_cache_byte_index;
+static bool fx_multiplier;
+static bool fx_subtract;
+
+static bool fx_affine_clip;
+
+static uint8_t fx_16bit_hop_align;
+
+static bool fx_nibble_bit[2];
+static bool fx_nibble_incr[2];
+
+static uint8_t fx_cache[4];
+
+static int32_t fx_mult_accumulator;
+
+static const uint8_t vera_version_string[] = {'V',
+	VERA_VERSION_MAJOR,
+	VERA_VERSION_MINOR,
+	VERA_VERSION_PATCH
+};
 
 static uint8_t framebuffer[SCREEN_WIDTH * SCREEN_HEIGHT * 4];
 
@@ -124,6 +188,49 @@ void vera_video_reset()
 	reg_composer[2] = 128; // vscale = 1.0
 	reg_composer[5] = 640 >> 2;
 	reg_composer[7] = 480 >> 1;
+
+	// Initialize FX registers
+	fx_addr1_mode = 0;
+	fx_x_pixel_position = 0x8000;
+	fx_y_pixel_position = 0x8000;
+	fx_x_pixel_increment = 0;
+	fx_y_pixel_increment = 0;
+
+	fx_cache_write = false;
+	fx_cache_fill = false;
+	fx_4bit_mode = false;
+	fx_16bit_hop = false;
+	fx_subtract = false;
+	fx_cache_byte_cycling = false;
+	fx_trans_writes = false;
+	fx_multiplier = false;
+
+	fx_mult_accumulator = 0;
+
+	fx_2bit_poly = false;
+	fx_2bit_poking = false;
+
+	fx_cache_nibble_index = 0;
+	fx_cache_byte_index = 0;
+	fx_cache_increment_mode = 0;
+
+	fx_cache[0] = 0;
+	fx_cache[1] = 0;
+	fx_cache[2] = 0;
+	fx_cache[3] = 0;
+
+	fx_16bit_hop_align = 0;
+
+	fx_nibble_bit[0] = false;
+	fx_nibble_bit[1] = false;
+	fx_nibble_incr[0] = false;
+	fx_nibble_incr[1] = false;
+
+	fx_poly_fill_length = 0;
+	fx_affine_tile_base = 0;
+	fx_affine_map_base = 0;
+	fx_affine_map_size = 2;
+	fx_affine_clip = false;
 
 	// init sprite data
 	memset(sprite_data, 0, sizeof(sprite_data));
@@ -654,8 +761,11 @@ static void render_layer_line_tile(uint16_t y)
 		uint8_t col_index = (s >> color_shift) & props->color_mask;
 
 		// Apply Palette Offset
-		if (palette_offset && col_index > 0 && col_index < 16) {
+		if (col_index > 0 && col_index < 16) {
 			col_index += palette_offset;
+			if (props->text_mode_256c) {
+				col_index |= 0x80;
+			}
 		}
 		layer_line[layer][i] = col_index;
 
@@ -703,8 +813,11 @@ static void render_layer_line_bitmap(uint16_t y)
 		uint8_t col_index = (s >> (props->first_color_pos - ((xx & props->color_fields_max) << props->color_depth))) & props->color_mask;
 
 		// Apply Palette Offset
-		if (palette_offset && col_index > 0 && col_index < 16) {
+		if (col_index > 0 && col_index < 16) {
 			col_index += palette_offset << 4;
+			if (props->text_mode_256c) {
+				col_index |= 0x80;
+			}
 		}
 		layer_line[layer][i] = col_index;
 
@@ -1003,10 +1116,71 @@ static const int increments[32] = {
 	-640,
 };
 
-static uint32_t get_and_inc_address(uint8_t sel)
+static uint32_t get_and_inc_address(uint8_t sel, bool write)
 {
 	uint32_t address = io_addr[sel];
-	io_addr[sel] += increments[io_inc[sel]];
+	int16_t incr = increments[io_inc[sel]];
+
+	if (fx_4bit_mode && fx_nibble_incr[sel] && !incr) {
+		if (fx_nibble_bit[sel]) {
+			if ((io_inc[sel] & 1) == 0) io_addr[sel] += 1;
+			fx_nibble_bit[sel] = 0;
+		} else {
+			if (io_inc[sel] & 1) io_addr[sel] -= 1;
+			fx_nibble_bit[sel] = 1;
+		}
+	}
+
+	if (sel == 1 && fx_16bit_hop) {
+		if (incr == 4) {
+			if (fx_16bit_hop_align == (address & 0x3))
+				incr = 1;
+			else
+				incr = 3;
+		} else if (incr == 320) {
+			if (fx_16bit_hop_align == (address & 0x3))
+				incr = 1;
+			else
+				incr = 319;
+		}
+	}
+
+	io_addr[sel] += incr;
+
+	if (sel == 1 && fx_addr1_mode == 1) { // FX line draw mode
+		fx_x_pixel_position += fx_x_pixel_increment;
+		if (fx_x_pixel_position & 0x10000) {
+			fx_x_pixel_position &= ~0x10000;
+			if (fx_4bit_mode && fx_nibble_incr[0]) {
+				if (fx_nibble_bit[1]) {
+					if ((io_inc[0] & 1) == 0) io_addr[1] += 1;
+					fx_nibble_bit[1] = 0;
+				} else {
+					if (io_inc[0] & 1) io_addr[1] -= 1;
+					fx_nibble_bit[1] = 1;
+				}
+			}
+			io_addr[1] += increments[io_inc[0]];
+		}
+	} else if (fx_addr1_mode == 2 && write == false) { // FX polygon fill mode
+		fx_x_pixel_position += fx_x_pixel_increment;
+		fx_y_pixel_position += fx_y_pixel_increment;
+		fx_poly_fill_length = ((int32_t) fx_y_pixel_position >> 16) - ((int32_t) fx_x_pixel_position >> 16);
+		if (sel == 0 && fx_cache_byte_cycling && !fx_cache_fill) {
+			fx_cache_byte_index = (fx_cache_byte_index + 1) & 3;
+		}
+		if (sel == 1) {
+			if (fx_4bit_mode) {
+				io_addr[1] = io_addr[0] + (fx_x_pixel_position >> 17);
+				fx_nibble_bit[1] = (fx_x_pixel_position >> 16) & 1;
+			} else {
+				io_addr[1] = io_addr[0] + (fx_x_pixel_position >> 16);
+			}
+		}
+	} else if (sel == 1 && fx_addr1_mode == 3 && write == false) { // FX affine mode
+		fx_x_pixel_position += fx_x_pixel_increment;
+		fx_y_pixel_position += fx_y_pixel_increment;
+	}
 	return address;
 }
 
@@ -1019,6 +1193,59 @@ uint8_t vera_video_space_read(uint32_t address)
 	return video_ram[address & 0x1FFFF];
 }
 
+void fx_affine_prefetch(void)
+{
+	if (fx_addr1_mode != 3) return; // only if affine mode is selected
+
+	uint32_t address;
+	uint8_t affine_x_tile = (fx_x_pixel_position >> 19) & 0xff;
+	uint8_t affine_y_tile = (fx_y_pixel_position >> 19) & 0xff;
+	uint8_t affine_x_sub_tile = (fx_x_pixel_position >> 16) & 0x07;
+	uint8_t affine_y_sub_tile = (fx_y_pixel_position >> 16) & 0x07;
+
+	if (!fx_affine_clip) { // wrap
+		affine_x_tile &= fx_affine_map_size - 1;
+		affine_y_tile &= fx_affine_map_size - 1;
+	}
+
+	if (affine_x_tile >= fx_affine_map_size || affine_y_tile >= fx_affine_map_size) {
+		// We clipped, return value for tile 0
+		address = fx_affine_tile_base + (affine_y_sub_tile << (3 - fx_4bit_mode)) + (affine_x_sub_tile >> (uint8_t)fx_4bit_mode);
+		if (fx_4bit_mode) fx_nibble_bit[1] = 0;
+	} else {
+		// Get the address within the tile map
+		address = fx_affine_map_base + (affine_y_tile * fx_affine_map_size) + affine_x_tile;
+		// Now translate that to the tile base address
+		uint8_t affine_tile_idx = vera_video_space_read(address);
+		address = fx_affine_tile_base + (affine_tile_idx << (6 - fx_4bit_mode));
+		// Now add the sub-tile address
+		address += (affine_y_sub_tile << (3 - fx_4bit_mode)) + (affine_x_sub_tile >> (uint8_t)fx_4bit_mode);
+		if (fx_4bit_mode) fx_nibble_bit[1] = affine_x_sub_tile & 1;
+	}
+	io_addr[1] = address;
+	io_rddata[1] = vera_video_space_read(address);
+}
+
+void fx_vram_cache_write(uint32_t address, uint8_t value, uint8_t mask)
+{
+	if (!fx_trans_writes || value > 0) {
+		switch (mask) {
+			case 0:
+				video_ram[address & 0x1FFFF] = value;
+				break;
+			case 1:
+				video_ram[address & 0x1FFFF] = (video_ram[address & 0x1FFFF] & 0x0f) | (value & 0xf0);
+				break;
+			case 2:
+				video_ram[address & 0x1FFFF] = (video_ram[address & 0x1FFFF] & 0xf0) | (value & 0x0f);
+				break;
+			case 3:
+				// Do nothing
+				break;
+		}
+	}
+}
+
 void vera_video_space_read_range(uint8_t *dest, uint32_t address, uint32_t size)
 {
 	address &= 0x1FFFF;
@@ -1029,6 +1256,33 @@ void vera_video_space_read_range(uint8_t *dest, uint32_t address, uint32_t size)
 		memcpy(dest, &video_ram[address], tail_size);
 		const uint32_t head_size = ((address + size) & 0x1FFFF);
 		memcpy(dest + tail_size, video_ram, head_size);
+	}
+}
+
+void fx_vera_video_space_write(uint32_t address, bool nibble, uint8_t value)
+{
+	if (fx_4bit_mode) {
+		if (nibble) {
+			if (!fx_trans_writes || (value & 0x0f) > 0) {
+				video_ram[address & 0x1FFFF] = (video_ram[address & 0x1FFFF] & 0xf0) | (value & 0x0f);
+			}
+		} else {
+			if (!fx_trans_writes || (value & 0xf0) > 0) {
+				video_ram[address & 0x1FFFF] = (video_ram[address & 0x1FFFF] & 0x0f) | (value & 0xf0);
+			}
+		}
+	} else {
+		if (!fx_trans_writes || value > 0) video_ram[address & 0x1FFFF] = value;
+	}
+
+	if (address >= ADDR_PSG_START && address < ADDR_PSG_END) {
+		psg_writereg(address & 0x3f, value);
+	} else if (address >= ADDR_PALETTE_START && address < ADDR_PALETTE_END) {
+		palette[address & 0x1ff] = value;
+		video_palette.dirty      = true;
+	} else if (address >= ADDR_SPRDATA_START && address < ADDR_SPRDATA_END) {
+		sprite_data[(address >> 3) & 0x7f][address & 0x7] = value;
+		refresh_sprite_properties((address >> 3) & 0x7f);
 	}
 }
 
@@ -1060,7 +1314,7 @@ uint8_t vera_debug_video_read(uint8_t reg)
 	switch (reg & 0x1F) {
 		case 0x00: return io_addr[io_addrsel] & 0xff;
 		case 0x01: return (io_addr[io_addrsel] >> 8) & 0xff;
-		case 0x02: return (io_addr[io_addrsel] >> 16) | (io_inc[io_addrsel] << 3);
+		case 0x02: return (io_addr[io_addrsel] >> 16) | (fx_nibble_bit[io_addrsel] << 1) | (fx_nibble_incr[io_addrsel] << 2) | (io_inc[io_addrsel] << 3);
 
 		case 0x03:
 		case 0x04: return io_rddata[reg - 3];
@@ -1073,8 +1327,58 @@ uint8_t vera_debug_video_read(uint8_t reg)
 		case 0x09:
 		case 0x0A:
 		case 0x0B:
-		case 0x0C: return reg_composer[reg - 0x09 + (io_dcsel ? 4 : 0)];
-
+		case 0x0C: {
+			int i = reg - 0x09 + (io_dcsel << 2);
+			switch (i) {
+				case 0x00:
+				case 0x01:
+				case 0x02:
+				case 0x03:
+				case 0x04:
+				case 0x05:
+				case 0x06:
+				case 0x07:
+				case 0x08:
+					// DCSEL = [0,1] with any composer register, or [2] at $9f29
+					return reg_composer[i];
+					break;
+				case 0x16: // DCSEL=5, 0x9F2B
+					if (fx_poly_fill_length >= 768) {
+						return ((fx_2bit_poly && fx_addr1_mode == 2) ? 0x00 : 0x80);
+					}
+					if (fx_4bit_mode) {
+						if (fx_2bit_poly && fx_addr1_mode == 2) {
+							return ((fx_y_pixel_position & 0x00008000) >> 8) |
+								((fx_x_pixel_position >> 11) & 0x60) |
+								((fx_x_pixel_position >> 14) & 0x10) |
+								((fx_poly_fill_length & 0x0007) << 1) |
+								((fx_x_pixel_position & 0x00008000) >> 15);
+						} else {
+							return ((!!(fx_poly_fill_length & 0xfff8)) << 7) |
+								((fx_x_pixel_position >> 11) & 0x60) |
+								((fx_x_pixel_position >> 14) & 0x10) |
+								((fx_poly_fill_length & 0x0007) << 1);
+						}
+					} else {
+						return ((!!(fx_poly_fill_length & 0xfff0)) << 7) |
+							((fx_x_pixel_position >> 11) & 0x60) |
+							((fx_poly_fill_length & 0x000f) << 1);
+					}
+					break;
+				case 0x17: // DCSEL=5, 0x9F2C
+					return ((fx_poly_fill_length & 0x03f8) >> 2);
+					break;
+				case 0x18: // DCSEL=6, 0x9F29, would affect multiplier
+				case 0x19: // DCSEL=6, 0x9F2A, would affect multiplier
+				default:
+					// The rest of the space is write-only,
+					// so reading the values out instead returns the version string.
+					// fall out of the switch
+					break;
+			}
+			return vera_version_string[i % 4];
+			break;
+		}
 		case 0x0D:
 		case 0x0E:
 		case 0x0F:
@@ -1109,14 +1413,38 @@ uint8_t vera_video_read(uint8_t reg)
 	switch (reg & 0x1F) {
 		case 0x00: return io_addr[io_addrsel] & 0xff;
 		case 0x01: return (io_addr[io_addrsel] >> 8) & 0xff;
-		case 0x02: return (io_addr[io_addrsel] >> 16) | (io_inc[io_addrsel] << 3);
+		case 0x02: return (io_addr[io_addrsel] >> 16) | (fx_nibble_bit[io_addrsel] << 1) | (fx_nibble_incr[io_addrsel] << 2) | (io_inc[io_addrsel] << 3);
 
 		case 0x03:
 		case 0x04: {
-			uint32_t address = get_and_inc_address(reg - 3);
+			uint32_t address = get_and_inc_address(reg - 3, false);
 
 			uint8_t value      = io_rddata[reg - 3];
-			io_rddata[reg - 3] = vera_video_space_read(io_addr[reg - 3]);
+
+			if (reg == 4 && fx_addr1_mode == 3)
+				fx_affine_prefetch();
+			else
+				io_rddata[reg - 3] = vera_video_space_read(io_addr[reg - 3]);
+
+			if (fx_cache_fill) {
+				if (fx_4bit_mode) {
+					if (fx_cache_nibble_index) {
+						fx_cache[fx_cache_byte_index] = (fx_cache[fx_cache_byte_index] & 0xf0) | (value & 0x0f);
+						fx_cache_nibble_index = 0;
+						fx_cache_byte_index = ((fx_cache_byte_index + 1) & 0x3);
+					} else {
+						fx_cache[fx_cache_byte_index] = (fx_cache[fx_cache_byte_index] & 0x0f) | (value & 0xf0);
+						fx_cache_nibble_index = 1;
+					}
+				} else {
+					fx_cache[fx_cache_byte_index] = value;
+					if (fx_cache_increment_mode)
+						fx_cache_byte_index = (fx_cache_byte_index & 0x2) | ((fx_cache_byte_index + 1) & 0x1);
+					else
+						fx_cache_byte_index = ((fx_cache_byte_index + 1) & 0x3);
+				}
+			}
+
 
 			if (log_video) {
 				printf("READ  video_space[$%X] = $%02X\n", address, value);
@@ -1131,8 +1459,71 @@ uint8_t vera_video_read(uint8_t reg)
 		case 0x09:
 		case 0x0A:
 		case 0x0B:
-		case 0x0C: return reg_composer[reg - 0x09 + (io_dcsel ? 4 : 0)];
-
+		case 0x0C: {
+			int i = reg - 0x09 + (io_dcsel << 2);
+			switch (i) {
+				case 0x00:
+				case 0x01:
+				case 0x02:
+				case 0x03:
+				case 0x04:
+				case 0x05:
+				case 0x06:
+				case 0x07:
+				case 0x08:
+					// DCSEL = [0,1] with any composer register, or [2] at $9f29
+					return reg_composer[i];
+					break;
+				case 0x16: // DCSEL=5, 0x9F2B
+					if (fx_poly_fill_length >= 768) {
+						return ((fx_2bit_poly && fx_addr1_mode == 2) ? 0x00 : 0x80);
+					}
+					if (fx_4bit_mode) {
+						if (fx_2bit_poly && fx_addr1_mode == 2) {
+							return ((fx_y_pixel_position & 0x00008000) >> 8) |
+								((fx_x_pixel_position >> 11) & 0x60) |
+								((fx_x_pixel_position >> 14) & 0x10) |
+								((fx_poly_fill_length & 0x0007) << 1) |
+								((fx_x_pixel_position & 0x00008000) >> 15);
+						} else {
+							return ((!!(fx_poly_fill_length & 0xfff8)) << 7) |
+								((fx_x_pixel_position >> 11) & 0x60) |
+								((fx_x_pixel_position >> 14) & 0x10) |
+								((fx_poly_fill_length & 0x0007) << 1);
+						}
+					} else {
+						return ((!!(fx_poly_fill_length & 0xfff0)) << 7) |
+							((fx_x_pixel_position >> 11) & 0x60) |
+							((fx_poly_fill_length & 0x000f) << 1);
+					}
+					break;
+				case 0x17: // DCSEL=5, 0x9F2C
+					return ((fx_poly_fill_length & 0x03f8) >> 2);
+					break;
+				case 0x18: // DCSEL=6, 0x9F29
+					fx_mult_accumulator = 0;
+					// fall out of the switch
+					break;
+				case 0x19: {
+					// DCSEL=6, 0x9F2A
+					; // <- avoids the error in some compilers about a declaration after a label
+					int32_t m_result = (int16_t)((fx_cache[1] << 8) | fx_cache[0]) * (int16_t)((fx_cache[3] << 8) | fx_cache[2]);
+					if (fx_subtract)
+						fx_mult_accumulator -= m_result;
+					else
+						fx_mult_accumulator += m_result;
+					// fall out of the switch
+					break;
+				}
+				default:
+					// The rest of the space is write-only,
+					// so reading the values out instead returns the version string.
+					// fall out of the switch
+					break;
+			}
+			return vera_version_string[i % 4];
+			break;
+		}
 		case 0x0D:
 		case 0x0E:
 		case 0x0F:
@@ -1167,7 +1558,14 @@ void vera_video_write(uint8_t reg, uint8_t value)
 	//	printf("ioregisters[%d] = $%02X\n", reg, value);
 	switch (reg & 0x1F) {
 		case 0x00:
-			io_addr[io_addrsel]   = (io_addr[io_addrsel] & 0x1ff00) | value;
+			if (fx_2bit_poly && fx_4bit_mode && fx_addr1_mode == 2 && io_addrsel == 1) {
+				fx_2bit_poking = true;
+				io_addr[1] = (io_addr[1] & 0x1fffc) | (value & 0x3);
+			} else {
+				io_addr[io_addrsel] = (io_addr[io_addrsel] & 0x1ff00) | value;
+				if (fx_16bit_hop && io_addrsel == 1)
+					fx_16bit_hop_align = value & 3;
+			}
 			io_rddata[io_addrsel] = vera_video_space_read(io_addr[io_addrsel]);
 			break;
 		case 0x01:
@@ -1176,16 +1574,74 @@ void vera_video_write(uint8_t reg, uint8_t value)
 			break;
 		case 0x02:
 			io_addr[io_addrsel]   = (io_addr[io_addrsel] & 0x0ffff) | ((value & 0x1) << 16);
+			fx_nibble_bit[io_addrsel] = (value >> 1) & 0x1;
+			fx_nibble_incr[io_addrsel] = (value >> 2) & 0x1;
 			io_inc[io_addrsel]    = value >> 3;
 			io_rddata[io_addrsel] = vera_video_space_read(io_addr[io_addrsel]);
 			break;
 		case 0x03:
 		case 0x04: {
-			uint32_t address = get_and_inc_address(reg - 3);
+			if (fx_2bit_poking && fx_addr1_mode) {
+				fx_2bit_poking = false;
+				uint8_t mask = value >> 6;
+				switch (mask) {
+					case 0x00:
+						video_ram[io_addr[1] & 0x1FFFF] = (fx_cache[fx_cache_byte_index] & 0xc0) | (io_rddata[1] & 0x3f);
+						break;
+					case 0x01:
+						video_ram[io_addr[1] & 0x1FFFF] = (fx_cache[fx_cache_byte_index] & 0x30) | (io_rddata[1] & 0xcf);
+						break;
+					case 0x02:
+						video_ram[io_addr[1] & 0x1FFFF] = (fx_cache[fx_cache_byte_index] & 0x0c) | (io_rddata[1] & 0xf3);
+						break;
+					case 0x03:
+						video_ram[io_addr[1] & 0x1FFFF] = (fx_cache[fx_cache_byte_index] & 0x03) | (io_rddata[1] & 0xfc);
+						break;
+				}
+				break; // break out of the enclosing switch statement early, too
+			}
+			bool nibble = fx_nibble_bit[reg - 3];
+			uint32_t address = get_and_inc_address(reg - 3, true);
 			if (log_video) {
 				printf("WRITE video_space[$%X] = $%02X\n", address, value);
 			}
-			vera_video_space_write(address, value);
+
+			if (fx_cache_write) {
+				address &= 0x1fffc;
+				if (fx_cache_byte_cycling) {
+					fx_vram_cache_write(address+0, fx_cache[fx_cache_byte_index], value & 0x03);
+					fx_vram_cache_write(address+1, fx_cache[fx_cache_byte_index], (value >> 2) & 0x03);
+					fx_vram_cache_write(address+2, fx_cache[fx_cache_byte_index], (value >> 4) & 0x03);
+					fx_vram_cache_write(address+3, fx_cache[fx_cache_byte_index], value >> 6);
+				} else {
+					if (fx_multiplier) {
+						int32_t m_result = (int16_t)((fx_cache[1] << 8) | fx_cache[0]) * (int16_t)((fx_cache[3] << 8) | fx_cache[2]);
+						if (fx_subtract)
+							m_result = fx_mult_accumulator - m_result;
+						else
+							m_result = fx_mult_accumulator + m_result;
+						fx_vram_cache_write(address+0, (m_result) & 0xff, value & 0x03);
+						fx_vram_cache_write(address+1, (m_result >> 8) & 0xff, (value >> 2) & 0x03);
+						fx_vram_cache_write(address+2, (m_result >> 16) & 0xff, (value >> 4) & 0x03);
+						fx_vram_cache_write(address+3, (m_result >> 24) & 0xff, value >> 6);
+					} else {
+						fx_vram_cache_write(address+0, fx_cache[0], value & 0x03);
+						fx_vram_cache_write(address+1, fx_cache[1], (value >> 2) & 0x03);
+						fx_vram_cache_write(address+2, fx_cache[2], (value >> 4) & 0x03);
+						fx_vram_cache_write(address+3, fx_cache[3], value >> 6);
+					}
+				}
+			} else {
+				if (fx_cache_byte_cycling) {
+					if (fx_4bit_mode) {
+						fx_vram_cache_write(address, fx_cache[fx_cache_byte_index], nibble+1);
+					} else {
+						fx_vram_cache_write(address, fx_cache[fx_cache_byte_index], 0);
+					}
+				} else {
+					fx_vera_video_space_write(address, nibble, value); // Normal write
+				}
+			}
 
 			io_rddata[reg - 3] = vera_video_space_read(io_addr[reg - 3]);
 			break;
@@ -1194,7 +1650,7 @@ void vera_video_write(uint8_t reg, uint8_t value)
 			if (value & 0x80) {
 				vera_video_reset();
 			}
-			io_dcsel   = (value >> 1) & 1;
+			io_dcsel   = (value >> 1) & 0x3f;
 			io_addrsel = value & 1;
 			break;
 		case 0x06:
@@ -1212,7 +1668,7 @@ void vera_video_write(uint8_t reg, uint8_t value)
 		case 0x0A:
 		case 0x0B:
 		case 0x0C: {
-			int i = reg - 0x09 + (io_dcsel ? 4 : 0);
+			int i = reg - 0x09 + (io_dcsel << 2);
 			if (i == 0) {
 				// interlace field bit is read-only
 				reg_composer[0]     = (reg_composer[0] & ~0x7f) | (value & 0x7f);
@@ -1220,9 +1676,103 @@ void vera_video_write(uint8_t reg, uint8_t value)
 			} else {
 				reg_composer[i] = value;
 			}
+			switch (i) {
+				case 0x08: // DCSEL=2, $9F29
+					fx_addr1_mode = value & 0x03;
+					fx_4bit_mode = (value & 0x04) >> 2;
+					fx_16bit_hop = (value & 0x08) >> 3;
+					fx_cache_byte_cycling = (value & 0x10) >> 4;
+					fx_cache_fill = (value & 0x20) >> 5;
+					fx_cache_write = (value & 0x40) >> 6;
+					fx_trans_writes = (value & 0x80) >> 7;
+					break;
+				case 0x09: // DCSEL=2, $9F2A
+					fx_affine_tile_base = (value & 0xfc) << 9;
+					fx_affine_clip = (value & 0x02) >> 1;
+					fx_2bit_poly = (value & 0x01);
+					break;
+				case 0x0a: // DCSEL=2, $9F2B
+					fx_affine_map_base = (value & 0xfc) << 9;
+					fx_affine_map_size = 2 << ((value & 0x03) << 1);
+					break;
+				case 0x0b: // DCSEL=2, $9F2C
+					fx_cache_increment_mode = value & 0x01;
+					fx_cache_nibble_index = (value & 0x02) >> 1;
+					fx_cache_byte_index = (value & 0x0c) >> 2;
+					fx_multiplier = (value & 0x10) >> 4;
+					fx_subtract = (value & 0x20) >> 5;
+					if (value & 0x40) { // accumulate
+						int32_t m_result = (int16_t)((fx_cache[1] << 8) | fx_cache[0]) * (int16_t)((fx_cache[3] << 8) | fx_cache[2]);
+						if (fx_subtract)
+							fx_mult_accumulator -= m_result;
+						else
+							fx_mult_accumulator += m_result;
+					}
+					if (value & 0x80) { // reset accumulator
+						fx_mult_accumulator = 0;
+					}
+					break;
+				case 0x0c: // DCSEL=3, $9F29
+					fx_x_pixel_increment = ((((reg_composer[0x0d] & 0x7f) << 15) + (reg_composer[0x0c] << 7)) // base value
+						| ((reg_composer[0x0d] & 0x40) ? 0xffc00000 : 0)) // sign extend if negative
+						<< 5*(!!(reg_composer[0x0d] & 0x80)); // multiply by 32 if flag set
+					break;
+				case 0x0d: // DCSEL=3, $9F2A
+					fx_x_pixel_increment = ((((reg_composer[0x0d] & 0x7f) << 15) + (reg_composer[0x0c] << 7)) // base value
+						| ((reg_composer[0x0d] & 0x40) ? 0xffc00000 : 0)) // sign extend if negative
+						<< 5*(!!(reg_composer[0x0d] & 0x80)); // multiply by 32 if flag set
+					// Reset subpixel to 0.5
+					fx_x_pixel_position = (fx_x_pixel_position & 0x07ff0000) | 0x00008000;
+					break;
+				case 0x0e: // DCSEL=3, $9F2B
+					fx_y_pixel_increment = ((((reg_composer[0x0f] & 0x7f) << 15) + (reg_composer[0x0e] << 7)) // base value
+						| ((reg_composer[0x0f] & 0x40) ? 0xffc00000 : 0)) // sign extend if negative
+						<< 5*(!!(reg_composer[0x0f] & 0x80)); // multiply by 32 if flag set
+					break;
+				case 0x0f: // DCSEL=3, $9F2C
+					fx_y_pixel_increment = ((((reg_composer[0x0f] & 0x7f) << 15) + (reg_composer[0x0e] << 7)) // base value
+						| ((reg_composer[0x0f] & 0x40) ? 0xffc00000 : 0)) // sign extend if negative
+						<< 5*(!!(reg_composer[0x0f] & 0x80)); // multiply by 32 if flag set
+					// Reset subpixel to 0.5
+					fx_y_pixel_position = (fx_y_pixel_position & 0x07ff0000) | 0x00008000;
+					break;
+				case 0x10: // DCSEL=4, $9F29
+					fx_x_pixel_position = (fx_x_pixel_position & 0x0700ff80) | (value << 16);
+					fx_affine_prefetch();
+					break;
+				case 0x11: // DCSEL=4, $9F2A
+					fx_x_pixel_position = (fx_x_pixel_position & 0x00ffff00) | ((value & 0x7) << 24) | (value & 0x80);
+					fx_affine_prefetch();
+					break;
+				case 0x12: // DCSEL=4, $9F2B
+					fx_y_pixel_position = (fx_y_pixel_position & 0x0700ff80) | (value << 16);
+					fx_affine_prefetch();
+					break;
+				case 0x13: // DCSEL=4, $9F2C
+					fx_y_pixel_position = (fx_y_pixel_position & 0x00ffff00) | ((value & 0x7) << 24) | (value & 0x80);
+					fx_affine_prefetch();
+					break;
+				case 0x14: // DCSEL=5, $9F29
+					fx_x_pixel_position = (fx_x_pixel_position & 0x07ff0080) | (value << 8);
+					break;
+				case 0x15: // DCSEL=5, $9F2A
+					fx_y_pixel_position = (fx_y_pixel_position & 0x07ff0080) | (value << 8);
+					break;
+				case 0x18: // DCSEL=6, $9F29
+					fx_cache[0] = value;
+					break;
+				case 0x19: // DCSEL=6, $9F2A
+					fx_cache[1] = value;
+					break;
+				case 0x1a: // DCSEL=6, $9F2B
+					fx_cache[2] = value;
+					break;
+				case 0x1b: // DCSEL=6, $9F2C
+					fx_cache[3] = value;
+					break;
+			}
 			break;
 		}
-
 		case 0x0D:
 		case 0x0E:
 		case 0x0F:
