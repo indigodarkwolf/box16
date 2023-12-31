@@ -222,8 +222,8 @@ BOXMON_COMMAND(cpuhistory, "cpuhistory [length]")
 		history_length = static_cast<int>(history6502.count());
 	}
 
-	for (size_t i = 0; i < history_length; ++i) {
-		const auto &history = history6502[static_cast<int>(i)];
+	for (int i = 0; i < history_length; ++i) {
+		const auto &history = history6502[i];
 
 		char const *op = mnemonics[history.opcode];
 
