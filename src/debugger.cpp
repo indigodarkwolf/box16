@@ -32,9 +32,11 @@ enum debugger_mode {
 
 static debugger_mode   Debug_mode      = DEBUG_RUN;
 static uint64_t        Step_clocks     = 0;
+static uint32_t        Step_instructions = 0;
 static uint8_t         Step_interrupt  = 0x04;
 static uint8_t         Interrupt_check = 0x04;
 static breakpoint_type Step_target     = { 0, 0 };
+static uint32_t        Step_instruction_count = 0;
 
 uint16_t debug_peek16(uint16_t addr)
 {
@@ -137,9 +139,17 @@ bool debugger_is_paused()
 		case DEBUG_PAUSE:
 			return true;
 		case DEBUG_STEP_INTO:
-			if (!waiting && Step_clocks != clockticks6502) {
-				debugger_pause_execution();
-				return true;
+			if (Step_instruction_count != 0) {
+				if (debugger_step_instructions() >= Step_instruction_count) {
+					Step_instruction_count = 0;
+					debugger_pause_execution();
+					return true;
+				}
+			} else {
+				if (!waiting && Step_clocks != clockticks6502) {
+					debugger_pause_execution();
+					return true;
+				}
 			}
 			break;
 		case DEBUG_STEP_OVER:
@@ -223,6 +233,12 @@ void debugger_process_cpu()
 		return;
 	}
 
+	if (Step_instruction_count != 0 && debugger_step_instructions() == Step_instruction_count) {
+		Step_instruction_count = 0;
+		debugger_pause_execution();
+		return;
+	}
+
 	const auto [addr, bank] = get_current_pc();
 	const auto flags        = get_flags(addr, bank);
 	if (flags & DEBUG6502_CONDITION) {
@@ -247,16 +263,19 @@ void debugger_continue_execution()
 {
 	Debug_mode      = DEBUG_RUN;
 	Step_clocks     = clockticks6502;
+	Step_instructions = instructions;
 	Step_interrupt  = 0x04;
 	Interrupt_check = 0x04;
 }
 
-void debugger_step_execution()
+void debugger_step_execution(uint32_t instruction_count)
 {
 	Debug_mode      = DEBUG_STEP_INTO;
 	Step_clocks     = clockticks6502;
-	Step_interrupt  = state6502.status & 0x04;
+	Step_instructions = instructions;
+	Step_interrupt    = state6502.status & 0x04;
 	Interrupt_check = Step_interrupt;
+	Step_instruction_count = instruction_count;
 }
 
 void debugger_step_over_execution()
@@ -265,6 +284,7 @@ void debugger_step_over_execution()
 	if (op == 0x20) {
 		Debug_mode              = DEBUG_STEP_OVER;
 		Step_clocks             = clockticks6502;
+		Step_instructions       = instructions;
 		Step_interrupt          = state6502.status & 0x04;
 		Interrupt_check         = Step_interrupt;
 		const auto [addr, bank] = get_current_pc();
@@ -272,6 +292,7 @@ void debugger_step_over_execution()
 	} else if (op == 0xcb) {
 		Debug_mode              = DEBUG_STEP_OVER;
 		Step_clocks             = clockticks6502;
+		Step_instructions       = instructions;
 		Step_interrupt          = state6502.status & 0x04;
 		Interrupt_check         = Step_interrupt;
 		const auto [addr, bank] = get_current_pc();
@@ -318,6 +339,11 @@ void debugger_step_out_execution()
 uint64_t debugger_step_clocks()
 {
 	return clockticks6502 - Step_clocks;
+}
+
+uint32_t debugger_step_instructions()
+{
+	return instructions - Step_instructions;
 }
 
 void debugger_interrupt()

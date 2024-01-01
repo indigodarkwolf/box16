@@ -257,7 +257,132 @@ BOXMON_COMMAND(goto, "goto <address>")
 
 BOXMON_ALIAS(g, goto);
 
-// bool parse_io(char const *&input);
+BOXMON_COMMAND(io, "io")
+{
+	auto printio = [](char const *name, uint16_t addr) {
+		boxmon_console_printf("%-4s $%04X: $%02X", name, addr, debug_read6502(addr));
+	};
+
+	// VIA1
+	for (uint16_t i = 0; i < 16; ++i) {
+		printio("VIA1", 0x9f00 + i);
+	}
+	// VIA2
+	for (uint16_t i = 0; i < 16; ++i) {
+		printio("VIA2", 0x9f10 + i);
+	}
+	// VERA
+	for (uint16_t i = 0; i < 32; ++i) {
+		printio("VERA", 0x9f20 + i);
+	}
+	// YM
+	for (uint16_t i = 0; i < 2; ++i) {
+		printio("YM", 0x9f40 + i);
+	}
+	// IO3
+	for (uint16_t i = 0; i < 32; ++i) {
+		printio("IO3", 0x9f60 + i);
+	}
+	// IO4
+	for (uint16_t i = 0; i < 32; ++i) {
+		printio("IO4", 0x9f80 + i);
+	}
+	// IO5
+	for (uint16_t i = 0; i < 32; ++i) {
+		printio("IO5", 0x9fA0 + i);
+	}
+	// IO6
+	for (uint16_t i = 0; i < 32; ++i) {
+		printio("IO6", 0x9fC0 + i);
+	}
+	// IO7
+	for (uint16_t i = 0; i < 32; ++i) {
+		printio("IO7", 0x9fE0 + i);
+	}
+
+	return true;
+}
+
+BOXMON_COMMAND(iowide, "iowide")
+{
+	auto printio = [](char const *name, uint16_t addr) {
+		boxmon_console_printf("%-4s $%04X: $%02X $%02X $%02X $%02X $%02X $%02X $%02X $%02X   $%02X $%02X $%02X $%02X $%02X $%02X $%02X $%02X", name, addr, 
+			debug_read6502(addr + 0),
+			debug_read6502(addr + 1),
+			debug_read6502(addr + 2),
+			debug_read6502(addr + 3),
+			debug_read6502(addr + 4),
+			debug_read6502(addr + 5),
+			debug_read6502(addr + 6),
+			debug_read6502(addr + 7), 
+			debug_read6502(addr + 8), 
+			debug_read6502(addr + 9), 
+			debug_read6502(addr + 10), 
+			debug_read6502(addr + 11), 
+			debug_read6502(addr + 12), 
+			debug_read6502(addr + 13), 
+			debug_read6502(addr + 14), 
+			debug_read6502(addr + 15));
+	};
+
+	// VIA1
+	for (uint16_t i = 0; i < 16; i += 16) {
+		printio("VIA1", 0x9f00 + i);
+	}
+	// VIA2
+	for (uint16_t i = 0; i < 16; i += 16) {
+		printio("VIA2", 0x9f10 + i);
+	}
+	// VERA
+	for (uint16_t i = 0; i < 32; i += 16) {
+		printio("VERA", 0x9f20 + i);
+	}
+	// YM
+	for (uint16_t i = 0; i < 2; i += 16) {
+		boxmon_console_printf("%-4s $%04X: $%02X $%02X", "YM", 0xf940, 
+			debug_read6502(0xf940 + 0), 
+			debug_read6502(0xf940 + 1));
+	}
+	// IO3
+	for (uint16_t i = 0; i < 32; i += 16) {
+		printio("IO3", 0x9f60 + i);
+	}
+	// IO4
+	for (uint16_t i = 0; i < 32; i += 16) {
+		printio("IO4", 0x9f80 + i);
+	}
+	// IO5
+	for (uint16_t i = 0; i < 32; i += 16) {
+		printio("IO5", 0x9fA0 + i);
+	}
+	// IO6
+	for (uint16_t i = 0; i < 32; i += 16) {
+		printio("IO6", 0x9fC0 + i);
+	}
+	// IO7
+	for (uint16_t i = 0; i < 32; i += 16) {
+		printio("IO7", 0x9fE0 + i);
+	}
+
+	return true;
+}
+
+BOXMON_ALIAS(iow, iowide);
+
+BOXMON_COMMAND(next, "next [<count>]")
+{
+	int count = 0;
+	(void)parser.parse_dec_number(count, input);
+
+	if (count > 0) {
+		debugger_step_execution(static_cast<uint32_t>(count));
+	} else {
+		debugger_step_execution();
+	}
+
+	return true;
+}
+
 // bool parse_next(char const *&input);
 // bool parse_registers(char const *&input);
 // bool parse_reset(char const *&input);

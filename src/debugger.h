@@ -30,11 +30,12 @@ bool debugger_is_paused();
 void debugger_process_cpu();
 void debugger_pause_execution();
 void debugger_continue_execution();
-void debugger_step_execution();
+void debugger_step_execution(uint32_t instruction_count = 0);
 void debugger_step_over_execution();
 void debugger_step_out_execution();
 
 uint64_t debugger_step_clocks();
+uint32_t debugger_step_instructions();
 void     debugger_interrupt();
 bool     debugger_step_interrupted();
 
