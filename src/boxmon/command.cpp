@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <string>
+#include <cinttypes>
 
 #include "boxmon.h"
 #include "parser.h"
@@ -11,6 +12,7 @@
 #include "debugger.h"
 #include "glue.h"
 #include "memory.h"
+#include "vera/vera_video.h"
 
 namespace boxmon
 {
@@ -383,14 +385,54 @@ BOXMON_COMMAND(next, "next [<count>]")
 	return true;
 }
 
-// bool parse_next(char const *&input);
+// TODO: registers
 // bool parse_registers(char const *&input);
+
 // bool parse_reset(char const *&input);
-// bool parse_return(char const *&input);
-// bool parse_step(char const *&input);
-// bool parse_stopwatch(char const *&input);
+BOXMON_COMMAND(reset, "reset")
+{
+	machine_reset();
+	return true;
+}
+
+BOXMON_COMMAND(return, "return")
+{
+	debugger_step_out_execution();
+	return true;
+}
+
+BOXMON_ALIAS(step, next);
+
+BOXMON_COMMAND(stopwatch, "stopwatch")
+{
+	boxmon_console_printf("%" PRIu64, clockticks6502);
+	return true;
+}
+
+// TODO: undump
 // bool parse_undump(char const *&input);
-// bool parse_warp(char const *&input);
+
+BOXMON_COMMAND(warp, "warp [<factor>]")
+{
+	int factor = 0;
+	if (parser.parse_dec_number(factor, input)) {
+		Options.warp_factor = std::clamp(factor, 0, 16);
+		if (Options.warp_factor == 0) {
+			vera_video_set_cheat_mask(0);
+		} else {
+			vera_video_set_cheat_mask((1 << (Options.warp_factor - 1)) - 1);
+		}
+	} else {
+		if (Options.warp_factor > 0) {
+			Options.warp_factor = 0;
+			vera_video_set_cheat_mask(0);
+		} else {
+			Options.warp_factor = 1;
+			vera_video_set_cheat_mask(1);
+		}
+	}
+	return true;
+}
 
 //// Memory commands
 // bool parse_bank(char const *&input);
