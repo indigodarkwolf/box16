@@ -21,7 +21,7 @@ struct _state6502 {
 enum class _stack_op_type : uint8_t {
 	nmi,
 	irq,
-	jsr,
+	op,
 	smart,
 };
 
@@ -61,6 +61,13 @@ struct _smart_stack {
 	uint8_t         push_depth;
 	uint8_t         push_unwind_depth;
 	_smart_stack_ex pushed_bytes[256];
+	_state6502 		state;
+};
+
+struct _cpuhistory {
+	_state6502 state;
+	uint8_t    bank;
+	uint8_t    opcode;
 };
 
 extern void     init6502();

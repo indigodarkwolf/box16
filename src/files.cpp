@@ -1,11 +1,11 @@
 #include "files.h"
 
-#include <unistd.h> // Added to resolve Microsoft c++ warnings around POSIX and other depreciated errors.
 #include <SDL.h>
 #include <inttypes.h>
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h> // Added to resolve Microsoft c++ warnings around POSIX and other depreciated errors.
 #include <zlib.h>
 
 #include "options.h"
@@ -77,42 +77,12 @@ std::tuple<void *, size_t> files_load(const std::filesystem::path &path)
 	return std::make_tuple(ops_data, ops_size);
 }
 
-size_t gzsize(gzFile f)
-{
-	auto oldseek = gztell(f);
-	gzseek(f, 0, SEEK_SET);
-
-	uint8_t read_buffer[64 * 1024];
-	size_t  total_bytes = 0;
-	size_t  bytes_read  = 0;
-
-	do {
-		bytes_read = gzread(f, read_buffer, 64 * 1024);
-		total_bytes += bytes_read;
-	} while (bytes_read == 64 * 1024);
-
-	gzseek(f, oldseek, SEEK_SET);
-	return total_bytes;
-}
-
-size_t gzwrite8(gzFile f, uint8_t val)
-{
-	return gzwrite(f, &val, 1);
-}
-
-uint8_t gzread8(gzFile f)
-{
-	uint8_t value;
-	gzread(f, &value, 1);
-	return value;
-}
-
 struct x16file {
 	char path[PATH_MAX];
 
 	SDL_RWops *file;
-	size_t    size;
-	size_t    pos;
+	size_t     size;
+	size_t     pos;
 	bool       modified;
 
 	x16file *next;
@@ -181,7 +151,7 @@ void files_shutdown()
 
 x16file *x16open(const char *path, const char *attribs)
 {
-	x16file *f = (x16file*) malloc(sizeof(x16file));
+	x16file *f = (x16file *)malloc(sizeof(x16file));
 	strcpy(f->path, path);
 
 	if (file_is_compressed_type(path)) {
@@ -207,12 +177,12 @@ x16file *x16open(const char *path, const char *attribs)
 		printf("Decompressing %s\n", path);
 
 		const int buffer_size = 16 * 1024 * 1024;
-		char     *buffer      = (char*)malloc(buffer_size);
+		char     *buffer      = (char *)malloc(buffer_size);
 
-		int           read               = gzread(zfile, buffer, buffer_size);
-		size_t        total_read         = read;
-		const size_t  progress_increment = 128 * 1024 * 1024;
-		size_t        progress_threshold = progress_increment;
+		int          read               = gzread(zfile, buffer, buffer_size);
+		size_t       total_read         = read;
+		const size_t progress_increment = 128 * 1024 * 1024;
+		size_t       progress_threshold = progress_increment;
 		while (read > 0) {
 			if (total_read > progress_threshold) {
 				printf("%zd MB\n", total_read / (1024 * 1024));
@@ -265,7 +235,7 @@ void x16close(x16file *f)
 		char tmp_path[PATH_MAX];
 		if (!get_tmp_name(tmp_path, f->path, ".tmp")) {
 			printf("Path too long, cannot create temp file: %s\n", f->path);
-			
+
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
@@ -340,11 +310,11 @@ void x16close(x16file *f)
 		printf("Recompressing %s\n", f->path);
 
 		const size_t buffer_size = 16 * 1024 * 1024;
-		char     *buffer      = (char*)malloc(buffer_size);
+		char        *buffer      = (char *)malloc(buffer_size);
 
 		const size_t progress_increment = 128 * 1024 * 1024;
 		size_t       progress_threshold = progress_increment;
-		size_t        read               = SDL_RWread(tfile, buffer, 1, buffer_size);
+		size_t       read               = SDL_RWread(tfile, buffer, 1, buffer_size);
 		size_t       total_read         = read;
 		while (read > 0) {
 			if (total_read > progress_threshold) {
@@ -457,6 +427,11 @@ size_t x16write(x16file *f, const void *data, size_t data_size, size_t data_coun
 	return written;
 }
 
+size_t x16write(x16file *f, const std::string &str)
+{
+	return x16write(f, str.c_str(), str.length(), 1);
+}
+
 size_t x16read(x16file *f, void *data, size_t data_size, size_t data_count)
 {
 	if (f == NULL) {
@@ -465,4 +440,59 @@ size_t x16read(x16file *f, void *data, size_t data_size, size_t data_count)
 	size_t read = SDL_RWread(f->file, data, data_size, data_count);
 	f->pos += read * data_size;
 	return read;
+}
+
+size_t x16write_memdump(x16file *f, const std::string &name, const void *src, const int start_addr, const int end_addr, const int addr_width, const int value_width)
+{
+	const uint8_t    *values = static_cast<const uint8_t *>(src);
+	std::stringstream ss;
+	ss << "[" << name << "]";
+	ss << std::hex << std::uppercase;
+	for (int i = start_addr; i < end_addr; ++i) {
+		if ((i & 0xf) == 0) {
+			ss << std::setw(0) << "\n";
+			ss << std::setw(addr_width) << std::setfill('0') << i;
+			ss << std::setw(0) << " ";
+		} else if ((i & 0x7) == 0) {
+			ss << std::setw(0) << "   ";
+		} else {
+			ss << std::setw(0) << " ";
+		}
+		ss << std::setw(value_width) << std::setfill('0') << static_cast<uint32_t>(values[i]);
+	}
+	ss << std::setw(0) << "\n\n";
+	return x16write(f, ss.str());
+}
+
+size_t x16write_bankdump(x16file *f, const std::string &name, const void *src, const int start_addr, const int end_addr, const int num_banks, const int bank_offset, const int addr_width, const int value_width)
+{
+	const uint8_t *values    = static_cast<const uint8_t *>(src);
+	const int   bank_size = end_addr - start_addr;
+
+	std::stringstream ss;
+	ss << "[" << name << "]";
+	ss << std::hex << std::uppercase;
+
+	for (int b = 0; b < num_banks; ++b) {
+		for (int i = 0; i < bank_size; ++i) {
+			if ((i & 0xf) == 0) {
+				ss << std::setw(0) << "\n";
+				ss << std::setw(2) << std::setfill('0') << (b + bank_offset);
+				ss << std::setw(0) << ":";
+				if (addr_width > 0) {
+					ss << std::setw(addr_width) << std::setfill('0') << (start_addr + i);
+				} else {
+					ss << "--";
+				}
+				ss << std::setw(0) << " ";
+			} else if ((i & 0x7) == 0) {
+				ss << std::setw(0) << "   ";
+			} else {
+				ss << std::setw(0) << " ";
+			}
+			ss << std::setw(value_width) << std::setfill('0') << static_cast<uint32_t>(values[b * bank_size + i]);
+		}
+	}
+	ss << std::setw(0) << "\n\n";
+	return x16write(f, ss.str());
 }

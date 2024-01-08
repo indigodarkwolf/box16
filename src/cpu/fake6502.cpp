@@ -67,6 +67,7 @@
 #include "fake6502.h"
 
 #include "../debugger.h"
+#include <ring_buffer.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -82,7 +83,8 @@
 #define BASE_STACK 0x100
 
 // 6502 CPU registers
-_state6502 state6502, debug_state6502;
+_state6502 state6502;
+_state6502 debug_state6502;
 
 // helper variables
 uint32_t instructions   = 0; // keep track of total instructions executed
@@ -96,6 +98,7 @@ uint8_t waiting = 0;
 
 _smart_stack stack6502[256];
 uint8_t      stack6502_underflow = 0;
+ring_buffer<_cpuhistory, 256>  history6502;
 
 // externally supplied functions
 extern uint8_t read6502(uint16_t address);
@@ -149,6 +152,7 @@ void nmi6502()
 	ss.op_type   = _stack_op_type::nmi;
 	ss.pop_type  = _stack_pop_type::unknown;
 	ss.opcode    = 0;
+	ss.state     = debug_state6502;
 }
 
 void irq6502()
@@ -173,6 +177,7 @@ void irq6502()
 		ss.op_type   = _stack_op_type::irq;
 		ss.pop_type  = _stack_pop_type::unknown;
 		ss.opcode    = 0;
+		ss.state     = debug_state6502;
 	}
 	waiting = 0;
 }
@@ -190,8 +195,8 @@ void exec6502(uint32_t tickcount)
 	clockgoal6502 += tickcount;
 
 	while (clockticks6502 < clockgoal6502) {
-		debug_state6502                     = state6502;
-		const uint64_t debug_clockticks6502 = clockticks6502;
+		debug_state6502      = state6502;
+		const uint64_t   debug_clockticks6502 = clockticks6502;
 
 		opcode = read6502(state6502.pc++);
 		if (debug6502 & DEBUG6502_EXEC) {
@@ -219,6 +224,11 @@ void exec6502(uint32_t tickcount)
 
 		instructions++;
 		debug6502 = 0;
+
+		auto &history = history6502.allocate();
+		history.state = debug_state6502;
+		history.opcode = opcode;
+		history.bank   = bank6502(debug_state6502.pc);
 	}
 }
 
@@ -232,8 +242,8 @@ void step6502()
 		return;
 	}
 
-	debug_state6502                     = state6502;
-	const uint64_t debug_clockticks6502 = clockticks6502;
+	debug_state6502      = state6502;
+	const uint64_t   debug_clockticks6502 = clockticks6502;
 
 	opcode = read6502(state6502.pc++);
 	if (debug6502 & DEBUG6502_EXEC) {
@@ -262,6 +272,11 @@ void step6502()
 
 	instructions++;
 	debug6502 = 0;
+
+	auto &history  = history6502.allocate();
+	history.state  = debug_state6502;
+	history.opcode = opcode;
+	history.bank   = bank6502(debug_state6502.pc);
 }
 
 void force6502()

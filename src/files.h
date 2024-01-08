@@ -1,11 +1,7 @@
 #pragma once
 
 #include "zlib.h"
-
-bool    file_is_compressed_type(char const *path);
-size_t  gzsize(gzFile f);
-size_t  gzwrite8(gzFile f, uint8_t val);
-uint8_t gzread8(gzFile f);
+#include <string>
 
 struct x16file;
 
@@ -29,4 +25,7 @@ int     x16write8(x16file *f, uint8_t val);
 uint8_t x16read8(x16file *f);
 
 size_t x16write(x16file *f, const void *data, size_t data_size, size_t data_count);
+size_t x16write(x16file *f, const std::string &str);
 size_t x16read(x16file *f, void *data, size_t data_size, size_t data_count);
+size_t x16write_memdump(x16file *f, const std::string &name, const void *src, const int start_addr, const int end_addr, const int addr_width = 4, const int value_width = 2);
+size_t x16write_bankdump(x16file *f, const std::string &name, const void *src, const int start_addr, const int end_addr, const int num_banks, const int bank_offset = 0, const int addr_width = 4, const int value_width = 2);

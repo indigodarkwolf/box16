@@ -384,9 +384,10 @@ jsr()
 
 	ss.dest_pc   = state6502.pc;
 	ss.dest_bank = bank6502(state6502.pc);
-	ss.op_type   = _stack_op_type::jsr;
+	ss.op_type   = _stack_op_type::op;
 	ss.pop_type  = _stack_pop_type::unknown;
 	ss.opcode    = opcode;
+	ss.state     = debug_state6502;
 }
 
 static void
@@ -493,7 +494,7 @@ php()
 	ssx.bank             = bank6502(state6502.pc - 1);
 	ss.push_unwind_depth = ss.push_depth;
 
-	if (ss.op_type != _stack_op_type::jsr && ss.push_depth == 5) {
+	if ((ss.op_type == _stack_op_type::irq || ss.op_type == _stack_op_type::nmi) && ss.push_depth == 5) {
 		ss.push_depth -= 3;
 		for (int i = 0; i < 3; ++i) {
 			ss.pushed_bytes[ss.push_depth + i].pull_type = _push_op_type::smart;
@@ -510,6 +511,7 @@ php()
 		ss2.op_type   = _stack_op_type::smart;
 		ss2.pop_type  = _stack_pop_type::unknown;
 		ss2.opcode    = 0;
+		ss2.state     = debug_state6502;
 	}
 }
 

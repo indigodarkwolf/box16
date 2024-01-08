@@ -124,7 +124,11 @@ bool sdl_events_update()
 					}
 					if (cmd_down && alt_down) {
 						switch (event.key.keysym.sym) {
-							case SDLK_b:
+							case SDLK_BACKQUOTE:
+								Show_monitor_console = true;
+								consumed             = true;
+								break;
+							case SDLK_b :
 								Show_breakpoints = true;
 								consumed         = true;
 								break;

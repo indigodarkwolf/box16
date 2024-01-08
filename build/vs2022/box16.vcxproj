@@ -365,6 +365,10 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
   <ItemGroup>
     <ClCompile Include="..\..\src\audio.cpp" />
     <ClCompile Include="..\..\src\bitutils.cpp" />
+    <ClCompile Include="..\..\src\boxmon\boxmon.cpp" />
+    <ClCompile Include="..\..\src\boxmon\command.cpp" />
+    <ClCompile Include="..\..\src\boxmon\expression.cpp" />
+    <ClCompile Include="..\..\src\boxmon\parser.cpp" />
     <ClCompile Include="..\..\src\compat\compat.cpp" />
     <ClCompile Include="..\..\src\compat\getopt.cpp" />
     <ClCompile Include="..\..\src\cpu\fake6502.cpp" />
@@ -424,6 +428,10 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
   <ItemGroup>
     <ClInclude Include="..\..\src\audio.h" />
     <ClInclude Include="..\..\src\bitutils.h" />
+    <ClInclude Include="..\..\src\boxmon\boxmon.h" />
+    <ClInclude Include="..\..\src\boxmon\command.h" />
+    <ClInclude Include="..\..\src\boxmon\expression.h" />
+    <ClInclude Include="..\..\src\boxmon\parser.h" />
     <ClInclude Include="..\..\src\compat\compat.h" />
     <ClInclude Include="..\..\src\compat\getopt.h" />
     <ClInclude Include="..\..\src\compat\unistd.h" />
@@ -498,6 +506,7 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
     <ClInclude Include="..\..\vendor\ymfm\src\ymfm_opm.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\..\src\boxmon\parser.inl" />
     <None Include="..\..\src\cpu\6502.opcodes" />
     <None Include="..\..\src\cpu\65c02.opcodes" />
     <None Include="..\..\src\cpu\buildtables.py" />

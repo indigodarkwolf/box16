@@ -1165,6 +1165,7 @@ static void set_panels(mINI::INIMap<std::string> &ini)
 		}
 	};
 
+	get_option("monitor_console", Show_monitor_console);
 	get_option("memory_dump_1", Show_memory_dump_1);
 	get_option("memory_dump_2", Show_memory_dump_2);
 	get_option("cpu_monitor", Show_cpu_monitor);
@@ -1444,6 +1445,7 @@ void set_ini_panels(mINI::INIMap<std::string> &ini, bool all)
 		}
 	};
 
+	set_option("monitor_console", Show_monitor_console, false);
 	set_option("memory_dump_1", Show_memory_dump_1, false);
 	set_option("memory_dump_2", Show_memory_dump_2, false);
 	set_option("cpu_monitor", Show_cpu_monitor, false);

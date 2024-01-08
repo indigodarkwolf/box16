@@ -15,6 +15,7 @@
 #endif
 #include "SDL.h"
 #include "audio.h"
+#include "boxmon/boxmon.h"
 #include "cpu/fake6502.h"
 #include "cpu/mnemonics.h"
 #include "debugger.h"
@@ -70,29 +71,50 @@ void machine_dump(const char *reason)
 	char filename[22];
 	for (;;) {
 		if (!index) {
-			strcpy(filename, "dump.bin");
+			strcpy(filename, "dump.txt");
 		} else {
-			sprintf(filename, "dump-%i.bin", index);
+			sprintf(filename, "dump-%i.txt", index);
 		}
 		if (access(filename, F_OK) == -1) {
 			break;
 		}
 		index++;
 	}
-	x16file *f = x16open(filename, "wb");
+	x16file *f = x16open(filename, "w");
 	if (!f) {
 		printf("Cannot write to %s!\n", filename);
 		return;
 	}
 
 	if (Options.dump_cpu) {
-		x16write(f, &state6502.a, sizeof(uint8_t), 1);
-		x16write(f, &state6502.x, sizeof(uint8_t), 1);
-		x16write(f, &state6502.y, sizeof(uint8_t), 1);
-		x16write(f, &state6502.sp, sizeof(uint8_t), 1);
-		x16write(f, &state6502.status, sizeof(uint8_t), 1);
-		x16write(f, &state6502.pc, sizeof(uint16_t), 1);
+		std::stringstream ss;
+		ss << "[CPU]\n";
+		ss << std::setw(0) << "PC:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.pc);
+		ss << std::setw(0) << " A:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.a);
+		ss << std::setw(0) << " X:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.x);
+		ss << std::setw(0) << " Y:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.y);
+		ss << std::setw(0) << " SP:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.sp);
+		ss << std::setw(0) << " ST:";
+		ss << ((state6502.status & 0x80) ? 'N' : '-');
+		ss << ((state6502.status & 0x40) ? 'V' : '-');
+		ss << '-';
+		ss << ((state6502.status & 0x10) ? 'B' : '-');
+		ss << ((state6502.status & 0x08) ? 'D' : '-');
+		ss << ((state6502.status & 0x04) ? 'I' : '-');
+		ss << ((state6502.status & 0x02) ? 'Z' : '-');
+		ss << ((state6502.status & 0x01) ? 'C' : '-');
+		ss << "\n\n";
+
+		x16write(f, ss.str());
+
+		//x16write(f, &state6502.a, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.x, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.y, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.sp, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.status, sizeof(uint8_t), 1);
+		//x16write(f, &state6502.pc, sizeof(uint16_t), 1);
 	}
+
 	memory_save(f, Options.dump_ram, Options.dump_bank);
 
 	if (Options.dump_vram) {
@@ -138,6 +160,8 @@ static bool is_kernal()
 #undef main
 int main(int argc, char **argv)
 {
+	boxmon_system_init();
+
 	const char *base_path    = SDL_GetBasePath();
 	const char *private_path = SDL_GetPrefPath("Box16", "Box16");
 
@@ -192,6 +216,16 @@ int main(int argc, char **argv)
 
 		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message_buffer, display_get_window());
 		exit(1);
+	};
+
+	auto warn = [](const char *title, const char *format, ...) {
+		char    message_buffer[1024];
+		va_list list;
+		va_start(list, format);
+		vsprintf(message_buffer, format, list);
+		va_end(list);
+
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message_buffer, display_get_window());
 	};
 
 	// Load ROM
@@ -249,7 +283,7 @@ int main(int argc, char **argv)
 
 	if (!Options.no_hypercalls) {
 		if (!hypercalls_init()) {
-			error("Boot error", "Could not initialize hypercalls. Disable hypercalls to boot with this ROM.");
+			warn("Boot error", "Could not initialize hypercalls. Launch with -nohypercalls to silence this message.");
 		}
 	}
 
@@ -348,6 +382,7 @@ void main_shutdown() {
 		nvram_dirty = false;
 	}
 
+	boxmon_system_shutdown();
 	sdcard_shutdown();
 	audio_close();
 	wav_recorder_shutdown();

@@ -38,6 +38,9 @@
     <Filter Include="Header Files">
       <UniqueIdentifier>{fe82bbb0-2a22-4543-a74d-8e837e76276e}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\boxmon">
+      <UniqueIdentifier>{a21c457e-1f07-4a40-aee4-d5458508b4b5}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files\glad">
       <UniqueIdentifier>{b275878e-1323-473f-a92d-49303b9917bc}</UniqueIdentifier>
     </Filter>
@@ -208,6 +211,15 @@
     <ClCompile Include="..\..\src\hypercalls.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\boxmon\command.cpp">
+      <Filter>Source Files\boxmon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\boxmon\parser.cpp">
+      <Filter>Source Files\boxmon</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\boxmon\boxmon.cpp">
+      <Filter>Source Files\boxmon</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\glad\gl.cpp">
       <Filter>Source Files\glad</Filter>
     </ClCompile>
@@ -216,6 +228,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\files.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\boxmon\expression.cpp">
+      <Filter>Source Files\boxmon</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -432,6 +447,15 @@
     <ClInclude Include="..\..\src\hypercalls.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\boxmon\command.h">
+      <Filter>Source Files\boxmon</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\boxmon\parser.h">
+      <Filter>Source Files\boxmon</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\boxmon\boxmon.h">
+      <Filter>Source Files\boxmon</Filter>
+    </ClInclude>
     <ClInclude Include="..\..\src\glad\KHR\khrplatform.h">
       <Filter>Source Files\glad\KHR</Filter>
     </ClInclude>
@@ -443,6 +467,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\files.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\boxmon\expression.h">
+      <Filter>Source Files\boxmon</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -460,6 +487,9 @@
     </None>
     <None Include="..\..\src\cpu\README">
       <Filter>Source Files\cpu</Filter>
+    </None>
+    <None Include="..\..\src\boxmon\parser.inl">
+      <Filter>Source Files\boxmon</Filter>
     </None>
   </ItemGroup>
   <ItemGroup>
