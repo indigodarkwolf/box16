@@ -11,11 +11,11 @@ namespace boxmon
 	class boxmon_command
 	{
 	public:
-		boxmon_command(char const *name, char const *description, std::function<bool(char const *, parser &)> fn);
+		boxmon_command(char const *name, char const *description, std::function<bool(char const *, parser &, bool)> fn);
 
 		std::strong_ordering operator<=>(char const *name) const;
 		std::strong_ordering operator<=>(const boxmon_command &cmd) const;
-		bool                 run(char const *&input, parser &) const;
+		bool                 run(char const *&input, parser &, bool) const;
 
 		char const *get_name() const;
 		char const *get_description() const;
@@ -28,7 +28,7 @@ namespace boxmon
 		char const *m_name;
 		char const *m_description;
 
-		std::function<bool(char const *, parser &)> m_run;
+		std::function<bool(char const *, parser &, bool)> m_run;
 
 		static std::map<const std::string, const boxmon_command *> &get_command_list();
 	};
@@ -44,9 +44,9 @@ namespace boxmon
 } // namespace boxmon
 
 #define BOXMON_COMMAND(NAME, DESC)                                                                  \
-	static bool            boxmon_command_impl_##NAME(char const *input, boxmon::parser &parser); \
+	static bool            boxmon_command_impl_##NAME(char const *input, boxmon::parser &parser, bool help); \
 	boxmon::boxmon_command boxmon_command_##NAME(#NAME, DESC, boxmon_command_impl_##NAME);      \
-	static bool            boxmon_command_impl_##NAME(char const *input, boxmon::parser &parser)
+	static bool            boxmon_command_impl_##NAME(char const *input, boxmon::parser &parser, bool help)
 
 #define BOXMON_ALIAS(ALIAS_NAME, ORIGINAL_NAME) \
 	boxmon::boxmon_alias boxmon_alias_##ALIAS_NAME(#ALIAS_NAME, boxmon_command_##ORIGINAL_NAME)

@@ -16,7 +16,7 @@
 
 namespace boxmon
 {
-	boxmon_command::boxmon_command(char const *name, char const *description, std::function<bool(char const *, boxmon::parser &)> fn)
+	boxmon_command::boxmon_command(char const *name, char const *description, std::function<bool(char const *, boxmon::parser &, bool)> fn)
 	    : m_name(name),
 	      m_description(description),
 	      m_run(fn)
@@ -35,9 +35,9 @@ namespace boxmon
 		return strcmp(m_name, cmd.m_name) <=> 0;
 	}
 
-	bool boxmon_command::run(char const *&input, boxmon::parser &parser) const
+	bool boxmon_command::run(char const *&input, boxmon::parser &parser, bool help) const
 	{
-		return m_run != nullptr ? m_run(input, parser) : false;
+		return m_run != nullptr ? m_run(input, parser, help) : false;
 	}
 
 	char const *boxmon_command::get_name() const
@@ -87,7 +87,7 @@ namespace boxmon
 	}
 
 	boxmon_alias::boxmon_alias(char const *name, const boxmon_command &cmd)
-	    : boxmon_command(name, cmd.get_description(), [this](const char *input, boxmon::parser &parser) { return m_cmd.run(input, parser); }),
+	    : boxmon_command(name, cmd.get_description(), [this](const char *input, boxmon::parser &parser, bool help) { return m_cmd.run(input, parser, help); }),
 	      m_cmd(cmd)
 	{
 	}
@@ -95,23 +95,45 @@ namespace boxmon
 
 #include "symbols.h"
 
-BOXMON_COMMAND(help, "help")
+BOXMON_COMMAND(help, "help [<command>]")
 {
-	std::string name;
-	if (parser.parse_word(name, input)) {
-		if (auto *cmd = boxmon::boxmon_command::find(name.c_str()); cmd != nullptr) {
-			boxmon_console_printf("%s: %s", cmd->get_name(), cmd->get_description());
-			return true;
-		}
+	if (help) {
+		boxmon_console_printf("Print extended use information about a command.");
+		boxmon_console_printf("If no command is specified, help returns a list of all commands the console will accept.");
+		return true;
 	}
-	boxmon::boxmon_command::for_each([](const boxmon::boxmon_command *cmd) {
-		boxmon_console_printf("%s: %s", cmd->get_name(), cmd->get_description());
-	});
+
+	std::string command;
+	if (parser.parse_word(command, input)) {
+		auto const *cmd = boxmon::boxmon_command::find(command.c_str());
+		if (cmd == nullptr) {
+			boxmon_warning_printf("Could not find any command named \"%s\"", command.c_str());
+		} else {
+			boxmon_console_printf("%s", cmd->get_description());
+			const char *help_input = "";
+			return cmd->run(help_input, parser, true);
+		}
+	} else {
+		std::string name;
+		if (parser.parse_word(name, input)) {
+			if (auto *cmd = boxmon::boxmon_command::find(name.c_str()); cmd != nullptr) {
+				boxmon_console_printf("%s: %s", cmd->get_name(), cmd->get_description());
+				return true;
+			}
+		}
+		boxmon::boxmon_command::for_each([](const boxmon::boxmon_command *cmd) {
+			boxmon_console_printf("%s: %s", cmd->get_name(), cmd->get_description());
+		});
+	}
 	return true;
 }
 
 BOXMON_COMMAND(eval, "eval <expr>")
 {
+	if (help) {
+		boxmon_console_printf("Evaluates an expression and prints the result to the console.");
+		return true;
+	}
 	const boxmon::expression *expr;
 	if (parser.parse_expression(expr, input, boxmon::expression_parse_flags_must_consume_all)) {
 		boxmon_console_printf("%d", expr->evaluate());
@@ -123,6 +145,16 @@ BOXMON_COMMAND(eval, "eval <expr>")
 
 BOXMON_COMMAND(break, "break [load|store|exec] [address [address] [if <cond_expr>]]")
 {
+	if (help) {
+		boxmon_console_printf("Create a breakpoint, optionally with a conditional expression.");
+		boxmon_console_printf("\tload: Break if the CPU attempts to load data from this address.");
+		boxmon_console_printf("\tstore: Break if the CPU attempts to store data to this address.");
+		boxmon_console_printf("\texec: Break if the CPU attempts to execute an instruction from this address.");
+		boxmon_console_printf("\taddress: One or more addresses to set as breakpoints.");
+		boxmon_console_printf("\tcond_expr: Conditional expression. If specified, the breakpoint will only pause execution if the conditional expression evaluates to a non-zero value.");
+		boxmon_console_printf("\t           (In the case of boolean comparisons, \"true\" evaluates to 1, \"false\" evaluates to 0.)");
+		return true;
+	}
 	uint8_t breakpoint_flags = 0;
 	for (int option; parser.parse_option(option, { "exec", "load", "store" }, input);) {
 		breakpoint_flags |= (1 << option);
@@ -157,6 +189,10 @@ BOXMON_ALIAS(br, break);
 
 BOXMON_COMMAND(add_label, "add_label <address> <label>")
 {
+	if (help) {
+		boxmon_console_printf("Add a label for a specified address.");
+		return true;
+	}
 	boxmon::address_type addr;
 	if (!parser.parse_address(addr, input)) {
 		return false;
@@ -175,6 +211,13 @@ BOXMON_ALIAS(al, add_label);
 
 BOXMON_COMMAND(backtrace, "backtrace")
 {
+	if (help) {
+		boxmon_console_printf("Attempt to unwind the callstack of execution.");
+		boxmon_console_printf("This is a best-effort attempt based on a history of jsr, rts, and rti instructions, as well as interrupt triggers.");
+		boxmon_console_printf("Coding practices that manually push or pop values in lieu of subroute and interrupt instructions will easily confuse this.");
+		return true;
+	}
+
 	char const *names[] = { "N", "V", "-", "B", "D", "I", "Z", "C" };
 	for (size_t i = 0; i < state6502.sp_depth; ++i) {
 		const auto &ss = stack6502[static_cast<int>(i)];
@@ -217,6 +260,10 @@ BOXMON_ALIAS(bt, backtrace);
 //// Machine state commands
 BOXMON_COMMAND(cpuhistory, "cpuhistory [length]")
 {
+	if (help) {
+		boxmon_console_printf("Show a history of recently-executed instructions.");
+		return true;
+	}
 	int history_length = 0;
 	if (parser.parse_dec_number(history_length, input)) {
 		history_length = history_length <= static_cast<int>(history6502.count()) ? history_length : static_cast<int>(history6502.count());
@@ -238,6 +285,11 @@ BOXMON_ALIAS(chis, cpuhistory);
 
 BOXMON_COMMAND(dump, "dump")
 {
+	if (help) {
+		boxmon_console_printf("Perform a machine dump to file.");
+		return true;
+	}
+
 	extern void machine_dump(const char *reason);
 	machine_dump("monitor command");
 	return true;
@@ -245,6 +297,12 @@ BOXMON_COMMAND(dump, "dump")
 
 BOXMON_COMMAND(goto, "goto <address>")
 {
+	if (help) {
+		boxmon_console_printf("Set the program counter to a specified memory address.");
+		boxmon_console_printf("If the address is greater than $FFFF, this will also set the appropriate memory bank to the contents of the high byte in the specified address.");
+		return true;
+	}
+
 	boxmon::address_type addr;
 	if (!parser.parse_address(addr, input)) {
 		return false;
@@ -261,6 +319,11 @@ BOXMON_ALIAS(g, goto);
 
 BOXMON_COMMAND(io, "io")
 {
+	if (help) {
+		boxmon_console_printf("Print the current read values of the IO registers to console.");
+		return true;
+	}
+
 	auto printio = [](char const *name, uint16_t addr) {
 		boxmon_console_printf("%-4s $%04X: $%02X", name, addr, debug_read6502(addr));
 	};
@@ -307,6 +370,11 @@ BOXMON_COMMAND(io, "io")
 
 BOXMON_COMMAND(iowide, "iowide")
 {
+	if (help) {
+		boxmon_console_printf("Print the current read values of the IO registers to console, but grouped into lines of 16 bytes.");
+		return true;
+	}
+
 	auto printio = [](char const *name, uint16_t addr) {
 		boxmon_console_printf("%-4s $%04X: $%02X $%02X $%02X $%02X $%02X $%02X $%02X $%02X   $%02X $%02X $%02X $%02X $%02X $%02X $%02X $%02X", name, addr, 
 			debug_read6502(addr + 0),
@@ -373,6 +441,12 @@ BOXMON_ALIAS(iow, iowide);
 
 BOXMON_COMMAND(next, "next [<count>]")
 {
+	if (help) {
+		boxmon_console_printf("Execute the next <count> instructions.");
+		boxmon_console_printf("If left unspecified, <count> defaults to 1.");
+		return true;
+	}
+
 	int count = 0;
 	(void)parser.parse_dec_number(count, input);
 
@@ -391,12 +465,22 @@ BOXMON_COMMAND(next, "next [<count>]")
 // bool parse_reset(char const *&input);
 BOXMON_COMMAND(reset, "reset")
 {
+	if (help) {
+		boxmon_console_printf("Perform a machine reset.");
+		return true;
+	}
+
 	machine_reset();
 	return true;
 }
 
 BOXMON_COMMAND(return, "return")
 {
+	if (help) {
+		boxmon_console_printf("Continue execution until after the next rts or rti instruction.");
+		return true;
+	}
+
 	debugger_step_out_execution();
 	return true;
 }
@@ -405,6 +489,11 @@ BOXMON_ALIAS(step, next);
 
 BOXMON_COMMAND(stopwatch, "stopwatch")
 {
+	if (help) {
+		boxmon_console_printf("Print the current CPU clock tick value to the console.");
+		return true;
+	}
+
 	boxmon_console_printf("%" PRIu64, clockticks6502);
 	return true;
 }
@@ -414,6 +503,14 @@ BOXMON_COMMAND(stopwatch, "stopwatch")
 
 BOXMON_COMMAND(warp, "warp [<factor>]")
 {
+	if (help) {
+		boxmon_console_printf("Set or toggle warp mode.");
+		boxmon_console_printf("\tfactor: A value from 0-16 indicating the warp factor to use. If not specified, warp will be disabled if currently active and will be set to factor 1 if currently inactive.");
+		boxmon_console_printf("\tWhen activated, warp mode removes all throttling from the emulator and attempts to run the emulated system as quickly as possible.");
+		boxmon_console_printf("\tLarger warp factors reduce the number of attempts to draw the screen, as that is the single most expensive task to perform.");
+		return true;
+	}
+
 	int factor = 0;
 	if (parser.parse_dec_number(factor, input)) {
 		Options.warp_factor = std::clamp(factor, 0, 16);

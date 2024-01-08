@@ -65,7 +65,7 @@ bool boxmon_load_file(const std::filesystem::path &path)
 			continue;
 		}
 
-		if (!cmd->run(input, file_parser)) {
+		if (!cmd->run(input, file_parser, false)) {
 			std::stringstream ss;
 			ss << "Parse error on line " << line_number << " while running \"" << command_name << "\" with args: " << input << std::endl;
 			Console_history.push_back({ boxmon::message_severity::error, ss.str() });
@@ -98,7 +98,7 @@ bool boxmon_do_console_command(const std::string &line)
 		return false;
 	}
 
-	if (!cmd->run(input, Console_parser)) {
+	if (!cmd->run(input, Console_parser, false)) {
 		std::stringstream ss;
 		ss << "Parse error while running \"" << command_name << "\" with args: " << input << std::endl;
 		Console_history.push_back({ boxmon::message_severity::error, ss.str() });
