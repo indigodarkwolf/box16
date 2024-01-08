@@ -142,10 +142,6 @@ bool hypercalls_init()
 		Has_boot_tasks = true;
 	}
 
-	if (Options.run_geos) {
-		Has_boot_tasks = true;
-	}
-
 	if (Options.run_test) {
 		Has_boot_tasks = true;
 	}
@@ -324,10 +320,6 @@ void hypercalls_update()
 				if (Options.run_after_load) {
 					keyboard_add_text("RUN\r");
 				}
-			}
-
-			if (Options.run_geos) {
-				keyboard_add_text("GEOS\r");
 			}
 
 			if (Options.run_test) {
