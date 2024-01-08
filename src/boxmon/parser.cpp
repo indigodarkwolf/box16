@@ -626,8 +626,10 @@ namespace boxmon
 					}
 					break;
 				case expression_type::subtraction:
-					if (expression_stack.empty() || last_parse_type == expression_type::subtraction) {
+					if (expression_stack.empty() || (last_parse_type != expression_type::value && last_parse_type != expression_type::symbol && last_parse_type != expression_type::parenthesis_end)) {
 						operator_stack.push(expression_type::negate);
+						parse_type = expression_type::negate;
+						break;
 					}
 					[[fallthrough]];
 				default:
@@ -641,6 +643,7 @@ namespace boxmon
 					operator_stack.push(parse_type);
 					break;
 			}
+			last_parse_type = parse_type;
 			skip_whitespace(look);
 		}
 

@@ -132,6 +132,39 @@ BOXMON_COMMAND(eval, "eval <expr>")
 {
 	if (help) {
 		boxmon_console_printf("Evaluates an expression and prints the result to the console.");
+		boxmon_console_printf("Intermediate values are stored as signed 32-bit integers. Memory reads from dereferencing are treated as unsigned 8-bit integers.");
+		boxmon_console_printf("Expressions support most C-style mathematical, comparison, boolean, and bitwise operators:");
+		boxmon_console_printf("Math: +, -, *, /, %, ^^, ()");
+		boxmon_console_printf("\t+: Addition. 2+3 returns 5.");
+		boxmon_console_printf("\t-: Subtraction and negation. 2-3 returns -1. -2 returns -2.");
+		boxmon_console_printf("\t*: Multiplication. 2*3 returns 6.");
+		boxmon_console_printf("\t/: Division. 10/2 returns 5.");
+		boxmon_console_printf("\t%: Modulo. 4%3 returns 1.");
+		boxmon_console_printf("\t^^: Exponentiation. 2^^3 returns 8.");
+		boxmon_console_printf("\t(): Parenthesis. (1+2)*3 returns 9.");
+		boxmon_console_printf("Compare: ==, !=, <, >, <=, >=");
+		boxmon_console_printf("\t==: Equality. 2==2 returns 1 (true), 2==3 returns 0 (false).");
+		boxmon_console_printf("\t!=: Inequality. 2!=2 returns 0 (false), 2!=3 returns 1 (true).");
+		boxmon_console_printf("\t<: Less than. 2<3 returns 1 (true), 3<2 returns 0 (false).");
+		boxmon_console_printf("\t>: Greater than. 2>3 returns 0 (false), 3>2 returns 1 (true).");
+		boxmon_console_printf("\t<=: Less than or equal to. 2<=2 returns 1, 2<=3 returns 1.");
+		boxmon_console_printf("\t>=: Greater than or equal to. 2>=2 returns 1, 3>=2 returns 1.");
+		boxmon_console_printf("Bool: &&, ||, !");
+		boxmon_console_printf("\t&&: Boolean AND. 1 && 1 returns 1, 1 && 0 returns 0, 0 && 0 returns 0.");
+		boxmon_console_printf("\t||: Boolean OR. 1 || 1 returns 1, 1 || 0 returns 1, 0 || 0 returns 0.");
+		boxmon_console_printf("\t!: Boolean NOT. !1 returns 0, !0 returns 1.");
+		boxmon_console_printf("Bitwise: &, |, ~, ^, <<, >>");
+		boxmon_console_printf("\t&: Bitwise AND. 3&1 returns 1, 2&1 returns 0.");
+		boxmon_console_printf("\t|: Bitwise OR. 3|1 returns 3, 2|1 returns 3.");
+		boxmon_console_printf("\t~: Bitwise NOT. ~1 returns -2, ~2 returns -3. (Additional reading left to the user: Two's complement signed integers.)");
+		boxmon_console_printf("\t^: Bitwise XOR. 3^1 returns 2, 2^1 returns 3.");
+		boxmon_console_printf("\t<<: Left shift. 1<<2 returns 4.");
+		boxmon_console_printf("\t>>: Right shift. 4>>2 returns 1.");
+		boxmon_console_printf("Additionally, the symbol @ will treat the value to its right as a memory address and attempt to retrieve the value at that address, similar to the C-style * for pointer dereferencing.");
+		boxmon_console_printf("\t@: Dereferencing. @3 returns the value stored at $0003.");
+		boxmon_console_printf("C-style precedence rules should apply to each of these operators.");
+		boxmon_console_printf("Expressions may include integer values and symbol names. Symbol names are substituted as the address associated with the symbol.");
+		boxmon_console_printf("If the same symbol name is defined multiple times, the selection process is undefined.");
 		return true;
 	}
 	const boxmon::expression *expr;
@@ -151,7 +184,7 @@ BOXMON_COMMAND(break, "break [load|store|exec] [address [address] [if <cond_expr
 		boxmon_console_printf("\tstore: Break if the CPU attempts to store data to this address.");
 		boxmon_console_printf("\texec: Break if the CPU attempts to execute an instruction from this address.");
 		boxmon_console_printf("\taddress: One or more addresses to set as breakpoints.");
-		boxmon_console_printf("\tcond_expr: Conditional expression. If specified, the breakpoint will only pause execution if the conditional expression evaluates to a non-zero value.");
+		boxmon_console_printf("\tcond_expr: Conditional expression following the same rules and syntax as \"eval\". If specified, the breakpoint will only pause execution if the conditional expression evaluates to a non-zero value.");
 		boxmon_console_printf("\t           (In the case of boolean comparisons, \"true\" evaluates to 1, \"false\" evaluates to 0.)");
 		return true;
 	}
