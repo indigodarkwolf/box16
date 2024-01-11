@@ -14,8 +14,8 @@
 #include "ring_buffer.h"
 
 #define LOAD_HYPERCALLS
-//#define TRACE
-//#define PROFILE
+// #define TRACE
+// #define PROFILE
 
 #define MHZ 8
 
@@ -26,24 +26,22 @@
 
 #define ROM_SIZE (TOTAL_ROM_BANKS * 16384) /* banks at $C000-$FFFF */
 
-extern _state6502   state6502;
-extern _state6502   debug_state6502;
-extern uint8_t      waiting;
-extern _smart_stack stack6502[256];
-extern uint8_t      stack6502_underflow;
-extern ring_buffer<_cpuhistory, 256>  history6502;
+extern _state6502                          state6502;
+extern _state6502                          debug_state6502;
+extern uint8_t                             waiting;
+extern lazy_ring_buffer<_smart_stack, 512> stack6502;
+extern ring_buffer<_cpuhistory, 256>       history6502;
 
 extern uint8_t *RAM;
 extern uint8_t  ROM[ROM_SIZE];
 extern uint32_t instructions;
 extern uint8_t  debug6502;
-extern bool save_on_exit;
+extern bool     save_on_exit;
 
 extern void machine_dump(const char *reason);
 extern void machine_reset();
 extern void machine_toggle_warp();
 extern void init_audio();
 extern void main_shutdown();
-
 
 #endif

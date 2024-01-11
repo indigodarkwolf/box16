@@ -67,6 +67,7 @@
 #include "fake6502.h"
 
 #include "../debugger.h"
+#include <functional>
 #include <ring_buffer.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -96,9 +97,9 @@ uint8_t  debug6502 = 0;
 uint8_t penaltyop, penaltyaddr;
 uint8_t waiting = 0;
 
-_smart_stack stack6502[256];
-uint8_t      stack6502_underflow = 0;
-ring_buffer<_cpuhistory, 256>  history6502;
+lazy_ring_buffer<_smart_stack, 512>       stack6502;
+ring_buffer<_cpuhistory, 256>             history6502;
+ring_buffer<std::function<void(void)>, 8> smartstack_operations;
 
 // externally supplied functions
 extern uint8_t read6502(uint16_t address);
@@ -130,54 +131,54 @@ static void putvalue(uint16_t saveval)
 		write6502(ea, (saveval & 0x00FF));
 }
 
+static void commit_smartstack()
+{
+	smartstack_operations.for_each([](const std::function<void(void)> &f) {
+		f();
+	});
+	smartstack_operations.clear();
+}
+
 void nmi6502()
 {
-	auto &ss       = stack6502[state6502.sp_depth++];
-	ss.source_pc   = state6502.pc;
-	ss.source_bank = bank6502(state6502.pc);
-	ss.push_depth  = 0;
-	ss.push_unwind_depth      = 0;
-	state6502.sp_unwind_depth = state6502.sp_depth;
+	const uint8_t pc_bank = bank6502(debug_state6502.pc);
 
-	push16(state6502.pc);
-	push8(state6502.status & ~FLAG_BREAK);
+	push16(state6502.pc, _stack_op_type::push_nmi);
+	push8(state6502.status & ~FLAG_BREAK, _stack_op_type::push_nmi);
 	setinterrupt();
 	cleardecimal();
 	vp6502();
 	state6502.pc = (uint16_t)read6502(0xFFFA) | ((uint16_t)read6502(0xFFFB) << 8);
 	waiting      = 0;
 
-	ss.dest_pc   = state6502.pc;
-	ss.dest_bank = bank6502(state6502.pc);
-	ss.op_type   = _stack_op_type::nmi;
-	ss.pop_type  = _stack_pop_type::unknown;
-	ss.opcode    = 0;
-	ss.state     = debug_state6502;
+	commit_smartstack();
+	auto &ss          = stack6502.allocate();
+	ss.push.op_type   = _stack_op_type::nmi;
+	ss.push.state     = debug_state6502;
+	ss.push.pc_bank   = pc_bank;
+	ss.push.jmp_data.dest_pc   = state6502.pc;
+	ss.push.jmp_data.dest_bank = bank6502(state6502.pc);
 }
 
 void irq6502()
 {
 	if (!(state6502.status & FLAG_INTERRUPT)) {
-		auto &ss       = stack6502[state6502.sp_depth++];
-		ss.source_pc   = state6502.pc;
-		ss.source_bank = bank6502(state6502.pc);
-		ss.push_depth  = 0;
-		ss.push_unwind_depth      = 0;
-		state6502.sp_unwind_depth = state6502.sp_depth;
+		const uint8_t pc_bank = bank6502(debug_state6502.pc);
 
-		push16(state6502.pc);
-		push8(state6502.status & ~FLAG_BREAK);
+		push16(state6502.pc, _stack_op_type::push_irq);
+		push8(state6502.status & ~FLAG_BREAK, _stack_op_type::push_irq);
 		setinterrupt();
 		cleardecimal();
 		vp6502();
 		state6502.pc = (uint16_t)read6502(0xFFFE) | ((uint16_t)read6502(0xFFFF) << 8);
 
-		ss.dest_pc   = state6502.pc;
-		ss.dest_bank = bank6502(state6502.pc);
-		ss.op_type   = _stack_op_type::irq;
-		ss.pop_type  = _stack_pop_type::unknown;
-		ss.opcode    = 0;
-		ss.state     = debug_state6502;
+		commit_smartstack();
+		auto &ss          = stack6502.allocate();
+		ss.push.op_type   = _stack_op_type::irq;
+		ss.push.state     = debug_state6502;
+		ss.push.pc_bank   = pc_bank;
+		ss.push.jmp_data.dest_pc   = state6502.pc;
+		ss.push.jmp_data.dest_bank = bank6502(state6502.pc);
 	}
 	waiting = 0;
 }
@@ -195,13 +196,14 @@ void exec6502(uint32_t tickcount)
 	clockgoal6502 += tickcount;
 
 	while (clockticks6502 < clockgoal6502) {
-		debug_state6502      = state6502;
-		const uint64_t   debug_clockticks6502 = clockticks6502;
+		debug_state6502                     = state6502;
+		const uint64_t debug_clockticks6502 = clockticks6502;
 
 		opcode = read6502(state6502.pc++);
 		if (debug6502 & DEBUG6502_EXEC) {
 			state6502      = debug_state6502;
 			clockticks6502 = debug_clockticks6502;
+			smartstack_operations.clear();
 			return;
 		}
 		state6502.status |= FLAG_CONSTANT;
@@ -215,6 +217,7 @@ void exec6502(uint32_t tickcount)
 		if (debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) {
 			state6502      = debug_state6502;
 			clockticks6502 = debug_clockticks6502;
+			smartstack_operations.clear();
 			return;
 		}
 
@@ -225,10 +228,12 @@ void exec6502(uint32_t tickcount)
 		instructions++;
 		debug6502 = 0;
 
-		auto &history = history6502.allocate();
-		history.state = debug_state6502;
+		auto &history  = history6502.allocate();
+		history.state  = debug_state6502;
 		history.opcode = opcode;
 		history.bank   = bank6502(debug_state6502.pc);
+
+		commit_smartstack();
 	}
 }
 
@@ -242,13 +247,14 @@ void step6502()
 		return;
 	}
 
-	debug_state6502      = state6502;
-	const uint64_t   debug_clockticks6502 = clockticks6502;
+	debug_state6502                     = state6502;
+	const uint64_t debug_clockticks6502 = clockticks6502;
 
 	opcode = read6502(state6502.pc++);
 	if (debug6502 & DEBUG6502_EXEC) {
 		state6502      = debug_state6502;
 		clockticks6502 = debug_clockticks6502;
+		smartstack_operations.clear();
 		return;
 	}
 	state6502.status |= FLAG_CONSTANT;
@@ -262,6 +268,7 @@ void step6502()
 	if (debug6502 & (DEBUG6502_READ | DEBUG6502_WRITE)) {
 		state6502      = debug_state6502;
 		clockticks6502 = debug_clockticks6502;
+		smartstack_operations.clear();
 		return;
 	}
 
@@ -277,6 +284,8 @@ void step6502()
 	history.state  = debug_state6502;
 	history.opcode = opcode;
 	history.bank   = bank6502(debug_state6502.pc);
+
+	commit_smartstack();
 }
 
 void force6502()
@@ -304,6 +313,13 @@ void force6502()
 	clockgoal6502 = clockticks6502;
 
 	instructions++;
+
+	auto &history  = history6502.allocate();
+	history.state  = debug_state6502;
+	history.opcode = opcode;
+	history.bank   = bank6502(debug_state6502.pc);
+
+	commit_smartstack();
 }
 
 //  Fixes from http://6502.org/tutorials/65c02opcodes.html

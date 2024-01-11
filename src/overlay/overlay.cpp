@@ -446,23 +446,27 @@ static void draw_debugger_cpu_status()
 
 			ImGui::TableHeadersRow();
 
-			if (stack6502_underflow) {
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(1);
-				ImGui::TextDisabled("%s", "(Underflow)");
-				if (ImGui::IsItemHovered()) {
-					ImGui::BeginTooltip();
-					ImGui::Text("%s", "There appears to have been a smartstack underflow.\nThis usually means there was a mismatched jsr / rts pair,\nor an rti executed outside of an interrupt.\n\nBox16's SmartStack cannot currently track manual stack manipulation very well.");
-					ImGui::EndTooltip();
-				}
-				ImGui::TableNextRow();
-			}
-			for (uint16_t i = state6502.sp_unwind_depth - 1; i < state6502.sp_unwind_depth; --i) {
+			//if (stack6502_underflow) {
+			//	ImGui::TableNextRow();
+			//	ImGui::TableSetColumnIndex(1);
+			//	ImGui::TextDisabled("%s", "(Underflow)");
+			//	if (ImGui::IsItemHovered()) {
+			//		ImGui::BeginTooltip();
+			//		ImGui::Text("%s", "There appears to have been a smartstack underflow.\nThis usually means there was a mismatched jsr / rts pair,\nor an rti executed outside of an interrupt.\n\nBox16's SmartStack cannot currently track manual stack manipulation very well.");
+			//		ImGui::EndTooltip();
+			//	}
+			//	ImGui::TableNextRow();
+			//}
+
+			for (size_t i = stack6502.lazy_count() - 1; i < stack6502.lazy_count(); --i) {
 				const auto &ss = stack6502[i];
+				if (ss.push.op_type >= _stack_op_type::push_op) {
+					continue;
+				}
 
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0);
-				if (i == state6502.sp_depth - 1) {
+				if (i == stack6502.count() - 1) {
 					ImGui::Text("%s", ">");
 				}
 				ImGui::TableSetColumnIndex(1);
@@ -509,11 +513,11 @@ static void draw_debugger_cpu_status()
 						}
 					}
 				};
-				if (i >= state6502.sp_depth) {
+				if (i >= stack6502.count()) {
 					ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 					ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 				} else {
-					switch (ss.op_type) {
+					switch (ss.push.op_type) {
 						case _stack_op_type::nmi:
 							ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF003388);
 							ImGui::PushStyleColor(ImGuiCol_Text, 0xFF0077FF);
@@ -526,7 +530,7 @@ static void draw_debugger_cpu_status()
 							ImGui::PushStyleColor(ImGuiCol_TextDisabled, 0xFF883300);
 							ImGui::PushStyleColor(ImGuiCol_Text, 0xFFFFFF00);
 							break;
-						case _stack_op_type::op:
+						case _stack_op_type::jsr:
 							ImGui::PushStyleColor(ImGuiCol_TextDisabled, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
 							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_Text));
 							break;
@@ -534,8 +538,8 @@ static void draw_debugger_cpu_status()
 							break;
 					}
 				}
-				ImGui::PushID(i);
-				do_label(ss.dest_pc, ss.dest_bank, true);
+				ImGui::PushID(static_cast<int>(i));
+				do_label(ss.push.jmp_data.dest_pc, ss.push.jmp_data.dest_bank, true);
 				ImGui::PopID();
 				ImGui::PopStyleColor(2);
 
@@ -547,28 +551,28 @@ static void draw_debugger_cpu_status()
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Source address:");
 						ImGui::TableSetColumnIndex(1);
-						do_label(ss.source_pc, ss.source_bank, false);
+						do_label(ss.push.state.pc, ss.push.pc_bank, false);
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Destination address:");
 						ImGui::TableSetColumnIndex(1);
-						do_label(ss.dest_pc, ss.dest_bank, false);
+						do_label(ss.push.jmp_data.dest_pc, ss.push.jmp_data.dest_bank, false);
 
 						ImGui::TableNextRow();
 						ImGui::TableSetColumnIndex(0);
 						ImGui::TextDisabled("%s", "Cause:");
 						ImGui::TableSetColumnIndex(1);
 
-						switch (ss.op_type) {
+						switch (ss.push.op_type) {
 							case _stack_op_type::nmi:
 								ImGui::Text("%s", "NMI");
 								break;
 							case _stack_op_type::irq:
 								ImGui::Text("%s", "IRQ");
 								break;
-							case _stack_op_type::op:
-								ImGui::Text("%s", mnemonics[ss.opcode]);
+							case _stack_op_type::jsr:
+								ImGui::Text("%s", "JSR");
 								break;
 							case _stack_op_type::smart:
 								ImGui::Text("%s", "smart");
@@ -577,25 +581,27 @@ static void draw_debugger_cpu_status()
 								break;
 						}
 
-						if (i >= state6502.sp_depth) {
+						if (i >= stack6502.count()) {
 							ImGui::TableNextRow();
 							ImGui::TableSetColumnIndex(0);
 							ImGui::TextDisabled("%s", "Pop Address:");
 							ImGui::TableSetColumnIndex(1);
-							do_label(ss.pop_pc, ss.pop_bank, false);
+							do_label(ss.pop.state.pc, ss.pop.pc_bank, false);
 
 							ImGui::TableNextRow();
 							ImGui::TableSetColumnIndex(0);
 							ImGui::TextDisabled("%s", "Pop Cause:");
 							ImGui::TableSetColumnIndex(1);
-							switch (ss.pop_type) {
-								case _stack_pop_type::rti:
+							switch (ss.pop.op_type) {
+								case _stack_op_type::rti:
 									ImGui::Text("%s", "rti");
 									break;
-								case _stack_pop_type::rts:
+								case _stack_op_type::rts:
 									ImGui::Text("%s", "rts");
 									break;
-								case _stack_pop_type::unknown:
+								case _stack_op_type::unknown:
+									[[fallthrough]];
+								default:
 									ImGui::Text("%s", "(unknown)");
 									break;
 							}
@@ -604,78 +610,78 @@ static void draw_debugger_cpu_status()
 						ImGui::EndTable();
 					}
 
-					if (ss.push_unwind_depth > 0) {
-						ImGui::TextDisabled("%s", "Additional byte pushes in this frame:");
-						if (ImGui::BeginTable("additional pushes table", 5, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX)) {
-							ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 10);
-							ImGui::TableSetupColumn("Address");
-							ImGui::TableSetupColumn("Push Op");
-							ImGui::TableSetupColumn("Value");
-							ImGui::TableSetupColumn("Pull Op");
-							ImGui::TableHeadersRow();
+					//if (ss.push_unwind_depth > 0) {
+					//	ImGui::TextDisabled("%s", "Additional byte pushes in this frame:");
+					//	if (ImGui::BeginTable("additional pushes table", 5, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX)) {
+					//		ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 10);
+					//		ImGui::TableSetupColumn("Address");
+					//		ImGui::TableSetupColumn("Push Op");
+					//		ImGui::TableSetupColumn("Value");
+					//		ImGui::TableSetupColumn("Pull Op");
+					//		ImGui::TableHeadersRow();
 
-							for (uint16_t j = ss.push_unwind_depth - 1; j < ss.push_unwind_depth; --j) {
-								const auto &ssx = ss.pushed_bytes[j];
-								ImGui::TableNextRow();
+					//		for (uint16_t j = ss.push_unwind_depth - 1; j < ss.push_unwind_depth; --j) {
+					//			const auto &ssx = ss.pushed_bytes[j];
+					//			ImGui::TableNextRow();
 
-								ImGui::TableSetColumnIndex(0);
-								ImGui::Text("%s", (j == ss.push_depth - 1) ? ">" : " ");
+					//			ImGui::TableSetColumnIndex(0);
+					//			ImGui::Text("%s", (j == ss.push_depth - 1) ? ">" : " ");
 
-								ImGui::TableSetColumnIndex(1);
-								do_label(ssx.pc, ssx.bank, false);
+					//			ImGui::TableSetColumnIndex(1);
+					//			do_label(ssx.pc, ssx.bank, false);
 
-								ImGui::TableSetColumnIndex(2);
-								switch (ssx.push_type) {
-									case _push_op_type::a:
-										ImGui::Text("%s", "pha");
-										break;
-									case _push_op_type::x:
-										ImGui::Text("%s", "phx");
-										break;
-									case _push_op_type::y:
-										ImGui::Text("%s", "phy");
-										break;
-									case _push_op_type::status:
-										ImGui::Text("%s", "php");
-										break;
-									case _push_op_type::unknown:
-										ImGui::Text("%s", "(?)");
-										break;
-									case _push_op_type::smart:
-										ImGui::Text("%s", "smart");
-										break;
-								}
+					//			ImGui::TableSetColumnIndex(2);
+					//			switch (ssx.push_type) {
+					//				case _push_op_type::a:
+					//					ImGui::Text("%s", "pha");
+					//					break;
+					//				case _push_op_type::x:
+					//					ImGui::Text("%s", "phx");
+					//					break;
+					//				case _push_op_type::y:
+					//					ImGui::Text("%s", "phy");
+					//					break;
+					//				case _push_op_type::status:
+					//					ImGui::Text("%s", "php");
+					//					break;
+					//				case _push_op_type::unknown:
+					//					ImGui::Text("%s", "(?)");
+					//					break;
+					//				case _push_op_type::smart:
+					//					ImGui::Text("%s", "smart");
+					//					break;
+					//			}
 
-								ImGui::TableSetColumnIndex(3);
-								ImGui::Text("$%02x", ssx.value);
+					//			ImGui::TableSetColumnIndex(3);
+					//			ImGui::Text("$%02x", ssx.value);
 
-								if (j >= ss.push_depth) {
-									ImGui::TableSetColumnIndex(4);
-									switch (ssx.pull_type) {
-										case _push_op_type::a:
-											ImGui::Text("%s", "pla");
-											break;
-										case _push_op_type::x:
-											ImGui::Text("%s", "plx");
-											break;
-										case _push_op_type::y:
-											ImGui::Text("%s", "ply");
-											break;
-										case _push_op_type::status:
-											ImGui::Text("%s", "plp");
-											break;
-										case _push_op_type::unknown:
-											ImGui::Text("%s", "(?)");
-											break;
-										case _push_op_type::smart:
-											ImGui::Text("%s", "smart");
-											break;
-									}
-								}
-							}
-							ImGui::EndTable();
-						}
-					}
+					//			if (j >= ss.push_depth) {
+					//				ImGui::TableSetColumnIndex(4);
+					//				switch (ssx.pull_type) {
+					//					case _push_op_type::a:
+					//						ImGui::Text("%s", "pla");
+					//						break;
+					//					case _push_op_type::x:
+					//						ImGui::Text("%s", "plx");
+					//						break;
+					//					case _push_op_type::y:
+					//						ImGui::Text("%s", "ply");
+					//						break;
+					//					case _push_op_type::status:
+					//						ImGui::Text("%s", "plp");
+					//						break;
+					//					case _push_op_type::unknown:
+					//						ImGui::Text("%s", "(?)");
+					//						break;
+					//					case _push_op_type::smart:
+					//						ImGui::Text("%s", "smart");
+					//						break;
+					//				}
+					//			}
+					//		}
+					//		ImGui::EndTable();
+					//	}
+					//}
 
 					ImGui::EndTooltip();
 				}

@@ -252,21 +252,24 @@ BOXMON_COMMAND(backtrace, "backtrace")
 	}
 
 	char const *names[] = { "N", "V", "-", "B", "D", "I", "Z", "C" };
-	for (size_t i = 0; i < state6502.sp_depth; ++i) {
+	for (size_t i = 0; i < stack6502.count(); ++i) {
 		const auto &ss = stack6502[static_cast<int>(i)];
+		if (ss.push.op_type >= _stack_op_type::push_op) {
+			continue;
+		}
 		char const *op = [&]() -> char const * {
-			switch (ss.op_type) {
+			switch (ss.push.op_type) {
 				case _stack_op_type::nmi:
 					return "NMI";
 					break;
 				case _stack_op_type::irq:
 					return "IRQ";
 					break;
+				case _stack_op_type::jsr:
+					return "JSR";
+					break;
 				case _stack_op_type::smart:
 					return "---";
-					break;
-				case _stack_op_type::op:
-					return mnemonics[ss.opcode];
 					break;
 				default:
 					break;
@@ -276,14 +279,14 @@ BOXMON_COMMAND(backtrace, "backtrace")
 
 		boxmon_console_printf("% 3d: %s PC:%02x:%04X -> %02x:%04X A:%02X X:%02X Y:%02X SP:%02X ST:%c%c-%c%c%c%c%c", 
 			i, 
-			op, ss.source_bank, ss.source_pc, ss.dest_bank, ss.dest_pc, ss.state.a, ss.state.x, ss.state.y, ss.state.sp, 
-			ss.state.status & 0x80 ? 'N' : '-', 
-			ss.state.status & 0x40 ? 'V' : '-', 
-			ss.state.status & 0x10 ? 'B' : '-', 
-			ss.state.status & 0x08 ? 'D' : '-', 
-			ss.state.status & 0x04 ? 'I' : '-', 
-			ss.state.status & 0x02 ? 'Z' : '-', 
-			ss.state.status & 0x01 ? 'C' : '-');
+			op, ss.push.pc_bank, ss.push.state.pc, ss.push.jmp_data.dest_bank, ss.push.jmp_data.dest_pc, ss.push.state.a, ss.push.state.x, ss.push.state.y, ss.push.state.sp, 
+			ss.push.state.status & 0x80 ? 'N' : '-', 
+			ss.push.state.status & 0x40 ? 'V' : '-', 
+			ss.push.state.status & 0x10 ? 'B' : '-', 
+			ss.push.state.status & 0x08 ? 'D' : '-', 
+			ss.push.state.status & 0x04 ? 'I' : '-', 
+			ss.push.state.status & 0x02 ? 'Z' : '-', 
+			ss.push.state.status & 0x01 ? 'C' : '-');
 	}
 	return true;
 }

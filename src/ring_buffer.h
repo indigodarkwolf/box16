@@ -5,7 +5,7 @@
 #include <functional>
 #include <string.h>
 
-template <typename T, int SIZE>
+template <typename T, size_t SIZE>
 class ring_buffer
 {
 public:
@@ -38,6 +38,16 @@ public:
 		elem       = item;
 	}
 
+	const T &get(size_t index) const
+	{
+		return m_elems[(m_oldest + index) % SIZE];
+	}
+
+	T &get(size_t index)
+	{
+		return m_elems[(m_oldest + index) % SIZE];
+	}
+
 	const T &get_oldest() const
 	{
 		return m_elems[m_oldest];
@@ -55,21 +65,26 @@ public:
 
 	const T &get_newest() const
 	{
-		return m_elems[(m_oldest + m_count - 1) % SIZE];
+		return get(m_count - !!m_count);
 	}
 
-	const T &pop_newest()
+	T &get_newest()
+	{
+		return get(m_count - !!m_count);
+	}
+
+	T &pop_newest()
 	{
 		m_count -= !!m_count;
-		return get(static_cast<int>(m_count));
+		return get(m_count);
 	}
 
-	const T &get(int index) const
+	const T &operator[](size_t index) const
 	{
-		return m_elems[(m_oldest + index) % SIZE];
+		return get(index);
 	}
 
-	const T &operator[](int index) const
+	T &operator[](size_t index)
 	{
 		return get(index);
 	}
@@ -87,7 +102,7 @@ public:
 	void for_each(std::function<void(const T &)> f) const
 	{
 		if (f != nullptr) {
-			for (int i = 0; i < m_count; ++i) {
+			for (size_t i = 0; i < m_count; ++i) {
 				f(get(i));
 			}
 		}
@@ -96,7 +111,7 @@ public:
 	void for_until(std::function<bool(const T &)> f) const
 	{
 		if (f != nullptr) {
-			for (int i = 0; i < m_count; ++i) {
+			for (size_t i = 0; i < m_count; ++i) {
 				if (!f(get(i))) {
 					break;
 				}
@@ -107,7 +122,7 @@ public:
 	void for_each_reverse(std::function<void(const T &)> f) const
 	{
 		if (f != nullptr) {
-			for (int i = (int)m_count - 1; i > 0; --i) {
+			for (size_t i = m_count - 1; i < m_count; --i) {
 				f(get(i));
 			}
 		}
@@ -116,7 +131,7 @@ public:
 	void for_until_reverse(std::function<bool(const T &)> f) const
 	{
 		if (f != nullptr) {
-			for (int i = (int)m_count - 1; i > 0; --i) {
+			for (size_t i = m_count - 1; i < m_count; --i) {
 				if (!f(get(i))) {
 					break;
 				}
@@ -124,10 +139,46 @@ public:
 		}
 	}
 
-private:
+protected:
 	size_t m_oldest;
 	size_t m_count;
 	T      m_elems[SIZE];
+};
+
+template <typename T, size_t SIZE>
+class lazy_ring_buffer : public ring_buffer<T, SIZE>
+{
+private:
+	using super = ring_buffer<T, SIZE>;
+
+public:
+	lazy_ring_buffer()
+	    : super(),
+	      m_lazy_count(0)
+	{
+		// Nothing to do.
+	}
+
+	T &allocate()
+	{
+		T &allocated = super::allocate();
+		m_lazy_count = super::m_count;
+		return allocated;
+	}
+
+	void add(const T &item)
+	{
+		super::add(item);
+		m_lazy_count = super::m_count;
+	}
+
+	size_t lazy_count() const
+	{
+		return m_lazy_count;
+	}
+
+private:
+	size_t m_lazy_count;
 };
 
 template <typename T>
@@ -157,6 +208,11 @@ public:
 		elem       = item;
 	}
 
+	const T &get(size_t index) const
+	{
+		return m_elems[(m_oldest + index) % m_size];
+	}
+
 	const T &get_oldest() const
 	{
 		return m_elems[m_oldest];
@@ -174,21 +230,16 @@ public:
 
 	const T &get_newest() const
 	{
-		return m_elems[(m_oldest + m_count - 1) % m_size];
+		return get(m_count - !!m_count);
 	}
 
 	const T &pop_newest()
 	{
 		m_count -= !!m_count;
-		return get(static_cast<int>(m_count));
+		return get(m_count);
 	}
 
-	const T &get(int index) const
-	{
-		return m_elems[(m_oldest + index) % m_size];
-	}
-
-	const T &operator[](int index) const
+	const T &operator[](size_t index) const
 	{
 		return get(index);
 	}
@@ -210,7 +261,7 @@ private:
 	T           *m_elems;
 };
 
-template <typename T, int SIZE, bool ALLOW_OVERWRITE = true>
+template <typename T, size_t SIZE, bool ALLOW_OVERWRITE = true>
 class ring_allocator
 {
 public:
@@ -254,12 +305,12 @@ public:
 		}
 	}
 
-	const T &get(int index) const
+	const T &get(size_t index) const
 	{
 		return m_elems[(m_oldest + index) % SIZE];
 	}
 
-	const T &operator[](int index) const
+	const T &operator[](size_t index) const
 	{
 		return get(index);
 	}

@@ -57,46 +57,130 @@
 		}
 
 // a few general functions used by various other functions
-void push16(uint16_t pushval)
+void push16(uint16_t pushval, _stack_op_type op_type)
 {
+	smartstack_operations.add([pushval, op_type]() {
+		{
+			auto &ss        = stack6502.allocate();
+			ss.push.op_type = op_type;
+			ss.push.op_data.opcode  = opcode;
+			ss.push.state   = debug_state6502;
+			ss.push.pc_bank = bank6502(debug_state6502.pc);
+			ss.push.op_data.value   = (pushval >> 8) & 0xFF;
+		}
+
+		{
+			auto &ss        = stack6502.allocate();
+			ss.push.op_type = op_type;
+			ss.push.op_data.opcode  = opcode;
+			ss.push.state   = debug_state6502;
+			ss.push.pc_bank = bank6502(debug_state6502.pc);
+			ss.push.op_data.value   = pushval & 0xFF;
+		}
+	});
 	write6502(BASE_STACK + state6502.sp, (pushval >> 8) & 0xFF);
 	write6502(BASE_STACK + ((state6502.sp - 1) & 0xFF), pushval & 0xFF);
 	state6502.sp -= 2;
 }
 
-void push8(uint8_t pushval)
+void push8(uint8_t pushval, _stack_op_type op_type)
 {
+	smartstack_operations.add([pushval, op_type]() {
+		auto &ss        = stack6502.allocate();
+		ss.push.op_type = op_type;
+		ss.push.op_data.opcode  = opcode;
+		ss.push.state   = debug_state6502;
+		ss.push.pc_bank = bank6502(debug_state6502.pc);
+		ss.push.op_data.value   = pushval;
+	});
 	write6502(BASE_STACK + state6502.sp--, pushval);
 }
 
-uint16_t pull16()
+uint16_t pull16(_stack_op_type op_type)
 {
-	uint16_t temp16;
-	temp16 = read6502(BASE_STACK + ((state6502.sp + 1) & 0xFF)) | ((uint16_t)read6502(BASE_STACK + ((state6502.sp + 2) & 0xFF)) << 8);
+	const uint16_t temp16 = read6502(BASE_STACK + ((state6502.sp + 1) & 0xFF)) | ((uint16_t)read6502(BASE_STACK + ((state6502.sp + 2) & 0xFF)) << 8);
 	state6502.sp += 2;
+
+	smartstack_operations.add([op_type, temp16]() {
+		{
+			auto &ss       = stack6502.pop_newest();
+			ss.pop.op_type = op_type;
+			ss.pop.op_data.opcode  = opcode;
+			ss.pop.state   = debug_state6502;
+			ss.pop.pc_bank = bank6502(debug_state6502.pc);
+			ss.pop.op_data.value   = temp16 & 0xFF;
+
+			if (ss.push.op_type < _stack_op_type::push_op) {
+				auto &ss       = stack6502.pop_newest();
+				ss.pop.op_type = op_type;
+				ss.pop.op_data.opcode  = opcode;
+				ss.pop.state   = debug_state6502;
+				ss.pop.pc_bank = bank6502(debug_state6502.pc);
+				ss.pop.op_data.value   = temp16 & 0xFF;
+			}
+		}
+
+		{
+			auto &ss       = stack6502.pop_newest();
+			ss.pop.op_type = op_type;
+			ss.pop.op_data.opcode  = opcode;
+			ss.pop.state   = debug_state6502;
+			ss.pop.pc_bank = bank6502(debug_state6502.pc);
+			ss.pop.op_data.value   = (temp16 >> 8) & 0xFF;
+
+			if (ss.push.op_type < _stack_op_type::push_op) {
+				auto &ss       = stack6502.pop_newest();
+				ss.pop.op_type = op_type;
+				ss.pop.op_data.opcode  = opcode;
+				ss.pop.state   = debug_state6502;
+				ss.pop.pc_bank = bank6502(debug_state6502.pc);
+				ss.pop.op_data.value   = (temp16 >> 8) & 0xFF;
+			}
+		}
+	});
+
 	return (temp16);
 }
 
-uint8_t pull8()
+uint8_t pull8(_stack_op_type op_type)
 {
-	return (read6502(BASE_STACK + ++state6502.sp));
+	const uint8_t temp8 = read6502(BASE_STACK + ++state6502.sp);
+	smartstack_operations.add([op_type, temp8]() {
+		auto &ss       = stack6502.pop_newest();
+		ss.pop.op_type = op_type;
+		ss.pop.op_data.opcode  = opcode;
+		ss.pop.state   = debug_state6502;
+		ss.pop.pc_bank = bank6502(debug_state6502.pc);
+		ss.pop.op_data.value   = temp8;
+
+		if (ss.push.op_type < _stack_op_type::push_op) {
+			auto &ss       = stack6502.pop_newest();
+			ss.pop.op_type = op_type;
+			ss.pop.op_data.opcode  = opcode;
+			ss.pop.state   = debug_state6502;
+			ss.pop.pc_bank = bank6502(debug_state6502.pc);
+			ss.pop.op_data.value   = temp8;
+		}
+	});
+
+	return (temp8);
 }
 
 void reset6502()
 {
 	vp6502();
-	state6502.pc              = (uint16_t)read6502(0xFFFC) | ((uint16_t)read6502(0xFFFD) << 8);
-	state6502.sp_depth        = 0;
-	state6502.sp_unwind_depth = 0;
-	state6502.a               = 0;
-	state6502.x               = 0;
-	state6502.y               = 0;
-	state6502.sp              = 0xFD;
+	state6502.pc = (uint16_t)read6502(0xFFFC) | ((uint16_t)read6502(0xFFFD) << 8);
+	state6502.a  = 0;
+	state6502.x  = 0;
+	state6502.y  = 0;
+	state6502.sp = 0xFD;
 	state6502.status |= FLAG_CONSTANT | FLAG_BREAK;
-	stack6502_underflow = 0;
 	setinterrupt();
 	cleardecimal();
 	waiting = 0;
+	stack6502.clear();
+	history6502.clear();
+	smartstack_operations.clear();
 }
 
 #endif // !defined(SUPPORT_6502_H)
