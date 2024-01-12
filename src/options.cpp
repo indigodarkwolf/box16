@@ -710,9 +710,6 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 		} else if (!strcmp(argv[0], "-stds")) {
 			argc--;
 			argv++;
-			if (!argc || argv[0][0] != '-') {
-				usage();
-			}
 
 			ini["stds"] = "true";
 

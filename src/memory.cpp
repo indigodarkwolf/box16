@@ -168,7 +168,7 @@ static uint8_t real_ram_read(uint16_t address)
 	const int real_address = (ramBank << 13) + address;
 
 	if ((RAM_written[real_address >> 6] & ((uint64_t)1 << (real_address & 0x3f))) == 0 && Memory_params.enable_uninitialized_access_warning) {
-		printf("Warning: %02X:%04X accessed uninitialized RAM address %02X:%04X\n", state6502.pc < 0xa000 ? 0 : ramBank, state6502.pc, address < 0xa000 ? 0 : ramBank, address);
+		printf("Warning: %02X:%04X accessed uninitialized RAM address %02X:%04X\n", bank6502(debug_state6502.pc), debug_state6502.pc, address < 0xa000 ? 0 : ramBank, address);
 	}
 
 	return RAM[real_address];
