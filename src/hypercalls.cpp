@@ -192,7 +192,9 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_TKSA & 0x1ff] = []() -> bool {
-			TKSA(state6502.a);
+			const int s = TKSA(state6502.a);
+
+			set_kernal_status(s);
 			return true;
 		};
 
@@ -213,7 +215,9 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_UNTLK & 0x1ff] = []() -> bool {
-			UNTLK();
+			const int s = UNTLK();
+
+			set_kernal_status(s);
 			return true;
 		};
 
@@ -239,12 +243,16 @@ void hypercalls_update()
 		};
 
 		Hypercall_table[KERNAL_LISTEN & 0x1ff] = []() -> bool {
-			LISTEN(state6502.a);
+			const int s = LISTEN(state6502.a);
+
+			set_kernal_status(s);
 			return true;
 		};
 
 		Hypercall_table[KERNAL_TALK & 0x1ff] = []() -> bool {
-			TALK(state6502.a);
+			const int s = TALK(state6502.a);
+
+			set_kernal_status(s);
 			return true;
 		};
 	}

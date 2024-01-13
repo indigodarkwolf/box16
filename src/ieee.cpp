@@ -21,8 +21,6 @@
 #include <ctime>
 #include <unistd.h>
 
-#define UNIT_NO 8
-
 //static constexpr bool log_ieee = true;
 static constexpr bool log_ieee = false;
 
@@ -38,6 +36,8 @@ bool talking     = false;
 bool opening     = false;
 bool overwrite   = false;
 bool path_exists = false;
+
+int ieee_unit = 8;
 
 std::filesystem::path hostfscwd = "";
 
@@ -245,7 +245,7 @@ static std::filesystem::path resolve_path(const std::string &name, bool must_exi
 
 	const auto resolved_path = is_wildcard ? wildcard_match(old_path, relative_name) : old_path / relative_name;
 	if (resolved_path.empty()) {
-		set_error(0x62, 0, 0);
+		set_error(0x32, 0, 0);
 		return "";
 	}
 
@@ -699,15 +699,21 @@ static void command(char *cmd)
 	if (!cmd[0]) {
 		return;
 	}
-	printf("  COMMAND \"%s\"\n", cmd);
+	if (log_ieee) {
+		if (cmd[0] == 'P') {
+			printf("  COMMAND \"%c\" [binary parameters suppressed]\n", cmd[0]);
+		} else {
+			printf("  COMMAND \"%s\"\n", cmd);		
+		}
+	}
 	switch (cmd[0]) {
 		case 'C': // C (copy), CD (change directory), CP (change partition)
 			switch (cmd[1]) {
 				case 'D': // Change directory
 					if (cmd[2] == ':') {
 						cchdir(cmd + 3);
-						return;
 					}
+					return;
 				case 'P': // Change partition
 					set_error(0x02, 0, 0);
 					return;
@@ -724,8 +730,8 @@ static void command(char *cmd)
 				case 'D': // Make directory
 					if (cmd[2] == ':') {
 						cmkdir(cmd + 3);
-						return;
 					}
+					return;
 				default: // Memory (not implemented)
 					set_error(0x31, 0, 0);
 					return;
@@ -738,8 +744,8 @@ static void command(char *cmd)
 				case 'D': // Remove directory
 					if (cmd[2] == ':') {
 						crmdir(cmd + 3);
-						return;
 					}
+					return;
 				default:          // Rename
 					crename(cmd); // Need to parse out the arg in this function
 					return;
@@ -747,7 +753,15 @@ static void command(char *cmd)
 		case 'S':
 			switch (cmd[1]) {
 				case '-': // Swap
-					set_error(0x31, 0, 0);
+					if (cmd[2] == '8' || cmd[2] == 'D') {
+						ieee_unit = 8;
+						clear_error();
+					} else if (cmd[2] == '9') {
+						ieee_unit = 9;
+						clear_error();
+					} else {
+						set_error(0x31, 0, 0);
+					}
 					return;
 				default:          // Scratch
 					cunlink(cmd); // Need to parse out the arg in this function
@@ -758,6 +772,16 @@ static void command(char *cmd)
 				case 'I': // UI: Reset
 					set_error(0x73, 0, 0);
 					return;
+				case '0': // U0
+					if (cmd[2] == '>') {
+						if (cmd[3] >= 8 && cmd[3] <= 15) {
+							ieee_unit = cmd[3];
+							clear_error();
+							return;
+						}
+					}
+				default:
+					break;
 			}
 		default:
 			if (log_ieee) {
@@ -771,6 +795,11 @@ static void cchdir(char *dir)
 {
 	// The directory name is in dir, coming from the command channel
 	// with the CD: portion stripped off
+	char back[3] = "..";
+	if (!strcmp(dir, "_")) {
+		dir = back;
+	}
+
 	std::filesystem::path resolved = resolve_path(dir, true);
 
 	if (resolved.empty()) {
@@ -1208,68 +1237,77 @@ int SECOND(uint8_t a)
 				namelen = 0;
 				break;
 		}
+	} else {
+		ret = -2; // Not listening, do not handle.
 	}
 	return ret;
 }
 
-void TKSA(uint8_t a)
+int TKSA(uint8_t a)
 {
 	if (log_ieee) {
 		printf("%s $%02x\n", __func__, a);
 	}
 	if (talking) {
 		channel = a & 0xf;
+	} else {
+		return -2;
 	}
+	return -1;
 }
 
 int ACPTR(uint8_t *a)
 {
 	int ret = 0;
-	if (channel == 15) {
-		*a = error[error_pos++];
-		if (error_pos >= error_len) {
-			clear_error();
-			ret = 0x40; // EOI
-		}
-	} else if (channels[channel].read) {
-		if (channels[channel].name[0] == '$') {
-			if (dirlist_pos < dirlist_len) {
-				*a = dirlist[dirlist_pos++];
-			} else {
-				*a = 0;
-			}
-			if (dirlist_pos == dirlist_len) {
-				if (dirlist_eof) {
-					ret = 0x40;
-				} else {
-					dirlist_pos = 0;
-					dirlist_len = continue_directory_listing(dirlist);
-				}
-			}
-		} else if (channels[channel].f) {
-			if (x16read(channels[channel].f, a, 1, 1) != 1) {
-				ret = 0x42;
-				*a  = 0;
-			} else {
-				// We need to send EOI on the last byte of the file.
-				// We have to check every time since CMDR-DOS
-				// supports random access R/W mode
-
-				size_t curpos = x16tell(channels[channel].f);
-				if (curpos == x16size(channels[channel].f)) {
-					ret                    = 0x40;
-					channels[channel].read = false;
-					cclose(channel);
-				}
-			}
-		} else {
-			ret = 0x42;
-		}
-	} else {
-		ret = 0x42; // FNF
-	}
 	if (log_ieee) {
 		printf("%s-> $%02x\n", __func__, *a);
+	}
+	if (talking) {
+		if (channel == 15) {
+			*a = error[error_pos++];
+			if (error_pos >= error_len) {
+				clear_error();
+				ret = 0x40; // EOI
+			}
+		} else if (channels[channel].read) {
+			if (channels[channel].name[0] == '$') {
+				if (dirlist_pos < dirlist_len) {
+					*a = dirlist[dirlist_pos++];
+				} else {
+					*a = 0;
+				}
+				if (dirlist_pos == dirlist_len) {
+					if (dirlist_eof) {
+						ret = 0x40;
+					} else {
+						dirlist_pos = 0;
+						dirlist_len = continue_directory_listing(dirlist);
+					}
+				}
+			} else if (channels[channel].f) {
+				if (x16read(channels[channel].f, a, 1, 1) != 1) {
+					ret = 0x42;
+					*a  = 0;
+				} else {
+					// We need to send EOI on the last byte of the file.
+					// We have to check every time since CMDR-DOS
+					// supports random access R/W mode
+
+					size_t curpos = x16tell(channels[channel].f);
+					if (curpos == x16size(channels[channel].f)) {
+						ret                    = 0x40;
+						channels[channel].read = false;
+						cclose(channel);
+					}
+				}
+			} else {
+				ret = 0x42;
+			}
+		} else {
+			ret = 0x42; // FNF
+		}
+	} else {
+		ret = -2;
 	}
 	return ret;
 }
@@ -1306,59 +1344,77 @@ int CIOUT(uint8_t a)
 				ret = 2; // FNF
 			}
 		}
+	} else {
+		ret = -2;
 	}
 	return ret;
 }
 
-void UNTLK()
+int UNTLK()
 {
 	if (log_ieee) {
 		printf("%s\n", __func__);
 	}
-	talking = false;
-	set_activity(false);
+	if (talking) {
+		talking = false;
+		set_activity(false);
+		return -1;
+	} else {
+		return -2;
+	}
 }
 
 int UNLSN()
 {
-	int ret = -1;
 	if (log_ieee) {
 		printf("%s\n", __func__);
 	}
-	listening = false;
-	set_activity(false);
-	if (opening) {
-		channels[channel].name[namelen] = 0; // term
-		opening                         = false;
-		ret                             = copen(channel);
-	} else if (channel == 15) {
-		cmd[cmdlen] = 0;
-		command(cmd);
-		cmdlen = 0;
+	if (listening) {
+		listening = false;
+		set_activity(false);
+		if (opening) {
+			channels[channel].name[namelen] = 0; // term
+			opening                         = false;
+			copen(channel);
+		} else if (channel == 15) {
+			cmd[cmdlen] = 0;
+			command(cmd);
+			cmdlen = 0;
+		}
+		return -1;
+	} else {
+		return -2;
+	}
+}
+
+int LISTEN(uint8_t a)
+{
+	if (log_ieee) {
+		printf("%s $%02x\n", __func__, a);
+	}
+	int ret = -1;
+	if ((a & 0x1f) == ieee_unit) {
+		listening = true;
+		set_activity(true);
+	} else {
+		ret = -2;
 	}
 	return ret;
 }
 
-void LISTEN(uint8_t a)
+int TALK(uint8_t a)
 {
 	if (log_ieee) {
 		printf("%s $%02x\n", __func__, a);
 	}
-	if ((a & 0x1f) == UNIT_NO) {
-		listening = true;
-		set_activity(true);
-	}
-}
-
-void TALK(uint8_t a)
-{
-	if (log_ieee) {
-		printf("%s $%02x\n", __func__, a);
-	}
-	if ((a & 0x1f) == UNIT_NO) {
+	int ret = -1;
+	if ((a & 0x1f) == ieee_unit) {
 		talking = true;
 		set_activity(true);
+	} else {
+		ret = -2;
 	}
+	return ret;
 }
 
 int MACPTR(uint16_t addr, uint16_t *c, uint8_t stream_mode)
@@ -1367,33 +1423,37 @@ int MACPTR(uint16_t addr, uint16_t *c, uint8_t stream_mode)
 		printf("%s $%04x $%04x $%02x\n", __func__, addr, *c, stream_mode);
 	}
 
-	int     ret      = -1;
-	int     count    = (*c != 0) ? (*c) : 256;
-	uint8_t ram_bank = read6502(0);
-	int     i        = 0;
-	if (channels[channel].f) {
-		do {
-			uint8_t byte = 0;
-			ret          = ACPTR(&byte);
-			write6502(addr, byte);
-			i++;
-			if (!stream_mode) {
-				addr++;
-				if (addr == 0xc000) {
-					addr = 0xa000;
-					ram_bank++;
-					write6502(0, ram_bank);
+	if (talking) {
+		int     ret      = -1;
+		int     count    = (*c != 0) ? (*c) : 256;
+		uint8_t ram_bank = read6502(0);
+		int     i        = 0;
+		if (channels[channel].f) {
+			do {
+				uint8_t byte = 0;
+				ret          = ACPTR(&byte);
+				write6502(addr, byte);
+				i++;
+				if (!stream_mode) {
+					addr++;
+					if (addr == 0xc000) {
+						addr = 0xa000;
+						ram_bank++;
+						write6502(0, ram_bank);
+					}
 				}
-			}
-			if (ret > 0) {
-				break;
-			}
-		} while (i < count);
+				if (ret > 0) {
+					break;
+				}
+			} while (i < count);
+		} else {
+			ret = -3; // unsupported
+		}
+		*c = i;
+		return ret;
 	} else {
-		ret = 0x42;
+		return -2; // not us, do not handle
 	}
-	*c = i;
-	return ret;
 }
 
 int MCIOUT(uint16_t addr, uint16_t *c, uint8_t stream_mode)
@@ -1402,31 +1462,35 @@ int MCIOUT(uint16_t addr, uint16_t *c, uint8_t stream_mode)
 		printf("%s $%04x $%04x $%02x\n", __func__, addr, *c, stream_mode);
 	}
 
-	int ret = 0;
-	int count = (*c != 0) ? (*c) : 256;
-	uint8_t ram_bank = read6502(0);
-	int i = 0;
-	if (channels[channel].f && channels[channel].write) {
-		do {
-			uint8_t byte;
-			byte = read6502(addr);
-			i++;
-			if (!stream_mode) {
-				addr++;
-				if (addr == 0xc000) {
-					addr = 0xa000;
-					ram_bank++;
-					write6502(0, ram_bank);
+	if (listening) {
+		int     ret      = 0;
+		int     count    = (*c != 0) ? (*c) : 256;
+		uint8_t ram_bank = read6502(0);
+		int     i        = 0;
+		if (channels[channel].f && channels[channel].write) {
+			do {
+				uint8_t byte;
+				byte = read6502(addr);
+				i++;
+				if (!stream_mode) {
+					addr++;
+					if (addr == 0xc000) {
+						addr = 0xa000;
+						ram_bank++;
+						write6502(0, ram_bank);
+					}
 				}
-			}
-			ret = CIOUT(byte);
-			if (ret > 0) {
-				break;
-			}
-		} while(i < count);
+				ret = CIOUT(byte);
+				if (ret != 0) {
+					break;
+				}
+			} while (i < count);
+		} else {
+			ret = -3; // unsupported
+		}
+		*c = i;
+		return ret;
 	} else {
-		ret = -2;
+		return -2; // not us, do not handle
 	}
-	*c = i;
-	return ret;
 }

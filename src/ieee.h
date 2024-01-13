@@ -7,14 +7,14 @@
 #	define IEEE_H
 
 void ieee_init();
-int SECOND(uint8_t a);
-void TKSA(uint8_t a);
+int  SECOND(uint8_t a);
+int  TKSA(uint8_t a);
 int  ACPTR(uint8_t *a);
 int  CIOUT(uint8_t a);
-void UNTLK();
+int  UNTLK();
 int  UNLSN();
-void LISTEN(uint8_t a);
-void TALK(uint8_t a);
+int  LISTEN(uint8_t a);
+int  TALK(uint8_t a);
 int  MACPTR(uint16_t addr, uint16_t *count, uint8_t stream_mode);
 int  MCIOUT(uint16_t addr, uint16_t *count, uint8_t stream_mode);
 
