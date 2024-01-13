@@ -446,7 +446,7 @@ static void draw_debugger_cpu_status()
 
 			ImGui::TableHeadersRow();
 
-			//if (stack6502_underflow) {
+			// if (stack6502_underflow) {
 			//	ImGui::TableNextRow();
 			//	ImGui::TableSetColumnIndex(1);
 			//	ImGui::TextDisabled("%s", "(Underflow)");
@@ -456,7 +456,7 @@ static void draw_debugger_cpu_status()
 			//		ImGui::EndTooltip();
 			//	}
 			//	ImGui::TableNextRow();
-			//}
+			// }
 
 			for (size_t i = stack6502.lazy_count() - 1; i < stack6502.lazy_count(); --i) {
 				const auto &ss = stack6502[i];
@@ -471,36 +471,40 @@ static void draw_debugger_cpu_status()
 				}
 				ImGui::TableSetColumnIndex(1);
 				auto do_label = [](uint16_t pc, uint8_t bank, bool allow_disabled) {
-					char const *label  = disasm_get_label(pc);
+					char const *label  = disasm_get_label(pc, bank);
 					bool        pushed = false;
 
 					if (pc >= 0xa000) {
 						if (label == nullptr) {
 							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-							char stack_line[256];
-							snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X", bank, pc);
-							stack_line[255] = '\0';
-							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+							char disasm[256];
+							disasm_code(disasm, 256, pc, bank);
+							char stack_line[512];
+							snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X: %s", bank, pc, disasm);
+							stack_line[511] = '\0';
+							pushed          = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 							ImGui::PopStyleColor();
 						} else {
 							char stack_line[256];
 							snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X: %s", bank, pc, label);
 							stack_line[255] = '\0';
-							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+							pushed          = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 						}
 					} else {
 						if (label == nullptr) {
 							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
-							char stack_line[256];
-							snprintf(stack_line, sizeof(stack_line), "$%04X", pc);
-							stack_line[255] = '\0';
-							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+							char disasm[256];
+							disasm_code(disasm, 256, pc, bank);
+							char stack_line[512];
+							snprintf(stack_line, sizeof(stack_line), "    $%04X: %s", pc, disasm);
+							stack_line[511] = '\0';
+							pushed          = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 							ImGui::PopStyleColor();
 						} else {
 							char stack_line[256];
-							snprintf(stack_line, sizeof(stack_line), "$%04X: %s", pc, label);
+							snprintf(stack_line, sizeof(stack_line), "    $%04X: %s", pc, label);
 							stack_line[255] = '\0';
-							pushed = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
+							pushed          = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 						}
 					}
 
@@ -610,7 +614,7 @@ static void draw_debugger_cpu_status()
 						ImGui::EndTable();
 					}
 
-					//if (ss.push_unwind_depth > 0) {
+					// if (ss.push_unwind_depth > 0) {
 					//	ImGui::TextDisabled("%s", "Additional byte pushes in this frame:");
 					//	if (ImGui::BeginTable("additional pushes table", 5, ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_NoHostExtendX)) {
 					//		ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthFixed, 10);
@@ -1871,7 +1875,7 @@ public:
 										tdat |= 0x80;
 									}
 								}
-									
+
 								pixels[dst2++] = palette[tdat];
 							}
 						}
@@ -2568,7 +2572,7 @@ static void draw_symbols_list()
 					}
 				}
 
-				//symbols_for_each([&](uint16_t address, symbol_bank_type bank, const std::string &name) {
+				// symbols_for_each([&](uint16_t address, symbol_bank_type bank, const std::string &name) {
 				//	if (search_filter_contains(name.c_str())) {
 				//		ImGui::PushID(id++);
 				//		bool is_selected = selected && (selected_addr == address) && (selected_bank == bank);

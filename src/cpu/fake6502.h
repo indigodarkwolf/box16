@@ -27,6 +27,7 @@ enum class _stack_op_type : uint8_t {
 	push_jsr,
 	rts,
 	rti,
+	hypercall,
 	pull_op,
 	unknown
 };

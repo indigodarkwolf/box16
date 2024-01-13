@@ -660,10 +660,46 @@ txa()
 	signcalc(state6502.a);
 }
 
+uint8_t debug_read6502(uint16_t address);
+
 static void
 txs()
 {
 	state6502.sp = state6502.x;
+
+	smartstack_operations.add([]() {
+		const int sp_diff = static_cast<int>(state6502.sp) - static_cast<int>(debug_state6502.sp);
+		if (sp_diff < 0) {
+			// push onto stack
+			for (int i = 0; i > sp_diff; --i) {
+				auto &ss               = stack6502.allocate();
+				ss.push.op_type        = _stack_op_type::push_op;
+				ss.push.op_data.opcode = opcode;
+				ss.push.state          = debug_state6502;
+				ss.push.pc_bank        = bank6502(debug_state6502.pc);
+				ss.push.op_data.value  = debug_read6502(static_cast<uint16_t>(BASE_STACK + static_cast<int>(debug_state6502.sp) + i));
+			}
+		} else if (sp_diff > 0) {
+			// pop from stack
+			for (int i = 0; i < sp_diff; ++i) {
+				auto &ss = stack6502.pop_newest();
+				ss.pop.op_type        = _stack_op_type::pull_op;
+				ss.pop.op_data.opcode = opcode;
+				ss.pop.state          = debug_state6502;
+				ss.pop.pc_bank        = bank6502(debug_state6502.pc);
+				ss.pop.op_data.value  = debug_read6502(static_cast<uint16_t>(BASE_STACK + static_cast<int>(debug_state6502.sp) + i + 1));
+
+				if (ss.push.op_type < _stack_op_type::push_op) {
+					auto &ss              = stack6502.pop_newest();
+					ss.pop.op_type        = _stack_op_type::pull_op;
+					ss.pop.op_data.opcode = opcode;
+					ss.pop.state          = debug_state6502;
+					ss.pop.pc_bank        = bank6502(debug_state6502.pc);
+					ss.pop.op_data.value  = debug_read6502(static_cast<uint16_t>(BASE_STACK + static_cast<int>(debug_state6502.sp) + i + 1));
+				}
+			}					
+		}
+	});
 }
 
 static void

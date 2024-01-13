@@ -174,7 +174,7 @@ void reset6502()
 	state6502.x  = 0;
 	state6502.y  = 0;
 	state6502.sp = 0xFD;
-	state6502.status |= FLAG_CONSTANT | FLAG_BREAK;
+	state6502.status = FLAG_CONSTANT | FLAG_BREAK;
 	setinterrupt();
 	cleardecimal();
 	waiting = 0;

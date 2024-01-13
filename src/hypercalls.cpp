@@ -32,8 +32,8 @@
 #define KERNAL_SAVE (0xffd8)
 #define KERNAL_CRASH (0xffff)
 
-static uint16_t Kernal_status  = 0;
-static bool     Has_boot_tasks = false;
+static uint16_t Kernal_status        = 0;
+static bool     Has_boot_tasks       = false;
 static bool     prg_finished_loading = false;
 
 static bool (*Hypercall_table[0x200])(void);
@@ -157,10 +157,10 @@ void hypercalls_update()
 
 	if (ieee_hypercalls_allowed()) {
 		Hypercall_table[KERNAL_MCIOUT & 0x1ff] = []() -> bool {
-			uint16_t count = state6502.a;
-			const int s = MCIOUT(state6502.y << 8 | state6502.x, &count, state6502.status & 0x01);
-			state6502.x = count & 0xff;
-			state6502.y = count >> 8;
+			uint16_t  count = state6502.a;
+			const int s     = MCIOUT(state6502.y << 8 | state6502.x, &count, state6502.status & 0x01);
+			state6502.x     = count & 0xff;
+			state6502.y     = count >> 8;
 			if (s == -2) {
 				state6502.status |= 1; // SEC (unsupported, or in this case, no open context)
 			} else {
@@ -223,7 +223,7 @@ void hypercalls_update()
 
 		Hypercall_table[KERNAL_UNLSN & 0x1ff] = []() -> bool {
 			const int s = UNLSN();
-			if (s == -2) {             // special error behavior
+			if (s == -2) {                                 // special error behavior
 				state6502.status = (state6502.status | 1); // SEC
 			} else {
 				state6502.status = (state6502.status & ~1); // CLC
@@ -385,6 +385,24 @@ void hypercalls_process()
 		if (hypercall()) {
 			state6502.pc = (RAM[0x100 + state6502.sp + 1] | (RAM[0x100 + state6502.sp + 2] << 8)) + 1;
 			state6502.sp += 2;
+
+			for (int i = 0; i < 2; ++i) {
+				auto &ss              = stack6502.pop_newest();
+				ss.pop.op_type        = _stack_op_type::hypercall;
+				ss.pop.op_data.opcode = 0;
+				ss.pop.state          = debug_state6502;
+				ss.pop.pc_bank        = bank6502(debug_state6502.pc);
+				ss.pop.op_data.value  = 0;
+
+				if (ss.push.op_type < _stack_op_type::push_op) {
+					auto &ss              = stack6502.pop_newest();
+					ss.pop.op_type        = _stack_op_type::hypercall;
+					ss.pop.op_data.opcode = 0;
+					ss.pop.state          = debug_state6502;
+					ss.pop.pc_bank        = bank6502(debug_state6502.pc);
+					ss.pop.op_data.value  = 0;
+				}
+			}
 		}
 	}
 }
