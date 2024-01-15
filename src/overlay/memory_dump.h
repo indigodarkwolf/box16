@@ -9,7 +9,7 @@ template <class derived_t, uint32_t MEM_SIZE, typename address_t, uint8_t ADDRES
 class imgui_memory_dump
 {
 public:
-	void set_dump_start(uint16_t addr)
+	void set_dump_start(address_t addr)
 	{
 		dump_address     = addr;
 		selected_address = addr;
@@ -30,11 +30,11 @@ protected:
 			while (clipper.Step()) {
 				address_t start_addr = clipper.DisplayStart * 16;
 				if (reset_scroll) {
-					if (dump_address > MEM_SIZE - (20 * 16)) {
-						dump_address = 0xFEB0;
+					if (dump_address > MEM_SIZE - (19 * 16)) {
+						dump_address = MEM_SIZE - (19 * 16);
 					}
-				} else if (clipper.DisplayEnd - clipper.DisplayStart >= 20) {
-					if (start_addr < (dump_address & 0xfff0)) {
+				} else if (clipper.DisplayEnd - clipper.DisplayStart > 22) {
+					if (start_addr < (dump_address & 0x1fff0)) {
 						dump_address   = start_addr;
 						reset_dump_hex = true;
 						reset_scroll   = true;
@@ -46,35 +46,36 @@ protected:
 				}
 				for (int y = clipper.DisplayStart; y < clipper.DisplayEnd; ++y) {
 					address_t      line_addr = start_addr;
-					const address_t line_stop = start_addr + 16;
 
 					ImGui::Text(hex_formats[(ADDRESS_BITS >> 2) + 1], start_addr);
 
 					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3.0f, 0.0f));
 					ImGui::PushItemWidth(width_uint8);
 
-					for (; start_addr < line_stop; ++start_addr) {
+					for (address_t i = 0; i < 16; ++i) {
 						ImGui::SameLine();
-						if (start_addr % 8 == 0) {
+						if (i % 8 == 0) {
 							ImGui::Dummy(ImVec2(width_uint8 * 0.5f, 0.0f));
 							ImGui::SameLine();
 						}
-						uint8_t mem = read(start_addr);
+						const address_t addr = start_addr + i;
 
-						if (start_addr == selected_address) {
+						uint8_t mem = read(addr);
+
+						if (addr == selected_address) {
 							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
 						}
-						if (ImGui::InputHex<uint8_t>(start_addr, mem)) {
-							write(start_addr, mem);
+						if (ImGui::InputHex<uint8_t>(addr, mem)) {
+							write(addr, mem);
 						}
-						if (start_addr == selected_address) {
+						if (addr == selected_address) {
 							ImGui::PopStyleColor();
 						}
 						if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
 							if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
-								set_dump_start(start_addr);
+								set_dump_start(addr & ~0xf);
 							} else {
-								selected_address = start_addr;
+								selected_address = addr;
 							}
 						}
 					}
@@ -94,6 +95,8 @@ protected:
 
 					ImGui::PopItemWidth();
 					ImGui::PopStyleVar();
+
+					start_addr += 16;
 				}
 			}
 			clipper.End();
