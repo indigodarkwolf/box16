@@ -247,7 +247,10 @@ int main(int argc, char **argv)
 			symbols_load_file((Options.rom_path.parent_path() / "dos.sym").generic_string(), 2);
 			symbols_load_file((Options.rom_path.parent_path() / "basic.sym").generic_string(), 4);
 			symbols_load_file((Options.rom_path.parent_path() / "monitor.sym").generic_string(), 5);
-			symbols_load_file((Options.rom_path.parent_path() / "charset.sym").generic_string(), 0);
+			symbols_load_file((Options.rom_path.parent_path() / "charset.sym").generic_string(), 6);
+			symbols_load_file((Options.rom_path.parent_path() / "codex.sym").generic_string(), 7);
+			symbols_load_file((Options.rom_path.parent_path() / "graph.sym").generic_string(), 8);
+			symbols_load_file((Options.rom_path.parent_path() / "demo.sym").generic_string(), 9);
 		}
 
 		if (!Options.rom_carts.empty()) {
