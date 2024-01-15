@@ -191,8 +191,9 @@ static void usage()
 	printf("-stds\n");
 	printf("\tLoad standard (ROM) symbol files\n");
 
-	printf("-sym <filename>\n");
+	printf("-sym <filename>[,<bank_num>]\n");
 	printf("\tLoad a VICE label file. Note that not all VICE debug commands are available.\n");
+	printf("\tLabels in banked memory will be assigned to the specified bank_num, or bank 0 if omitted.\n");
 	printf("\tSupported commands are:\n");
 	printf("\t\tadd_label <address> <label>\n");
 	printf("\t\tal <address> <label>\n");
@@ -721,7 +722,9 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			}
 
 			// Add a symbols file
-			Sym_options.push_back({ argv[0], 0 });
+			const char *sym_path = token_or_empty(argv[0], ",");
+			const char *bank_str = token_or_empty(nullptr, ",");
+			Sym_options.push_back({ sym_path, (uint8_t)strtol(bank_str, nullptr, 10) });
 
 			argc--;
 			argv++;
