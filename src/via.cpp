@@ -151,7 +151,9 @@ static void via_write(via_t *via, uint8_t reg, uint8_t value)
 			}
 			break;
 		default:
-			via->registers[reg] = value;
+			if(reg < 16) {
+				via->registers[reg] = value;
+			}
 	}
 }
 
