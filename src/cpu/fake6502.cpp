@@ -98,7 +98,7 @@ uint8_t penaltyop, penaltyaddr;
 uint8_t waiting = 0;
 
 lazy_ring_buffer<_smart_stack, 512>       stack6502;
-ring_buffer<_cpuhistory, 256>             history6502;
+ring_buffer<_cpuhistory, 1024>            history6502;
 ring_buffer<std::function<void(void)>, 8> smartstack_operations;
 
 // externally supplied functions

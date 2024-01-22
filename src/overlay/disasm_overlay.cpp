@@ -282,18 +282,7 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, uint8_t bank)
 	const uint8_t opcode   = debug_read6502(pc, bank);
 	char const   *mnemonic = mnemonics[opcode];
 
-	//		Test bbr and bbs, the "zero-page, relative" ops. These all count as branch ops.
-	//		$0F,$1F,$2F,$3F,$4F,$5F,$6F,$7F,$8F,$9F,$AF,$BF,$CF,$DF,$EF,$FF
-	//
-	const bool is_zprel = (opcode & 0x0F) == 0x0F;
-
-	const bool is_jump = (*reinterpret_cast<const int *>(mnemonic) == 0x00706d6a);
-
-	//		Test for branches. These are BRA ($80) and
-	//		$10,$30,$50,$70,$90,$B0,$D0,$F0.
-	//		All 'jmp' ops count as well.
-	//
-	const bool is_branch = is_zprel || is_jump || ((opcode == 0x80) || ((opcode & 0x1F) == 0x10) || (opcode == 0x20));
+	const bool is_branch = disasm_is_branch(opcode);
 
 	ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
 

@@ -30,7 +30,7 @@ extern _state6502                          state6502;
 extern _state6502                          debug_state6502;
 extern uint8_t                             waiting;
 extern lazy_ring_buffer<_smart_stack, 512> stack6502;
-extern ring_buffer<_cpuhistory, 256>       history6502;
+extern ring_buffer<_cpuhistory, 1024>      history6502;
 
 extern uint8_t *RAM;
 extern uint8_t  ROM[ROM_SIZE];

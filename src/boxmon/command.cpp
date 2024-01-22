@@ -9,6 +9,7 @@
 
 #include "cpu/fake6502.h"
 #include "cpu/mnemonics.h"
+#include "disasm.h"
 #include "debugger.h"
 #include "glue.h"
 #include "hypercalls.h"
@@ -312,27 +313,56 @@ BOXMON_ALIAS(bt, backtrace);
 BOXMON_COMMAND(cpuhistory, "cpuhistory [length]")
 {
 	if (help) {
-		boxmon_console_printf("Show a history of recently-executed instructions.");
+		boxmon_console_printf("Show a history of recently-executed instructions, up to the specified number of instructions ago.");
+		boxmon_console_printf("If omitted, the default is 128 instructions.");
 		return true;
 	}
 	int history_length = 0;
 	if (parser.parse_dec_number(history_length, input)) {
 		history_length = history_length <= static_cast<int>(history6502.count()) ? history_length : static_cast<int>(history6502.count());
 	} else {
-		history_length = static_cast<int>(history6502.count());
+		history_length = std::min(static_cast<int>(history6502.count()), 128);
 	}
 
-	for (int i = 0; i < history_length; ++i) {
+	for (size_t i = history6502.count() - static_cast<size_t>(history_length); i < history6502.count(); ++i) {
 		const auto &history = history6502[i];
 
 		char const *op = mnemonics[history.opcode];
 
-		boxmon_console_printf("% 3d: %s PC:%02x:%04X A:%02X X:%02X Y:%02X SP:%02X ST:%c%c-%c%c%c%c%c", i, op, history.bank, history.state.pc, history.state.a, history.state.x, history.state.y, history.state.sp, history.state.status & 0x80 ? 'N' : '-', history.state.status & 0x40 ? 'V' : '-', history.state.status & 0x10 ? 'B' : '-', history.state.status & 0x08 ? 'D' : '-', history.state.status & 0x04 ? 'I' : '-', history.state.status & 0x02 ? 'Z' : '-', history.state.status & 0x01 ? 'C' : '-');
+		boxmon_console_printf("% 3d: %s PC:%02x:%04X A:%02X X:%02X Y:%02X SP:%02X ST:%c%c-%c%c%c%c%c", history6502.count() - i, op, history.bank, history.state.pc, history.state.a, history.state.x, history.state.y, history.state.sp, history.state.status & 0x80 ? 'N' : '-', history.state.status & 0x40 ? 'V' : '-', history.state.status & 0x10 ? 'B' : '-', history.state.status & 0x08 ? 'D' : '-', history.state.status & 0x04 ? 'I' : '-', history.state.status & 0x02 ? 'Z' : '-', history.state.status & 0x01 ? 'C' : '-');
 	}
 	return true;
 }
 
 BOXMON_ALIAS(chis, cpuhistory);
+
+//// Machine state commands
+BOXMON_COMMAND(jmphistory, "jmphistory [length]")
+{
+	if (help) {
+		boxmon_console_printf("Show a history of recently-executed branches and jumps, up to the specified number of instructions ago.");
+		boxmon_console_printf("If omitted, the default is 128 instructions.");
+		return true;
+	}
+	int history_length = 0;
+	if (parser.parse_dec_number(history_length, input)) {
+		history_length = history_length <= static_cast<int>(history6502.count()) ? history_length : static_cast<int>(history6502.count());
+	} else {
+		history_length = std::min(static_cast<int>(history6502.count()), 128);
+	}
+
+	for (size_t i = history6502.count() - static_cast<size_t>(history_length); i < history6502.count(); ++i) {
+		const auto &history = history6502[i];
+		if (disasm_is_branch(history.opcode)) {
+			char const *op = mnemonics[history.opcode];
+
+			boxmon_console_printf("% 3d: %s PC:%02x:%04X A:%02X X:%02X Y:%02X SP:%02X ST:%c%c-%c%c%c%c%c", history6502.count() - i, op, history.bank, history.state.pc, history.state.a, history.state.x, history.state.y, history.state.sp, history.state.status & 0x80 ? 'N' : '-', history.state.status & 0x40 ? 'V' : '-', history.state.status & 0x10 ? 'B' : '-', history.state.status & 0x08 ? 'D' : '-', history.state.status & 0x04 ? 'I' : '-', history.state.status & 0x02 ? 'Z' : '-', history.state.status & 0x01 ? 'C' : '-');
+		}
+	}
+	return true;
+}
+
+BOXMON_ALIAS(jhis, jmphistory);
 
 BOXMON_COMMAND(dump, "dump")
 {
