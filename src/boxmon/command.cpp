@@ -11,7 +11,9 @@
 #include "cpu/mnemonics.h"
 #include "debugger.h"
 #include "glue.h"
+#include "hypercalls.h"
 #include "memory.h"
+#include "vera/sdcard.h"
 #include "vera/vera_video.h"
 
 namespace boxmon
@@ -131,7 +133,7 @@ BOXMON_COMMAND(help, "help [<command>]")
 BOXMON_COMMAND(eval, "eval <expr>")
 {
 	if (help) {
-		boxmon_console_printf("Evaluates an expression and prints the result to the console.");
+		boxmon_console_printf("Evaluates an expression and prints the result to the console as a decimal integer.");
 		boxmon_console_printf("Intermediate values are stored as signed 32-bit integers. Memory reads from dereferencing are treated as unsigned 8-bit integers.");
 		boxmon_console_printf("Expressions support most C-style mathematical, comparison, boolean, and bitwise operators:");
 		boxmon_console_printf("Math: +, -, *, /, %, ^^, ()");
@@ -165,6 +167,17 @@ BOXMON_COMMAND(eval, "eval <expr>")
 		boxmon_console_printf("C-style precedence rules should apply to each of these operators.");
 		boxmon_console_printf("Expressions may include integer values and symbol names. Symbol names are substituted as the address associated with the symbol.");
 		boxmon_console_printf("If the same symbol name is defined multiple times, the selection process is undefined.");
+		boxmon_console_printf("Numbers are parsed assuming a default radix, see the \"radix\" command for more information.");
+		boxmon_console_printf("The default radix can be overridden, however, by specifying a radix followed by a space, immediately before a number. Examples include:");
+		boxmon_console_printf("\t\"b <number>\": Parse this number as a binary integer.");
+		boxmon_console_printf("\t\"o <number>\": Parse this number as an octal integer.");
+		boxmon_console_printf("\t\"d <number>\": Parse this number as a decimal integer.");
+		boxmon_console_printf("\t\"h <number>\": Parse this number as a hexadecimal integer.");
+		boxmon_console_printf("Certain C-like number prefixes will also override the default radix:");
+		boxmon_console_printf("\t%%101: This number is parsed as a binary integer.");
+		boxmon_console_printf("\t0101, o101, O101: These numbers are parsed as octal integers.");
+		boxmon_console_printf("\t#101: This number is parsed as a decimal integer.");
+		boxmon_console_printf("\t$101, h101, 0x101: These numbers are parsed as hexadecimal integers.");
 		return true;
 	}
 	const boxmon::expression *expr;
@@ -175,6 +188,8 @@ BOXMON_COMMAND(eval, "eval <expr>")
 
 	return false;
 }
+
+BOXMON_ALIAS(print, eval);
 
 BOXMON_COMMAND(break, "break [load|store|exec] [address [address] [if <cond_expr>]]")
 {
@@ -603,14 +618,253 @@ BOXMON_COMMAND(warp, "warp [<factor>]")
 // bool parse_watch(char const *&input);
 // bool parse_dummy(char const *&input);
 
+static bool check_hostfs()
+{
+	if (!hypercalls_allowed()) {
+		boxmon_warning_printf("Hostfs emulation is currently disabled.");
+
+		if (sdcard_is_attached()) {
+			boxmon_warning_printf("SDCard is attached.");
+		}
+
+		if (Options.no_ieee_hypercalls) {
+			boxmon_warning_printf("IEEE hypercalls have been disabled.");
+		}
+
+		if (Options.enable_serial) {
+			boxmon_warning_printf("Bit-level serial bus emulation is enabled.");
+		}
+		return false;
+	}
+	return true;
+}
+
 //// General commands
-// bool parse_cd(char const *&input);
+BOXMON_COMMAND(cd, "cd <directory>")
+{
+	if (help) {
+		boxmon_console_printf("Change the base directory for filesystem access.");
+		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		boxmon_console_printf("This will also reset the cwd of hostfs emulation to the new location.");
+		return true;
+	}
+
+	if (!check_hostfs()) {
+		return true;
+	}
+
+	std::string path_string;
+	if (!parser.parse_string(path_string, input)) {
+		return false;
+	}
+
+	std::filesystem::path path = path_string;
+	std::filesystem::path abs_path = path.is_absolute() ? path : std::filesystem::absolute(Options.fsroot_path / path);
+
+	if (std::filesystem::exists(abs_path)) {
+		if (std::filesystem::is_directory(abs_path)) {
+			Options.fsroot_path = abs_path;
+			Options.startin_path = Options.fsroot_path;
+			boxmon_console_printf("%s", Options.fsroot_path.generic_string().c_str());
+		} else {
+			boxmon_warning_printf("Path is not a directory: %s", abs_path.generic_string().c_str());		
+		}
+	} else {
+		boxmon_warning_printf("Path does not exist: %s", abs_path.generic_string().c_str());
+	}
+
+	return true;
+}
+
 // bool parse_device(char const *&input);
-// bool parse_dir(char const *&input);
+
+BOXMON_COMMAND(dir, "dir")
+{
+	if (help) {
+		boxmon_console_printf("List the contents of the current directory.");
+		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		return true;
+	}
+
+	if (!check_hostfs()) {
+		return true;
+	}
+
+	boxmon_console_printf("Directory listing of %s", Options.fsroot_path.generic_string().c_str());
+	for (auto const &dir_entry : std::filesystem::directory_iterator{ Options.fsroot_path }) {
+		auto const relative = std::filesystem::relative(dir_entry.path(), Options.fsroot_path);
+		boxmon_console_printf("%8d %s", std::filesystem::file_size(dir_entry.path()), relative.generic_string().c_str());
+	}
+
+	return true;
+}
+
 // bool parse_pwd(char const *&input);
+BOXMON_COMMAND(pwd, "pwd")
+{
+	if (help) {
+		boxmon_console_printf("Print the current working directory.");
+		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		return true;
+	}
+
+	if (!check_hostfs()) {
+		return true;
+	}
+
+	boxmon_console_printf("%s", Options.fsroot_path.generic_string().c_str());
+	return true;
+}
+
 // bool parse_mkdir(char const *&input);
+BOXMON_COMMAND(mkdir, "mkdir <directory>")
+{
+	if (help) {
+		boxmon_console_printf("Make a directory at the current filesystem location.");
+		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		return true;
+	}
+
+	if (!check_hostfs()) {
+		return true;
+	}
+
+	std::string path_string;
+	if (!parser.parse_string(path_string, input)) {
+		return false;
+	}
+
+	std::filesystem::path path     = path_string;
+	std::filesystem::path abs_path = path.is_absolute() ? path : std::filesystem::absolute(Options.fsroot_path / path);
+
+	if (std::filesystem::exists(abs_path)) {
+		boxmon_warning_printf("Path already exists: %s", abs_path.generic_string().c_str());
+	} else {
+		std::error_code ec;
+		if (std::filesystem::create_directory(abs_path, ec)) {
+			boxmon_console_printf("Created %s", abs_path.generic_string().c_str());
+		} else {
+			boxmon_warning_printf("Create failed: %s", ec.message().c_str());
+		}
+	}
+
+	return true;
+}
+
 // bool parse_rmdir(char const *&input);
+BOXMON_COMMAND(rmdir, "rmdir <directory>")
+{
+	if (help) {
+		boxmon_console_printf("Remove a directory at the current filesystem location.");
+		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		return true;
+	}
+
+	if (!check_hostfs()) {
+		return true;
+	}
+
+	std::string path_string;
+	if (!parser.parse_string(path_string, input)) {
+		return false;
+	}
+
+	std::filesystem::path path     = path_string;
+	std::filesystem::path abs_path = path.is_absolute() ? path : std::filesystem::absolute(Options.fsroot_path / path);
+
+	if (std::filesystem::exists(abs_path)) {
+		if (std::filesystem::is_directory(abs_path)) {
+			std::error_code ec;
+			if (std::filesystem::remove(abs_path, ec)) {
+				boxmon_console_printf("Removed %s", abs_path.generic_string().c_str());
+			} else {
+				boxmon_warning_printf("Remove failed: %s", ec.message().c_str());
+			}
+		} else {
+			boxmon_warning_printf("Path is not a directory: %s", abs_path.generic_string().c_str());
+		}
+	} else {
+		boxmon_warning_printf("Path does not exist: %s", abs_path.generic_string().c_str());
+	}
+
+	return true;
+}
+
+BOXMON_COMMAND(rm, "rm <file_or_directory>")
+{
+	if (help) {
+		boxmon_console_printf("Remove a file or directory at the current filesystem location.");
+		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		return true;
+	}
+
+	if (!check_hostfs()) {
+		return true;
+	}
+
+	std::string path_string;
+	if (!parser.parse_string(path_string, input)) {
+		return false;
+	}
+
+	std::filesystem::path path     = path_string;
+	std::filesystem::path abs_path = path.is_absolute() ? path : std::filesystem::absolute(Options.fsroot_path / path);
+
+	if (std::filesystem::exists(abs_path)) {
+		std::error_code ec;
+		if (std::filesystem::remove(abs_path, ec)) {
+			boxmon_console_printf("Removed %s", abs_path.generic_string().c_str());
+		} else {
+			boxmon_warning_printf("Remove failed: %s", ec.message().c_str());
+		}
+	} else {
+		boxmon_warning_printf("Path does not exist: %s", abs_path.generic_string().c_str());
+	}
+
+	return true;
+}
+
+static const char *radix_string(boxmon::radix_type r)
+{
+	switch (r) {
+		case boxmon::radix_type::bin: return "binary";
+		case boxmon::radix_type::oct: return "octal";
+		case boxmon::radix_type::dec: return "decimal";
+		case boxmon::radix_type::hex: return "hexadecimal";
+	}
+	return "(unknown)";
+}
+
 // bool parse_radix(char const *&input);
+BOXMON_COMMAND(radix, "radix [b|o|d|h]")
+{
+	if (help) {
+		boxmon_console_printf("Get or set the default radix for inputs to the command line.");
+		boxmon_console_printf("Radix types are a single character from the following set:");
+		boxmon_console_printf("\tb: Binary (base 2)");
+		boxmon_console_printf("\to: Octal (base 8)");
+		boxmon_console_printf("\td: Decimal (base 10)");
+		boxmon_console_printf("\th: Hexadecimal (base 16)");
+		boxmon_console_printf("If a number can't be parsed under the default radix, the parser will attempt to interpret it using the smallest possible radix option from the above list.");
+		boxmon_console_printf("The default radix is currently: %s", radix_string(parser.get_default_radix()));
+		return true;
+	}
+
+	if (*input == '\0') {
+		boxmon_console_printf("Default radix is: %s", radix_string(parser.get_default_radix()));
+		return true;
+	}
+
+	boxmon::radix_type radix;
+	if (!parser.parse_radix_type(radix, input)) {
+		return false;
+	}
+
+	parser.set_default_radix(radix);
+	boxmon_console_printf("Default radix set to: %s", radix_string(parser.get_default_radix()));
+	return true;
+}
+
 // bool parse_log(char const *&input);
 // bool parse_logname(char const *&input);
 

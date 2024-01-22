@@ -101,30 +101,6 @@ static bool set_kernal_status(int s)
 	return true;
 }
 
-static bool ieee_hypercalls_allowed()
-{
-	if (Options.no_ieee_hypercalls) {
-		return false;
-	}
-
-	if (Options.enable_serial) {
-		// if we do bit-level serial bus emulation, we don't
-		// do high-level KERNAL IEEE API interception
-		return false;
-	}
-
-	if (sdcard_is_attached()) {
-		// if should emulate an SD card, we'll always skip host fs
-		return false;
-	}
-
-	if (sdcard_is_attached() && !Options.prg_path.empty() && prg_finished_loading) {
-		return false;
-	}
-
-	return true;
-}
-
 bool hypercalls_init()
 {
 	if (!init_kernal_status()) {
@@ -151,11 +127,35 @@ bool hypercalls_init()
 	return true;
 }
 
+bool hypercalls_allowed()
+{
+	if (Options.no_ieee_hypercalls) {
+		return false;
+	}
+
+	if (Options.enable_serial) {
+		// if we do bit-level serial bus emulation, we don't
+		// do high-level KERNAL IEEE API interception
+		return false;
+	}
+
+	if (sdcard_is_attached()) {
+		// if should emulate an SD card, we'll always skip host fs
+		return false;
+	}
+
+	if (sdcard_is_attached() && !Options.prg_path.empty() && prg_finished_loading) {
+		return false;
+	}
+
+	return true;
+}
+
 void hypercalls_update()
 {
 	memset(Hypercall_table, 0, sizeof(Hypercall_table));
 
-	if (ieee_hypercalls_allowed()) {
+	if (hypercalls_allowed()) {
 		Hypercall_table[KERNAL_MCIOUT & 0x1ff] = []() -> bool {
 			uint16_t  count = state6502.a;
 			const int s     = MCIOUT(state6502.y << 8 | state6502.x, &count, state6502.status & 0x01);

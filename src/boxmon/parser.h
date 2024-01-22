@@ -74,7 +74,9 @@ namespace boxmon
 		bool parse_expression(const expression *&expression, char const *&input, expression_parse_flags flags = expression_parse_flags_none);
 
 		void set_default_radix(radix_type radix);
+		radix_type get_default_radix();
 		void set_default_bank(uint8_t bank);
+		uint8_t get_default_bank();
 
 	private:
 		radix_type m_default_radix = radix_type::hex;

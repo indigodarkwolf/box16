@@ -88,7 +88,7 @@ namespace boxmon
 			return false;
 		}
 
-		if (*(input + found) != ' ') {
+		if (const char c = *(input + found); isprint(c) && c != ' ') {
 			return false;
 		}
 
@@ -117,6 +117,10 @@ namespace boxmon
 					found = 2;
 				}
 			} break;
+			case '#':
+				radix = radix_type::dec;
+				found = 1;
+				break;
 			case 'o':
 				radix = radix_type::oct;
 				found = 1;
@@ -188,7 +192,7 @@ namespace boxmon
 
 		std::stringstream rs;
 
-		if (*look == '.') {
+		while (*look == '.') {
 			rs << *look;
 			++look;
 		}
@@ -688,8 +692,18 @@ namespace boxmon
 		m_default_radix = radix;
 	}
 
+	radix_type parser::get_default_radix()
+	{
+		return m_default_radix;
+	}
+
 	void parser::set_default_bank(uint8_t bank)
 	{
 		m_default_bank = bank;
+	}
+
+	uint8_t parser::get_default_bank()
+	{
+		return m_default_bank;
 	}
 } // namespace boxmon

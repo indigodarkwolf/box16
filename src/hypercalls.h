@@ -7,6 +7,7 @@
 #	define HYPERCALLS_H
 
 bool hypercalls_init();
+bool hypercalls_allowed();
 void hypercalls_update();
 void hypercalls_process();
 
