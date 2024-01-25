@@ -270,7 +270,7 @@ void display_video()
 #endif
 	glBindTexture(GL_TEXTURE_2D, 0);
 
-    ImGui::SetCursorScreenPos(ImVec2(display_rect.x, display_rect.y));
+	ImGui::SetCursorScreenPos(ImVec2(display_rect.x, display_rect.y));
 	ImGui::BeginChild("display video", ImVec2(display_rect.z, display_rect.w), false, ImGuiWindowFlags_NoMove);
 	ImGui::Image((void *)(intptr_t)Video_framebuffer_texture_handle, ImVec2(display_rect.z, display_rect.w));
 	display_focused = ImGui::IsWindowFocused();
@@ -355,9 +355,42 @@ bool display_init()
 		}
 
 		// SDL_SetWindowTitle(Display_window, "Box16 Emulator for Commander X16");
-		
-		if(Options.fullscreen)
-		    display_toggle_fullscreen();
+
+		if (Options.fullscreen) {
+			display_toggle_fullscreen();
+		} else {
+			const int display_index = SDL_GetWindowDisplayIndex(Display_window);
+
+			SDL_Rect display_bounds;
+			SDL_GetDisplayUsableBounds(display_index, &display_bounds);
+
+			SDL_Point window_size;
+			SDL_GetWindowSize(Display_window, &window_size.x, &window_size.y);
+
+			SDL_Point borders_topleft, borders_bottomright;
+			SDL_GetWindowBordersSize(Display_window, &borders_topleft.y, &borders_topleft.x, &borders_bottomright.y, &borders_bottomright.x);
+
+			SDL_Point safe_size{
+				std::min(window_size.x, display_bounds.w - (borders_topleft.x + borders_bottomright.x)),
+				std::min(window_size.y, display_bounds.h - (borders_topleft.y + borders_bottomright.y))
+			};
+
+			if (window_size.x != safe_size.x || window_size.y != safe_size.y) {
+				SDL_SetWindowSize(Display_window, safe_size.x, safe_size.y);
+			}
+
+			SDL_Point window_position;
+			SDL_GetWindowPosition(Display_window, &window_position.x, &window_position.y);
+
+			SDL_Point safe_position{
+				std::max(window_position.x, display_bounds.x + borders_topleft.x),
+				std::max(window_position.y, display_bounds.y + borders_topleft.y)
+			};
+
+			if (window_position.x != safe_position.x || window_position.y != safe_position.y) {
+				SDL_SetWindowPosition(Display_window, safe_position.x, safe_position.y);
+			}
+		}
 	}
 	Initd_sdl_gl = true;
 
@@ -506,7 +539,7 @@ bool display_init()
 	SDL_ShowCursor(SDL_DISABLE);
 
 	if (Options.vsync_mode == vsync_mode_t::VSYNC_MODE_GET_SYNC || Options.vsync_mode == vsync_mode_t::VSYNC_MODE_WAIT_SYNC) {
-		if(glFenceSync == nullptr) {
+		if (glFenceSync == nullptr) {
 			Options.vsync_mode = vsync_mode_t::VSYNC_MODE_DISABLED;
 		} else {
 			Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
