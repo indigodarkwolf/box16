@@ -3044,16 +3044,30 @@ static void draw_menu_bar()
 	}
 }
 
+static ImVec2 get_integer_scale_window_size(int scale)
+{
+	const float scalef           = static_cast<float>(scale);
+	const float width            = 480.f * display_get_aspect_ratio();
+	const float title_bar_height = ImGui::GetFrameHeight();
+	if (scale < 1) {
+		return ImVec2(width, 480.f + title_bar_height);
+	} else {
+		return ImVec2(width * scalef, 480.f * scalef + title_bar_height);
+	}
+}
+
 static ImVec2 get_integer_scale_window_size(ImVec2 avail)
 {
-	float width            = 480.f * display_get_aspect_ratio();
-	float title_bar_height = ImGui::GetFrameHeight();
+	const float width            = 480.f * display_get_aspect_ratio();
+	const float title_bar_height = ImGui::GetFrameHeight();
+
 	float scale;
 	if (avail.x < avail.y) {
 		scale = avail.x / width;
 	} else {
 		scale = avail.y / 480.f;
 	}
+
 	if (scale < 1) {
 		scale = floorf(1.f / std::max(scale, 0.125f));
 		return ImVec2(width / scale, 480.f / scale + title_bar_height);
@@ -3232,6 +3246,7 @@ void overlay_draw()
 #endif
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
 		ImGui::SetNextWindowSizeConstraints(ImVec2(80, 60), ImVec2(FLT_MAX, FLT_MAX));
+		ImGui::SetNextWindowSize(get_integer_scale_window_size(Options.window_scale), ImGuiCond_Once);
 		ImGui::SetNextWindowDockID(dock_id, ImGuiCond_FirstUseEver);
 		if (ImGui::Begin(window_text, &Show_display)) {
 			display_focused = ImGui::IsWindowFocused();
