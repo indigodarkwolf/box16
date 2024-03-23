@@ -183,7 +183,12 @@ void hypercalls_update()
 
 			state6502.x = count & 0xff;
 			state6502.y = count >> 8;
-			state6502.status &= 0xfe; // clear C -> supported
+			
+			if (s == -3) {
+				state6502.status |= 0x01; // set C -> unsupported
+			} else {
+				state6502.status &= 0xfe; // clear C -> supported
+			}
 
 			set_kernal_status(s);
 			return true;
