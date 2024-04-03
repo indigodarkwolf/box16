@@ -50,7 +50,7 @@ uint8_t debug_vera_spi_read(uint8_t reg)
 {
 	switch (reg) {
 		case 0: return received_byte;
-		case 1: return busy << 7 | autotx << 3 | (ss ? 1 : 0);
+		case 1: return busy << 7 | autotx << 2 | (ss ? 1 : 0);
 	}
 	return 0;
 }
@@ -68,7 +68,7 @@ uint8_t vera_spi_read(uint8_t reg)
 			}
 			return received_byte;
 		case 1:
-			return busy << 7 | autotx << 3 | (ss ? 1 : 0);
+			return busy << 7 | autotx << 2 | (ss ? 1 : 0);
 	}
 	return 0;
 }
@@ -91,7 +91,7 @@ void vera_spi_write(uint8_t reg, uint8_t value)
 					sdcard_select(ss);
 				}
 			}
-			autotx = !!(value & 8);
+			autotx = !!(value & 4);
 			break;
 	}
 }
