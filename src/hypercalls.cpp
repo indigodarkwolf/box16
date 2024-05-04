@@ -42,10 +42,15 @@ static bool is_kernal()
 {
 	const uint8_t rom_bank = memory_get_rom_bank();
 
-	return debug_read6502(0xfff6, rom_bank) == 'M' && // only for KERNAL
-	       debug_read6502(0xfff7, rom_bank) == 'I' &&
-	       debug_read6502(0xfff8, rom_bank) == 'S' &&
-	       debug_read6502(0xfff9, rom_bank) == 'T';
+	// only for KERNAL
+	return (debug_read6502(0xfff6, rom_bank) == 'M' &&
+	        debug_read6502(0xfff7, rom_bank) == 'I' &&
+	        debug_read6502(0xfff8, rom_bank) == 'S' &&
+	        debug_read6502(0xfff9, rom_bank) == 'T')
+	    || (debug_read6502(0xc008, rom_bank) == 'M' &&
+	        debug_read6502(0xc009, rom_bank) == 'I' &&
+	        debug_read6502(0xc00a, rom_bank) == 'S' &&
+	        debug_read6502(0xc00b, rom_bank) == 'T');
 }
 
 static bool init_kernal_status()
@@ -178,7 +183,12 @@ void hypercalls_update()
 
 			state6502.x = count & 0xff;
 			state6502.y = count >> 8;
-			state6502.status &= 0xfe; // clear C -> supported
+			
+			if (s == -3) {
+				state6502.status |= 0x01; // set C -> unsupported
+			} else {
+				state6502.status &= 0xfe; // clear C -> supported
+			}
 
 			set_kernal_status(s);
 			return true;
