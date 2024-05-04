@@ -415,7 +415,7 @@ static int continue_directory_listing(uint8_t *data)
 			}
 		}
 
-		int file_size = (std::filesystem::is_directory(st) || std::filesystem::is_symlink(st)) ? 0 : static_cast<int>((std::filesystem::file_size(dp.path()) + 255) / 256);
+		int file_size = (!std::filesystem::is_regular_file(st)) ? 0 : static_cast<int>((std::filesystem::file_size(dp.path()) + 255) / 256);
 		if (file_size > 0xFFFF) {
 			file_size = 0xFFFF;
 		}
