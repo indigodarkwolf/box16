@@ -78,6 +78,9 @@ static void usage()
 	printf("\tWith the BASIC statement \"LIST\", this can be used\n");
 	printf("\tto detokenize a BASIC program.\n");
 
+	printf("-fullscreen\n");
+	printf("\tStart up in fullscreen mode instead of in a window.\n");
+
 	printf("-hypercall_path <path>\n");
 	printf("\tSet the base path for hypercalls (effectively, the current working directory when no SD card is attached).\n");
 
@@ -123,6 +126,9 @@ static void usage()
 
 	printf("-noemucmdkeys\n");
 	printf("\tAlias for -nobinds.\n");
+
+	printf("-nofullscreen\n");
+	printf("\tClears the -fullscreen option if it was set. This overrides -fullscreen.");
 
 	printf("-nohostieee\n");
 	printf("\tDisable IEEE-488 hypercalls. These are normally enabled unless an SD card is attached or -serial is specified.\n");
@@ -226,9 +232,6 @@ static void usage()
 
 	printf("-widescreen\n");
 	printf("\tDisplay the emulated X16 in a 16:9 aspect ratio instead of 4:3.\n");
-
-	printf("-fullscreen\n");
-	printf("\tStart up in fullscreen mode instead of in a window.\n");
 
 	printf("-wuninit\n");
 	printf("\tPrint a warning whenever uninitialized RAM is accessed.\n");
@@ -520,6 +523,14 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			ini["nobinds"] = "true";
+
+		} else if (!strcmp(argv[0], "-nofullscreen")) {
+			argc--;
+			argv++;
+			if (ini["fullscreen"] == "true") {
+				printf("Warning: -fullscreen and -nofullscreen found, -nofullscreen will take priority.\n");
+			}
+			ini["fullscreen"] = "false";
 
 		} else if (!strcmp(argv[0], "-nohostieee")) {
 			argc--;
