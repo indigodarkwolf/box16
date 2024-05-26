@@ -389,6 +389,8 @@ void main_shutdown() {
 		nvram_dirty = false;
 	}
 
+	memory_dump_usage_counts();
+
 	boxmon_system_shutdown();
 	sdcard_shutdown();
 	audio_close();

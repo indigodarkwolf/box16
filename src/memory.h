@@ -41,4 +41,6 @@ uint8_t memory_get_rom_bank();
 
 uint8_t memory_get_current_bank(uint16_t address);
 
+void memory_dump_usage_counts();
+
 #endif
