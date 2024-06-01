@@ -10,6 +10,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fmt/format.h>
 
 #include "cpu/fake6502.h"
 #include "debugger.h"
@@ -574,13 +575,13 @@ void memory_dump_usage_counts()
 	int addr;
 	for (addr = 0; addr < 0xa000; ++addr) {
 		if (RAM_read_counts[addr] > 0) {
-			x16write(dumpfile, std::format("r {0:04x} {1}\n", addr, RAM_read_counts[addr]));
+			x16write(dumpfile, fmt::format("r {0:04x} {1}\n", addr, RAM_read_counts[addr]));
 		}
 	}
 	x16write(dumpfile, "\nsystem RAM writes:\n");
 	for (addr = 0; addr < 0xa000; ++addr) {
 		if (RAM_write_counts[addr] > 0) {
-			x16write(dumpfile, std::format("w {0:04x} {1}\n", addr, RAM_write_counts[addr]));
+			x16write(dumpfile, fmt::format("w {0:04x} {1}\n", addr, RAM_write_counts[addr]));
 		}
 	}
 	x16write(dumpfile, "\nbanked RAM reads:\n");
@@ -590,7 +591,7 @@ void memory_dump_usage_counts()
 			const int ramBank      = bank % Options.num_ram_banks;
 			const int real_address = (ramBank << 13) + addr;
 			if (RAM_read_counts[real_address] > 0) {
-				x16write(dumpfile, std::format("r {0:02x}:{1:04x} {2}\n", bank, addr, RAM_read_counts[real_address]));
+				x16write(dumpfile, fmt::format("r {0:02x}:{1:04x} {2}\n", bank, addr, RAM_read_counts[real_address]));
 			}
 		}
 	}
@@ -600,7 +601,7 @@ void memory_dump_usage_counts()
 			const int ramBank      = bank % Options.num_ram_banks;
 			const int real_address = (ramBank << 13) + addr;
 			if (RAM_write_counts[real_address] > 0) {
-				x16write(dumpfile, std::format("w {0:02x}:{1:04x} {2}\n", bank, addr, RAM_write_counts[real_address]));
+				x16write(dumpfile, fmt::format("w {0:02x}:{1:04x} {2}\n", bank, addr, RAM_write_counts[real_address]));
 			}
 		}
 	}
@@ -610,7 +611,7 @@ void memory_dump_usage_counts()
 			const int romBank      = bank % TOTAL_ROM_BANKS;
 			const int real_address = (romBank << 14) + addr - 0xc000;
 			if (ROM_read_counts[real_address] > 0) {
-				x16write(dumpfile, std::format("r {0:02x}:{1:04x} {2}\n", bank, addr, ROM_read_counts[real_address]));
+				x16write(dumpfile, fmt::format("r {0:02x}:{1:04x} {2}\n", bank, addr, ROM_read_counts[real_address]));
 			}
 		}
 	}
@@ -620,7 +621,7 @@ void memory_dump_usage_counts()
 			const int romBank      = bank % TOTAL_ROM_BANKS;
 			const int real_address = (romBank << 14) + addr - 0xc000;
 			if (ROM_write_counts[real_address] > 0) {
-				x16write(dumpfile, std::format("w {0:02x}:{1:04x} {2}\n", bank, addr, ROM_write_counts[real_address]));
+				x16write(dumpfile, fmt::format("w {0:02x}:{1:04x} {2}\n", bank, addr, ROM_write_counts[real_address]));
 			}
 		}
 	}
