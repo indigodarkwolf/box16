@@ -3,7 +3,7 @@
 #include <SDL.h>
 #include <unordered_map>
 
-#define LOG_JOYSTICK(...) // printf(__VA_ARGS__)
+#define LOG_JOYSTICK(...) // fmt::format(__VA_ARGS__)
 
 struct joystick_info {
 	SDL_GameController *controller;
@@ -52,7 +52,7 @@ bool joystick_init()
 
 void joystick_add(int index)
 {
-	LOG_JOYSTICK("joystick_add(%d)\n", index);
+	LOG_JOYSTICK("joystick_add({:d})\n", index);
 
 	if (!SDL_IsGameController(index)) {
 		return;
@@ -60,7 +60,7 @@ void joystick_add(int index)
 
 	SDL_GameController *controller = SDL_GameControllerOpen(index);
 	if (controller == nullptr) {
-		fprintf(stderr, "Could not open controller %d: %s\n", index, SDL_GetError());
+		fmt::print(stderr, "Could not open controller {:d}: {}\n", index, SDL_GetError());
 		return;
 	}
 
@@ -87,7 +87,7 @@ void joystick_add(int index)
 
 void joystick_remove(int instance_id)
 {
-	LOG_JOYSTICK("joystick_remove(%d)\n", instance_id);
+	LOG_JOYSTICK("joystick_remove({:d})\n", instance_id);
 
 	for (int i = 0; i < NUM_JOYSTICKS; ++i) {
 		if (Joystick_slots[i] == instance_id) {
@@ -98,7 +98,7 @@ void joystick_remove(int instance_id)
 
 	SDL_GameController *controller = SDL_GameControllerFromInstanceID(instance_id);
 	if (controller == nullptr) {
-		fprintf(stderr, "Could not find controller from instance_id %d: %s\n", instance_id, SDL_GetError());
+		fmt::print(stderr, "Could not find controller from instance_id {:d}: {}\n", instance_id, SDL_GetError());
 	} else {
 		SDL_GameControllerClose(controller);
 		Joystick_controllers.erase(instance_id);
@@ -107,10 +107,10 @@ void joystick_remove(int instance_id)
 
 void joystick_slot_remap(int slot, int instance_id)
 {
-	LOG_JOYSTICK("joystick_slot_remap(%d, %d)\n", slot, instance_id);
+	LOG_JOYSTICK("joystick_slot_remap({:d}, {:d})\n", slot, instance_id);
 
 	if (slot < 0 || slot >= NUM_JOYSTICKS) {
-		fprintf(stderr, "Error: joystick_slot_remap(%d, %d) trying to remap invalid controller port %d.\n", slot, instance_id, slot);
+		fmt::print(stderr, "Error: joystick_slot_remap({:d}, {:d}) trying to remap invalid controller port {:d}.\n", slot, instance_id, slot);
 		return;
 	}
 
@@ -122,7 +122,7 @@ void joystick_slot_remap(int slot, int instance_id)
 	} else {
 		const auto &joy = Joystick_controllers.find(instance_id);
 		if (joy == Joystick_controllers.end()) {
-			fprintf(stderr, "Error: joystick_slot_remap(%d, %d) could not find instance_id %d.\n", slot, instance_id, instance_id);
+			fmt::print(stderr, "Error: joystick_slot_remap({:d}, {:d}) could not find instance_id {:d}.\n", slot, instance_id, instance_id);
 			return;
 		}
 
@@ -135,7 +135,7 @@ void joystick_slot_remap(int slot, int instance_id)
 	if (slot_old_instance_id >= 0) {
 		const auto &old_joy = Joystick_controllers.find(slot_old_instance_id);
 		if (old_joy == Joystick_controllers.end()) {
-			fprintf(stderr, "Error: joystick_slot_remap(%d, %d) could not find slot_old_instance_id %d.\n", slot, instance_id, slot_old_instance_id);
+			fmt::print(stderr, "Error: joystick_slot_remap({:d}, {:d}) could not find slot_old_instance_id {:d}.\n", slot, instance_id, slot_old_instance_id);
 			return;
 		}
 
@@ -149,7 +149,7 @@ void joystick_slot_remap(int slot, int instance_id)
 
 void joystick_button_down(int instance_id, uint8_t button)
 {
-	LOG_JOYSTICK("joystick_button_down(%d, %d)\n", instance_id, button);
+	LOG_JOYSTICK("joystick_button_down({:d}, {:d})\n", instance_id, button);
 
 	const auto &joy = Joystick_controllers.find(instance_id);
 	if (joy != Joystick_controllers.end()) {
@@ -159,7 +159,7 @@ void joystick_button_down(int instance_id, uint8_t button)
 
 void joystick_button_up(int instance_id, uint8_t button)
 {
-	LOG_JOYSTICK("joystick_button_up(%d, %d)\n", instance_id, button);
+	LOG_JOYSTICK("joystick_button_up({:d}, {:d})\n", instance_id, button);
 
 	const auto &joy = Joystick_controllers.find(instance_id);
 	if (joy != Joystick_controllers.end()) {
@@ -214,7 +214,7 @@ void joystick_for_each_slot(std::function<void(int, int, SDL_GameController *)> 
 		} else {
 			const auto &joy = Joystick_controllers.find(Joystick_slots[i]);
 			if (joy == Joystick_controllers.end()) {
-				fprintf(stderr, "joystick_for_each_slot(...) could not find Joystick_slots[%d] %d", i, Joystick_slots[i]);
+				fmt::print(stderr, "joystick_for_each_slot(...) could not find Joystick_slots[{:d}] {:d}", i, Joystick_slots[i]);
 				fn(i, -1, nullptr);
 			} else {
 				fn(i, joy->first, joy->second.controller);				

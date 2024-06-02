@@ -162,7 +162,7 @@ void wav_recorder_set(wav_recorder_command_t command)
 				Wav_record_state = RECORD_WAV_AUTOSTARTING;
 				break;
 			default:
-				printf("Unknown command %d passed to wav_recorder_set.\n", (int)command);
+				fmt::print("Unknown command {:d} passed to wav_recorder_set.\n", (int)command);
 				break;
 		}
 	}

@@ -168,7 +168,7 @@ static uint8_t real_ram_read(uint16_t address)
 	const int real_address = (ramBank << 13) + address;
 
 	if ((RAM_written[real_address >> 6] & ((uint64_t)1 << (real_address & 0x3f))) == 0 && Memory_params.enable_uninitialized_access_warning) {
-		printf("Warning: %02X:%04X accessed uninitialized RAM address %02X:%04X\n", bank6502(debug_state6502.pc), debug_state6502.pc, address < 0xa000 ? 0 : ramBank, address);
+		fmt::print("Warning: {:02X}:{:04X} accessed uninitialized RAM address {:02X}:{:04X}\n", bank6502(debug_state6502.pc), debug_state6502.pc, address < 0xa000 ? 0 : ramBank, address);
 	}
 
 	return RAM[real_address];
@@ -222,7 +222,7 @@ static void real_rom_write(uint16_t address, uint8_t value)
 
 		ROM[real_address] = value;
 
-		// printf("Writing to hidden ram at addr: $%hx, bank $%hhx\n", address, romBank);
+		// fmt::print("Writing to hidden ram at addr: ${:04X}, bank ${:02X}\n", address, romBank);
 	}
 }
 
@@ -275,7 +275,7 @@ uint8_t real_emu_read(uint8_t reg)
 		case 14: return '1'; // emulator detection
 		case 15: return '6'; // emulator detection
 		default:
-			printf("WARN: Invalid register %x\n", DEVICE_EMULATOR + reg);
+			fmt::print("WARN: Invalid register ${:04x}\n", DEVICE_EMULATOR + reg);
 			return -1;
 	}
 }
@@ -296,20 +296,20 @@ void emu_write(uint8_t reg, uint8_t value)
 		case 6: wav_recorder_set((wav_recorder_command_t)value); break;
 		case 7: Options.no_keybinds = v; break;
 		case 8: clock_base = clockticks6502; break;
-		case 9: printf("User debug 1: $%02x\n", value); break;
-		case 10: printf("User debug 2: $%02x\n", value); break;
+		case 9: fmt::print("User debug 1: ${:02x}\n", value); break;
+		case 10: fmt::print("User debug 2: ${:02x}\n", value); break;
 		case 11: {
-		    if (value == 0x09 || value == 0x0a || value == 0x0d || (value >= 0x20 && value < 0x7f)) {
-			putchar(value);
-		    } else if (value >= 0xa1) {
-			print_iso8859_15_char((char) value);
-		    } else {
-			printf("\xef\xbf\xbd"); // �
-		    }
-		    fflush(stdout);
-		    break;
+			if (value == 0x09 || value == 0x0a || value == 0x0d || (value >= 0x20 && value < 0x7f)) {
+				putchar(value);
+			} else if (value >= 0xa1) {
+				print_iso8859_15_char((char)value);
+			} else {
+				fmt::print("\xef\xbf\xbd"); // �
+			}
+			fflush(stdout);
+			break;
 		}
-		default: break; // printf("WARN: Invalid register %x\n", DEVICE_EMULATOR + reg);
+		default: break; // fmt::print("WARN: Invalid register ${:04x}\n", DEVICE_EMULATOR + reg);
 	}
 }
 
@@ -360,18 +360,33 @@ static uint8_t debug_read(uint16_t address, uint8_t bank)
 template <const uint8_t MAP[100], uint8_t BYTE>
 static uint8_t real_read(uint16_t address)
 {
-	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
-		case MEMMAP_NULL: return 0;
-		case MEMMAP_DIRECT: return RAM[address];
-		case MEMMAP_RAMBANK: return real_ram_read(address); break;
-		case MEMMAP_ROMBANK: return real_rom_read(address); break;
-		case MEMMAP_IO: return real_read<memory_map_io, 0>(address);
-		case MEMMAP_IO_SOUND: return sound_read(address);
-		case MEMMAP_IO_VIDEO: return vera_video_read(address & 0x1f);
-		case MEMMAP_IO_VIA1: return via1_read(address & 0xf, false);
-		case MEMMAP_IO_VIA2: return via2_read(address & 0xf, false);
-		case MEMMAP_IO_EMU: return real_emu_read(address & 0xf);
-		default: return 0;
+	if constexpr (&MAP[0] == &memory_map_hi[0]) {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: return 0;
+			case MEMMAP_DIRECT: {
+				if ((RAM_written[address >> 6] & ((uint64_t)1 << (address & 0x3f))) == 0 && Memory_params.enable_uninitialized_access_warning) {
+					fmt::print("Warning: {:02X}:{:04X} accessed uninitialized RAM address {:02X}:{:04X}\n", bank6502(debug_state6502.pc), debug_state6502.pc, 0, address);
+				}
+				++RAM_read_counts[address];
+				return RAM[address];
+			}
+			case MEMMAP_RAMBANK: return real_ram_read(address); break;
+			case MEMMAP_ROMBANK: return real_rom_read(address); break;
+			case MEMMAP_IO:
+				++RAM_read_counts[address];
+				return real_read<memory_map_io, 0>(address);
+			default: return 0;
+		}
+	} else {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: return 0;
+			case MEMMAP_IO_SOUND: return sound_read(address);
+			case MEMMAP_IO_VIDEO: return vera_video_read(address & 0x1f);
+			case MEMMAP_IO_VIA1: return via1_read(address & 0xf, false);
+			case MEMMAP_IO_VIA2: return via2_read(address & 0xf, false);
+			case MEMMAP_IO_EMU: return real_emu_read(address & 0xf);
+			default: return 0;
+		}	
 	}
 }
 
@@ -439,8 +454,9 @@ uint8_t read6502(uint16_t address)
 
 	uint8_t value = real_read<memory_map_hi, 1>(address);
 #if defined(TRACE)
-	if (Options.log_mem_read)
-		printf("%04X -> %02X\n", address, value);
+	if (Options.log_mem_read) {
+		fmt::print("{:04X} -> {:02X}\n", address, value);
+	}
 #endif
 	return value;
 }
@@ -455,8 +471,9 @@ void write6502(uint16_t address, uint8_t value)
 	debug6502 |= DEBUG6502_WRITE & debugger_get_flags(address, address >= 0xc000 ? memory_get_rom_bank() : memory_get_ram_bank());
 	if (~debug6502 & DEBUG6502_WRITE) {
 #if defined(TRACE)
-		if (Options.log_mem_write)
-			printf("%02X -> %04X\n", value, address);
+		if (Options.log_mem_write) {
+			fmt::print("{:02X} -> {:04X}\n", value, address);
+		}
 #endif
 		real_write<memory_map_hi, 1>(address, value);
 	}
@@ -573,4 +590,72 @@ uint8_t memory_get_current_bank(uint16_t address)
 	} else {
 		return 0;
 	}
+}
+
+void memory_dump_usage_counts()
+{
+	x16file *dumpfile = x16open("memory_stats.txt", "w");
+	if (dumpfile == nullptr) {
+		fmt::print("Warning: Could not dump memory to memory_stats.txt.\n");
+		return;
+	}
+	x16write(dumpfile, "--- begin of memory usage statistics dump ---\n");
+	x16write(dumpfile, "Usage counts of all memory locations. Locations not printed have count zero.\n");
+	x16write(dumpfile, "Tip: use 'sort -r -n -k 3' to sort it so it shows the most used at the top.\n");
+	x16write(dumpfile, "system RAM reads:\n");
+	int addr;
+	for (addr = 0; addr < 0xa000; ++addr) {
+		if (RAM_read_counts[addr] > 0) {
+			x16write(dumpfile, fmt::format("r {0:04x} {1}\n", addr, RAM_read_counts[addr]));
+		}
+	}
+	x16write(dumpfile, "\nsystem RAM writes:\n");
+	for (addr = 0; addr < 0xa000; ++addr) {
+		if (RAM_write_counts[addr] > 0) {
+			x16write(dumpfile, fmt::format("w {0:04x} {1}\n", addr, RAM_write_counts[addr]));
+		}
+	}
+	x16write(dumpfile, "\nbanked RAM reads:\n");
+	int bank;
+	for (bank = 0; bank < 256; ++bank) {
+		for (addr = 0xa000; addr < 0xc000; ++addr) {
+			const int ramBank      = bank % Options.num_ram_banks;
+			const int real_address = (ramBank << 13) + addr;
+			if (RAM_read_counts[real_address] > 0) {
+				x16write(dumpfile, fmt::format("r {0:02x}:{1:04x} {2}\n", bank, addr, RAM_read_counts[real_address]));
+			}
+		}
+	}
+	x16write(dumpfile, "\nbanked RAM writes:\n");
+	for (bank = 0; bank < 256; ++bank) {
+		for (addr = 0xa000; addr < 0xc000; ++addr) {
+			const int ramBank      = bank % Options.num_ram_banks;
+			const int real_address = (ramBank << 13) + addr;
+			if (RAM_write_counts[real_address] > 0) {
+				x16write(dumpfile, fmt::format("w {0:02x}:{1:04x} {2}\n", bank, addr, RAM_write_counts[real_address]));
+			}
+		}
+	}
+	x16write(dumpfile, "\nbanked ROM reads:\n");
+	for (bank = 0; bank < 256; ++bank) {
+		for (addr = 0xc000; addr < 0x10000; ++addr) {
+			const int romBank      = bank % TOTAL_ROM_BANKS;
+			const int real_address = (romBank << 14) + addr - 0xc000;
+			if (ROM_read_counts[real_address] > 0) {
+				x16write(dumpfile, fmt::format("r {0:02x}:{1:04x} {2}\n", bank, addr, ROM_read_counts[real_address]));
+			}
+		}
+	}
+	x16write(dumpfile, "\nbanked ROM / 'Bonk RAM' writes:\n");
+	for (bank = 0; bank < 256; ++bank) {
+		for (addr = 0xc000; addr < 0x10000; ++addr) {
+			const int romBank      = bank % TOTAL_ROM_BANKS;
+			const int real_address = (romBank << 14) + addr - 0xc000;
+			if (ROM_write_counts[real_address] > 0) {
+				x16write(dumpfile, fmt::format("w {0:02x}:{1:04x} {2}\n", bank, addr, ROM_write_counts[real_address]));
+			}
+		}
+	}
+	x16write(dumpfile, "--- end of memory usage statistics dump ---\n");
+	x16close(dumpfile);
 }

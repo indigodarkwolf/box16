@@ -1447,7 +1447,7 @@ uint8_t vera_video_read(uint8_t reg)
 
 
 			if (log_video) {
-				printf("READ  video_space[$%X] = $%02X\n", address, value);
+				fmt::print("READ  video_space[${:X}] = ${:02X}\n", address, value);
 			}
 			return value;
 		}
@@ -1553,9 +1553,9 @@ uint8_t vera_video_read(uint8_t reg)
 void vera_video_write(uint8_t reg, uint8_t value)
 {
 	// if (reg > 4) {
-	// 	printf("ioregisters[0x%02X] = 0x%02X\n", reg, value);
+	// 	fmt::print("ioregisters[{:#02X}] = {:#02X}\n", reg, value);
 	// }
-	//	printf("ioregisters[%d] = $%02X\n", reg, value);
+	//	fmt::print("ioregisters[{:d}] = ${:02X}\n", reg, value);
 	switch (reg & 0x1F) {
 		case 0x00:
 			if (fx_2bit_poly && fx_4bit_mode && fx_addr1_mode == 2 && io_addrsel == 1) {
@@ -1603,7 +1603,7 @@ void vera_video_write(uint8_t reg, uint8_t value)
 			bool nibble = fx_nibble_bit[reg - 3];
 			uint32_t address = get_and_inc_address(reg - 3, true);
 			if (log_video) {
-				printf("WRITE video_space[$%X] = $%02X\n", address, value);
+				fmt::print("WRITE video_space[${:X}] = ${:02X}\n", address, value);
 			}
 
 			if (fx_cache_write) {

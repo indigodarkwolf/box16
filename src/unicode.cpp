@@ -12,34 +12,34 @@ uint8_t iso8859_15_from_unicode(const uint32_t c)
 
 	// translate Unicode characters not part of Latin-1 but part of Latin-15
 	switch (c) {
-		case 0x20ac: // '€'
+		case 0x20ac: // 'ï¿½'
 			return 0xa4;
-		case 0x160: // 'Š'
+		case 0x160: // 'ï¿½'
 			return 0xa6;
-		case 0x161: // 'š'
+		case 0x161: // 'ï¿½'
 			return 0xa8;
-		case 0x17d: // 'Ž'
+		case 0x17d: // 'ï¿½'
 			return 0xb4;
-		case 0x17e: // 'ž'
+		case 0x17e: // 'ï¿½'
 			return 0xb8;
-		case 0x152: // 'Œ'
+		case 0x152: // 'ï¿½'
 			return 0xbc;
-		case 0x153: // 'œ'
+		case 0x153: // 'ï¿½'
 			return 0xbd;
-		case 0x178: // 'Ÿ'
+		case 0x178: // 'ï¿½'
 			return 0xbe;
 	}
 
 	// remove Unicode characters part of Latin-1 but not part of Latin-15
 	switch (c) {
-		case 0xa4: // '¤'
-		case 0xa6: // '¦'
-		case 0xa8: // '¨'
-		case 0xb4: // '´'
-		case 0xb8: // '¸'
-		case 0xbc: // '¼'
-		case 0xbd: // '½'
-		case 0xbe: // '¾'
+		case 0xa4: // 'ï¿½'
+		case 0xa6: // 'ï¿½'
+		case 0xa8: // 'ï¿½'
+		case 0xb4: // 'ï¿½'
+		case 0xb8: // 'ï¿½'
+		case 0xbc: // 'ï¿½'
+		case 0xbd: // 'ï¿½'
+		case 0xbe: // 'ï¿½'
 			return '?';
 	}
 
@@ -57,21 +57,21 @@ uint32_t unicode_from_iso8859_15(const uint8_t c)
 	// translate Latin-15 characters not part of Latin-1
 	switch (c) {
 		case 0xa4:
-			return 0x20ac; // '€'
+			return 0x20ac; // 'ï¿½'
 		case 0xa6:
-			return 0x160; // 'Š'
+			return 0x160; // 'ï¿½'
 		case 0xa8:
-			return 0x161; // 'š'
+			return 0x161; // 'ï¿½'
 		case 0xb4:
-			return 0x17d; // 'Ž'
+			return 0x17d; // 'ï¿½'
 		case 0xb8:
-			return 0x17e; // 'ž'
+			return 0x17e; // 'ï¿½'
 		case 0xbc:
-			return 0x152; // 'Œ'
+			return 0x152; // 'ï¿½'
 		case 0xbd:
-			return 0x153; // 'œ'
+			return 0x153; // 'ï¿½'
 		case 0xbe:
-			return 0x178; // 'Ÿ'
+			return 0x178; // 'ï¿½'
 		default:
 			return c;
 	}
@@ -82,5 +82,5 @@ void print_iso8859_15_char(const char c)
 {
 	char utf8[5];
 	utf8_encode(utf8, unicode_from_iso8859_15(c));
-	printf("%s", utf8);
+	fmt::print("{}", utf8);
 }

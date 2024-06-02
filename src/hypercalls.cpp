@@ -293,7 +293,7 @@ void hypercalls_update()
 
 				auto prg_file = x16open(prg_path.generic_string().c_str(), "rb");
 				if (prg_file == nullptr) {
-					printf("Cannot open PRG file %s (%s)!\n", prg_path.generic_string().c_str(), std::filesystem::absolute(prg_path).generic_string().c_str());
+					fmt::print("Cannot open PRG file {} ({})!\n", prg_path.generic_string(), std::filesystem::absolute(prg_path).generic_string());
 					exit(1);
 				}
 
@@ -357,26 +357,26 @@ void hypercalls_update()
 			uint8_t c = state6502.a;
 			if (Options.echo_mode == echo_mode_t::ECHO_MODE_COOKED) {
 				if (c == 0x0d) {
-					printf("\n");
+					fmt::print("\n");
 				} else if (c == 0x0a) {
 					// skip
 				} else if (c < 0x20 || c >= 0x80) {
-					printf("\\X%02X", c);
+					fmt::print("\\X{:02X}", c);
 				} else {
-					printf("%c", c);
+					fmt::print("{:c}", c);
 				}
 			} else if (Options.echo_mode == echo_mode_t::ECHO_MODE_ISO) {
 				if (c == 0x0d) {
-					printf("\n");
+					fmt::print("\n");
 				} else if (c == 0x0a) {
 					// skip
 				} else if (c < 0x20 || (c >= 0x80 && c < 0xa0)) {
-					printf("\\X%02X", c);
+					fmt::print("\\X{:02X}", c);
 				} else {
 					print_iso8859_15_char(c);
 				}
 			} else {
-				printf("%c", c);
+				fmt::print("{:c}", c);
 			}
 			fflush(stdout);
 			return false;

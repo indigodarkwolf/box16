@@ -152,7 +152,7 @@ void keyboard_process()
 void keyboard_add_event(const bool down, const SDL_Scancode scancode)
 {
 	if (Options.log_keyboard) {
-		printf("%s 0x%02X\n", down ? "DOWN" : "UP", scancode);
+		fmt::print("{} {:#02X}\n", down ? "DOWN" : "UP", static_cast<int>(scancode));
 		fflush(stdout);
 	}
 
@@ -187,7 +187,7 @@ void keyboard_add_file(char const *const path)
 {
 	x16file *file = x16open(path, "r");
 	if (file == nullptr) {
-		printf("Cannot open text file %s!\n", path);
+		fmt::print("Cannot open text file {}!\n", path);
 		return;
 	}
 
@@ -198,7 +198,7 @@ void keyboard_add_file(char const *const path)
 
 	const size_t read_size = x16read(file, file_text, sizeof(uint8_t), static_cast<unsigned int>(file_size));
 	if (read_size != file_size) {
-		printf("File read error on %s\n", path);
+		fmt::print("File read error on {}\n", path);
 		delete[] file_text;
 	} else {
 		file_text[read_size] = 0;
@@ -253,7 +253,7 @@ static bool mouse_send(int x, int y, int b)
 
 		return true;
 	} else {
-		//		printf("buffer full, skipping...\n");
+		//		fmt::print("buffer full, skipping...\n");
 		return false;
 	}
 }

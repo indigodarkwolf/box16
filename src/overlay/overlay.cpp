@@ -459,34 +459,32 @@ static void draw_debugger_cpu_status()
 			// }
 
 			static auto do_label = [](uint16_t pc, uint8_t bank, bool allow_disabled) {
-				char const *label  = disasm_get_label(pc, bank);
-				bool        pushed = false;
+				const std::string &label  = disasm_get_label(pc, bank);
+				bool               pushed = false;
 
 				if (pc >= 0xa000) {
-					if (label == nullptr) {
-						char disasm[256];
-						disasm_code(disasm, 256, pc, bank);
+					if (label.empty()) {
+						const std::string disasm = disasm_code(pc, bank);
 						char stack_line[512];
-						snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X: %s", bank, pc, disasm);
+						snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X: %s", bank, pc, disasm.c_str());
 						stack_line[511] = '\0';
 						pushed          = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 					} else {
 						char stack_line[256];
-						snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X: %s", bank, pc, label);
+						snprintf(stack_line, sizeof(stack_line), "$%02X:$%04X: %s", bank, pc, label.c_str());
 						stack_line[255] = '\0';
 						pushed          = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 					}
 				} else {
-					if (label == nullptr) {
-						char disasm[256];
-						disasm_code(disasm, 256, pc, bank);
+					if (label.empty()) {
+						const std::string disasm = disasm_code(pc, bank);
 						char stack_line[512];
-						snprintf(stack_line, sizeof(stack_line), "    $%04X: %s", pc, disasm);
+						snprintf(stack_line, sizeof(stack_line), "    $%04X: %s", pc, disasm.c_str());
 						stack_line[511] = '\0';
 						pushed          = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 					} else {
 						char stack_line[256];
-						snprintf(stack_line, sizeof(stack_line), "    $%04X: %s", pc, label);
+						snprintf(stack_line, sizeof(stack_line), "    $%04X: %s", pc, label.c_str());
 						stack_line[255] = '\0';
 						pushed          = ImGui::Selectable(stack_line, false, 0, ImGui::CalcTextSize(stack_line));
 					}

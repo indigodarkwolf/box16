@@ -66,7 +66,7 @@ gzFile prg_file       = nullptr;
 
 void machine_dump(const char *reason)
 {
-	printf("Dumping system memory. Reason: %s\n", reason);
+	fmt::print("Dumping system memory. Reason: {}\n", reason);
 	int  index = 0;
 	char filename[22];
 	for (;;) {
@@ -82,19 +82,19 @@ void machine_dump(const char *reason)
 	}
 	x16file *f = x16open(filename, "w");
 	if (!f) {
-		printf("Cannot write to %s!\n", filename);
+		fmt::print("Cannot write to {}!\n", filename);
 		return;
 	}
 
 	if (Options.dump_cpu) {
 		std::stringstream ss;
 		ss << "[CPU]\n";
-		ss << std::setw(0) << "PC:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.pc);
-		ss << std::setw(0) << " A:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.a);
-		ss << std::setw(0) << " X:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.x);
-		ss << std::setw(0) << " Y:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.y);
-		ss << std::setw(0) << " SP:" << std::hex << std::uppercase << std::setw(2) << std::setfill('0') << static_cast<int>(state6502.sp);
-		ss << std::setw(0) << " ST:";
+		ss << fmt::format("PC:{:02X}", state6502.pc);
+		ss << fmt::format(" A:{:02X}", state6502.a);
+		ss << fmt::format(" X:{:02X}", state6502.x);
+		ss << fmt::format(" Y:{:02X}", state6502.y);
+		ss << fmt::format(" SP:{:02X}", state6502.sp);
+		ss << " ST:";
 		ss << ((state6502.status & 0x80) ? 'N' : '-');
 		ss << ((state6502.status & 0x40) ? 'V' : '-');
 		ss << '-';
@@ -122,7 +122,7 @@ void machine_dump(const char *reason)
 	}
 
 	x16close(f);
-	printf("Dumped system to %s.\n", filename);
+	fmt::print("Dumped system to .\n", filename);
 }
 
 void machine_reset()
@@ -206,9 +206,9 @@ int main(int argc, char **argv)
 			const std::string &real_path_string = real_path.generic_string();
 
 			f = x16open(real_path_string.c_str(), mode);
-			printf("Using %s at %s\n", cmdline_option, real_path_string.c_str());
+			fmt::print("Using {} at {}\n", cmdline_option, real_path_string);
 		}
-		printf("\t-%s sourced from: %s\n", cmdline_option, srcname);
+		fmt::print("\t-{} sourced from: {}\n", cmdline_option, srcname);
 		return f;
 	};
 
@@ -313,7 +313,7 @@ int main(int argc, char **argv)
 	{
 		const bool initd = display_init();
 		if (initd == false) {
-			printf("Could not initialize display, quitting.\n");
+			fmt::print("Could not initialize display, quitting.\n");
 			display_shutdown();
 			SDL_Quit();
 			return 0;
@@ -426,34 +426,31 @@ void emulator_loop()
 			uint8_t  ram    = memory_get_ram_bank();
 			uint8_t  rom    = memory_get_rom_bank();
 			uint8_t  cur    = memory_get_current_bank(pc);
-			char     buffer[1024];
-			uint8_t  pos = 0;
 
 			if ((Options.log_cpu_main && (pc >= 0x0800 && pc <= 0x9FFF)) ||
 			    (Options.log_cpu_bram && (pc >= 0xA000 && pc <= 0xBFFF)) ||
 			    (Options.log_cpu_low && (pc >= 0x0000 && pc <= 0x07FF)) ||
 			    (Options.log_cpu_brom && (pc >= 0xC000 && pc <= 0xFFFF))) {
 
-				printf("a:$%02x x:$%02x y:$%02x s:$%02x p:", a, x, y, sp);
+				fmt::print("a:${:02x} x:${:02x} y:${:02x} s:${:02x} p:", a, x, y, sp);
 				for (int i = 7; i >= 0; i--) {
-					printf("%c", (status & (1 << i)) ? "czidb.vn"[i] : '-');
+					fmt::print("{:c}", (status & (1 << i)) ? "czidb.vn"[i] : '-');
 				}
 
-				printf(" ram=$%02x rom=$%02x ", ram, rom);
+				fmt::print(" ram=${:02x} rom=${:02x} ", ram, rom);
 				const char *label     = disasm_get_label(pc);
 				size_t      label_len = label ? strlen(label) : 0;
 				if (label) {
-					printf("%s", label);
+					fmt::print("{}", label);
 				}
 				label_len = (label_len <= 25) ? label_len : 25;
 				for (size_t i = 0; i < 25 - label_len; i++) {
-					printf(" ");
+					fmt::print(" ");
 				}
-				printf("$%02x:$%04x ", cur, pc);
-				disasm_code(buffer, sizeof(buffer), pc, cur);
-				printf("%s", buffer);
+				fmt::print("${:02x}:${:04x} ", cur, pc);
+				fmt::print("{}", disasm_code(pc, cur));
 
-				printf("\n");
+				fmt::print("\n");
 			}
 		}
 #endif

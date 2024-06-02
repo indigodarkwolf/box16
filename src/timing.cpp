@@ -73,18 +73,18 @@ void timing_update()
 	Timing_perf                     = (uint32_t)((100ULL * (diff_frames * Expected_frametime_us) + (diff_time_us >> 1)) / (diff_time_us));
 
 	if (Options.log_speed) {
-		printf("Speed: %d%%\n", Timing_perf);
+		fmt::print("Speed: {:d}%\n", Timing_perf);
 		uint32_t load = (uint32_t)(100 * tick.us / Expected_frametime_us);
-		printf("Load: %d%%\n", load > 100 ? 100 : load);
+		fmt::print("Load: {:d}%\n", load > 100 ? 100 : load);
 	}
 
 	Last_performance_time = current_performance_time;
 
 #if defined(PROFILE)
 	if (Tick_history.count() == Tick_history_length) {
-		printf("Runtime: %dus\n", (uint32_t)diff_time_us);
-		printf("Frames:  %d\n", (uint32_t)diff_frames);
-		printf("Speed:   %d%%\n", Timing_perf);
+		fmt::print("Runtime: {:d}us\n", (uint32_t)diff_time_us);
+		fmt::print("Frames:  {:d}\n", (uint32_t)diff_frames);
+		fmt::print("Speed:   {:d}%\n", Timing_perf);
 		state6502.pc = 0xffff;
 	}
 #endif

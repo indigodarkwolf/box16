@@ -62,7 +62,7 @@ void gif_recorder_update(const uint8_t *image_bytes)
 			// if that failed, stop recording
 			GifEnd(&Gif_writer);
 			Gif_record_state = RECORD_GIF_DISABLED;
-			printf("Unexpected end of recording.\n");
+			fmt::print("Unexpected end of recording.\n");
 		}
 		if (Gif_record_state == RECORD_GIF_SINGLE) { // if single-shot stop recording
 			Gif_record_state = RECORD_GIF_PAUSED;    // need to close in video_end()

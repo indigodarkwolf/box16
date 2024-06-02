@@ -471,11 +471,11 @@ namespace ImGui
 {
 	void disasm_label(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format)
 	{
-		const char *symbol = disasm_get_label(target, bank);
+		const std::string &symbol = disasm_get_label(target, bank);
 
 		char inner[256];
-		if (symbol != nullptr) {
-			snprintf(inner, 256, "%s", symbol);
+		if (!symbol.empty()) {
+			snprintf(inner, 256, "%s", symbol.c_str());
 		} else if (disasm.get_hex_flag()) {
 			snprintf(inner, 256, hex_format, target);
 		} else {
@@ -498,11 +498,11 @@ namespace ImGui
 
 	void disasm_label_wrap(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format, const char *wrapper_format)
 	{
-		const char *symbol = disasm_get_label(target, bank);
+		const std::string &symbol = disasm_get_label(target, bank);
 
 		char inner[256];
-		if (symbol != nullptr) {
-			snprintf(inner, 256, "%s", symbol);
+		if (!symbol.empty()) {
+			snprintf(inner, 256, "%s", symbol.c_str());
 		} else if (disasm.get_hex_flag()) {
 			snprintf(inner, 256, hex_format, target);
 		} else {

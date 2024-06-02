@@ -1,5 +1,7 @@
 #pragma once
 
-char const *disasm_get_label(uint16_t address, uint8_t bank = 0);
-size_t      disasm_code(char *buffer, size_t buffer_size, uint16_t pc, uint8_t bank);
-bool        disasm_is_branch(uint8_t opcode);
+#include <string>
+
+const std::string &disasm_get_label(const uint16_t address, const uint8_t bank = 0);
+std::string        disasm_code(const uint16_t pc, const uint8_t bank);
+bool               disasm_is_branch(const uint8_t opcode);

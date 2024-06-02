@@ -131,6 +131,12 @@ char const   *option_get_source_name(option_source source);
 
 bool options_find_file(std::filesystem::path &real_path, const std::filesystem::path &search_path);
 
-int options_log_verbose(const char *format, ...);
+template<class ...argtypes>
+inline void options_log_verbose(const char *format, argtypes... args)
+{
+	if (Options.log_verbose) {
+		fmt::vprint(format, fmt::make_format_args(args...));
+	}
+}
 
 #endif

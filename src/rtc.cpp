@@ -128,7 +128,7 @@ void rtc_step(int c)
 
 uint8_t rtc_read(uint8_t a)
 {
-	//    printf("RTC READ $%02X\n", a);
+	//    fmt::print("RTC READ ${:02X}\n", a);
 	switch (a) {
 		case 0:
 			return BCD(seconds) | (running << 7);
@@ -175,7 +175,7 @@ uint8_t rtc_read(uint8_t a)
 
 void rtc_write(uint8_t a, uint8_t v)
 {
-	//    printf("RTC WRITE $%02X, $%02X\n", a, v);
+	//    fmt::print("RTC WRITE ${:02X}, ${:02X}\n", a, v);
 	switch (a) {
 		case 0:
 			running = !!(v & 0x80);

@@ -44,7 +44,7 @@ void smc_write(uint8_t a, uint8_t v)
 	switch (a) {
 		case 1:
 			if (v == 0) {
-				printf("SMC Power Off.\n");
+				fmt::print("SMC Power Off.\n");
 				main_shutdown();
 				exit(0);
 			} else if (v == 1) {

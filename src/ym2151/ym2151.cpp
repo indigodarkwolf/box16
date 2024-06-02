@@ -58,7 +58,7 @@ public:
 	virtual void ymfm_set_timer(uint32_t tnum, int32_t duration_in_clocks) override
 	{
 		if (tnum >= 2) {
-			printf("ERROR: Not enough timers implemented for ymfm_set_timer\n");
+			fmt::print("ERROR: Not enough timers implemented for ymfm_set_timer\n");
 			return;
 		}
 		m_timers[tnum] = duration_in_clocks;
@@ -233,7 +233,7 @@ public:
 	{
 		if (ymfm_is_busy()) {
 			if (YM_is_strict()) {
-				printf("WARN: Write to YM2151 ($%02X <- $%02X) while busy.\n", (int)addr, (int)value);
+				fmt::print("WARN: Write to YM2151 (${:02X} <- ${:02X}) while busy.\n", (int)addr, (int)value);
 			} else {
 				m_write_queue.push({ addr, value });
 			}

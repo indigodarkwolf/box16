@@ -73,7 +73,7 @@ static void audio_callback(void *, Uint8 *stream, int len)
 {
 	const int expected = 2 * SAMPLES_PER_BUFFER * sizeof(int16_t);
 	if (len != expected) {
-		printf("ERROR: Audio buffer size mismatch! (expected: %d, got: %d)\n", expected, len);
+		fmt::print("ERROR: Audio buffer size mismatch! (expected: {}, got: {})\n", expected, len);
 		return;
 	}
 
@@ -106,7 +106,7 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 
 	Audio_dev = SDL_OpenAudioDevice(dev_name, 0, &desired, &obtained, 0);
 	if (Audio_dev <= 0) {
-		fprintf(stderr, "SDL_OpenAudioDevice failed: %s\n", SDL_GetError());
+		fmt::print(stderr, "SDL_OpenAudioDevice failed: {}\n", SDL_GetError());
 		if (dev_name != NULL) {
 			audio_usage();
 		}
@@ -115,7 +115,7 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 	Obtained_sample_rate = obtained.freq;
 	Clocks_per_sample    = 8000000 / Obtained_sample_rate;
 
-	printf("INFO: Audio buffer is %d bytes\n", obtained.size);
+	fmt::print("INFO: Audio buffer is {} bytes\n", obtained.size);
 
 	// Prime the buffer
 	{
@@ -167,10 +167,10 @@ void audio_usage(void)
 	SDL_InitSubSystem(SDL_INIT_AUDIO);
 
 	// List all available sound devices
-	printf("The following sound output devices are available:\n");
+	fmt::print("The following sound output devices are available:\n");
 	const int sounds = SDL_GetNumAudioDevices(0);
 	for (int i = 0; i < sounds; ++i) {
-		printf("\t%s\n", SDL_GetAudioDeviceName(i, 0));
+		fmt::print("\t{}\n", SDL_GetAudioDeviceName(i, 0));
 	}
 
 	SDL_Quit();

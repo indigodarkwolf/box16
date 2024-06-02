@@ -38,11 +38,11 @@ bool files_find(std::filesystem::path &real_path, const std::filesystem::path &s
 		}
 	}
 
-	printf("Could not find %s in the following locations:\n", search_path.generic_string().c_str());
-	printf("\t%s\n", search_path.generic_string().c_str());
+	fmt::print("Could not find {} in the following locations:\n", search_path.generic_string());
+	fmt::print("\t{}\n", search_path.generic_string());
 	if (!search_path.is_absolute()) {
-		printf("\t%s\n", (options_get_base_path() / search_path).generic_string().c_str());
-		printf("\t%s\n", (options_get_prefs_path() / search_path).generic_string().c_str());
+		fmt::print("\t{}\n", (options_get_base_path() / search_path).generic_string());
+		fmt::print("\t{}\n", (options_get_prefs_path() / search_path).generic_string());
 	}
 	return false;
 }
@@ -93,7 +93,7 @@ x16file *open_files = NULL;
 static bool get_tmp_name(char *path_buffer, const char *original_path, char const *extension)
 {
 	if (strlen(original_path) > PATH_MAX - strlen(extension)) {
-		printf("Path too long, cannot create temp file: %s\n", original_path);
+		fmt::print("Path too long, cannot create temp file: {}\n", original_path);
 		return false;
 	}
 
@@ -157,24 +157,24 @@ x16file *x16open(const char *path, const char *attribs)
 	if (file_is_compressed_type(path)) {
 		char tmp_path[PATH_MAX];
 		if (!get_tmp_name(tmp_path, path, ".tmp")) {
-			printf("Path too long, cannot create temp file: %s\n", path);
+			fmt::print("Path too long, cannot create temp file: {}\n", path);
 			goto error;
 		}
 
 		gzFile zfile = gzopen(path, "rb");
 		if (zfile == Z_NULL) {
-			printf("Could not open file for decompression: %s\n", path);
+			fmt::print("Could not open file for decompression: {}\n", path);
 			goto error;
 		}
 
 		SDL_RWops *tfile = SDL_RWFromFile(tmp_path, "wb");
 		if (tfile == NULL) {
 			gzclose(zfile);
-			printf("Could not open file for write: %s\n", tmp_path);
+			fmt::print("Could not open file for write: {}\n", tmp_path);
 			goto error;
 		}
 
-		printf("Decompressing %s\n", path);
+		fmt::print("Decompressing {}\n", path);
 
 		const int buffer_size = 16 * 1024 * 1024;
 		char     *buffer      = (char *)malloc(buffer_size);
@@ -185,14 +185,14 @@ x16file *x16open(const char *path, const char *attribs)
 		size_t       progress_threshold = progress_increment;
 		while (read > 0) {
 			if (total_read > progress_threshold) {
-				printf("%zd MB\n", total_read / (1024 * 1024));
+				fmt::print("{:d} MB\n", total_read / (1024 * 1024));
 				progress_threshold += progress_increment;
 			}
 			SDL_RWwrite(tfile, buffer, read, 1);
 			read = gzread(zfile, buffer, buffer_size);
 			total_read += read;
 		}
-		printf("%zd MB\n", total_read / (1024 * 1024));
+		fmt::print("{:d} MB\n", total_read / (1024 * 1024));
 
 		SDL_RWclose(tfile);
 		gzclose(zfile);
@@ -234,7 +234,7 @@ void x16close(x16file *f)
 	if (file_is_compressed_type(f->path)) {
 		char tmp_path[PATH_MAX];
 		if (!get_tmp_name(tmp_path, f->path, ".tmp")) {
-			printf("Path too long, cannot create temp file: %s\n", f->path);
+			fmt::print("Path too long, cannot create temp file: {}\n", f->path);
 
 			if (f == open_files) {
 				open_files = f->next;
@@ -268,7 +268,7 @@ void x16close(x16file *f)
 
 		gzFile zfile = gzopen(f->path, "wb6");
 		if (zfile == Z_NULL) {
-			printf("Could not open file for compression: %s\n", f->path);
+			fmt::print("Could not open file for compression: {}\n", f->path);
 			unlink(tmp_path);
 			if (f == open_files) {
 				open_files = f->next;
@@ -287,7 +287,7 @@ void x16close(x16file *f)
 		SDL_RWops *tfile = SDL_RWFromFile(tmp_path, "rb");
 		if (tfile == NULL) {
 			gzclose(zfile);
-			printf("Could not open file for read: %s\n", tmp_path);
+			fmt::print("Could not open file for read: {}\n", tmp_path);
 
 			if (zfile != Z_NULL) {
 				gzclose(zfile);
@@ -307,7 +307,7 @@ void x16close(x16file *f)
 			return;
 		}
 
-		printf("Recompressing %s\n", f->path);
+		fmt::print("Recompressing {}\n", f->path);
 
 		const size_t buffer_size = 16 * 1024 * 1024;
 		char        *buffer      = (char *)malloc(buffer_size);
@@ -318,7 +318,7 @@ void x16close(x16file *f)
 		size_t       total_read         = read;
 		while (read > 0) {
 			if (total_read > progress_threshold) {
-				printf("%d%%\n", (int)(total_read * 100 / f->size));
+				fmt::print("{:d}%\n", (int)(total_read * 100 / f->size));
 				progress_threshold += progress_increment;
 			}
 			gzwrite(zfile, buffer, (unsigned int)read);

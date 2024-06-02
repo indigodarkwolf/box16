@@ -46,230 +46,233 @@ static const char *token_or_empty(char *str, const char *token)
 
 static void usage()
 {
-	printf("%s %s (%s)\n", VER_TITLE, VER_NUM, VER_NAME);
-	printf("Copyright (c) 2019-2023 Michael Steil,\n");
-	printf("              2020 Frank van den Hoef,\n");
-	printf("              2021-2023 Stephen Horn, et al.\n");
-	printf("All rights reserved. License: 2-clause BSD\n\n");
+	fmt::print("{} {} ({})\n", VER_TITLE, VER_NUM, VER_NAME);
+	fmt::print("Copyright (c) 2019-2023 Michael Steil,\n");
+	fmt::print("              2020 Frank van den Hoef,\n");
+	fmt::print("              2021-2024 Stephen Horn, et al.\n");
+	fmt::print("All rights reserved. License: 2-clause BSD\n\n");
 
-	printf("Usage: box16 [option] ...\n\n");
+	fmt::print("Usage: box16 [option] ...\n\n");
 
-	printf("-abufs <number of audio buffers>\n");
-	printf("\tIs provided for backward-compatibility with x16emu toolchains,\n");
-	printf("\tbut is non-functional in Box16.\n");
+	fmt::print("-abufs <number of audio buffers>\n");
+	fmt::print("\tIs provided for backward-compatibility with x16emu toolchains,\n");
+	fmt::print("\tbut is non-functional in Box16.\n");
 
-	printf("-bas <app.txt>\n");
-	printf("\tInject a BASIC program in ASCII encoding through the\n");
-	printf("\tkeyboard.\n");
+	fmt::print("-bas <app.txt>\n");
+	fmt::print("\tInject a BASIC program in ASCII encoding through the\n");
+	fmt::print("\tkeyboard.\n");
 
-	printf("-debug <address>\n");
-	printf("\tSet a breakpoint in the debugger\n");
+	fmt::print("-debug <address>\n");
+	fmt::print("\tSet a breakpoint in the debugger\n");
 
-	printf("-dump {C|R|B|V}...\n");
-	printf("\tConfigure system dump: (C)PU, (R)AM, (B)anked-RAM, (V)RAM\n");
-	printf("\tMultiple characters are possible, e.g. -dump CV ; Default: RB\n");
+	fmt::print("-dump {{C|R|B|V}}...\n");
+	fmt::print("\tConfigure system dump: (C)PU, (R)AM, (B)anked-RAM, (V)RAM\n");
+	fmt::print("\tMultiple characters are possible, e.g. -dump CV ; Default: RB\n");
 
-	printf("-echo [{iso|raw}]\n");
-	printf("\tPrint all KERNAL output to the host's stdout.\n");
-	printf("\tBy default, everything but printable ASCII characters get\n");
-	printf("\tescaped. \"iso\" will escape everything but non-printable\n");
-	printf("\tISO-8859-15 characters and convert the output to UTF-8.\n");
-	printf("\t\"raw\" will not do any substitutions.\n");
-	printf("\tWith the BASIC statement \"LIST\", this can be used\n");
-	printf("\tto detokenize a BASIC program.\n");
+	fmt::print("-echo [{{iso|raw}}]\n");
+	fmt::print("\tPrint all KERNAL output to the host's stdout.\n");
+	fmt::print("\tBy default, everything but printable ASCII characters get\n");
+	fmt::print("\tescaped. \"iso\" will escape everything but non-printable\n");
+	fmt::print("\tISO-8859-15 characters and convert the output to UTF-8.\n");
+	fmt::print("\t\"raw\" will not do any substitutions.\n");
+	fmt::print("\tWith the BASIC statement \"LIST\", this can be used\n");
+	fmt::print("\tto detokenize a BASIC program.\n");
 
-	printf("-fullscreen\n");
-	printf("\tStart up in fullscreen mode instead of in a window.\n");
+	fmt::print("-fullscreen\n");
+	fmt::print("\tStart up in fullscreen mode instead of in a window.\n");
 
-	printf("-hypercall_path <path>\n");
-	printf("\tSet the base path for hypercalls (effectively, the current working directory when no SD card is attached).\n");
+	fmt::print("-hypercall_path <path>\n");
+	fmt::print("\tSet the base path for hypercalls (effectively, the current working directory when no SD card is attached).\n");
 
-	printf("-gif <file.gif>[,wait]\n");
-	printf("\tRecord a gif for the video output.\n");
-	printf("\tUse ,wait to start paused.\n");
+	fmt::print("-gif <file.gif>[,wait]\n");
+	fmt::print("\tRecord a gif for the video output.\n");
+	fmt::print("\tUse ,wait to start paused.\n");
 
-	printf("-help\n");
-	printf("\tPrint this message and exit.\n");
+	fmt::print("-help\n");
+	fmt::print("\tPrint this message and exit.\n");
 
-	printf("-ignore_ini\n");
-	printf("\tDo not attempt to apply Box16 options from any ini file.\n");
+	fmt::print("-ignore_ini\n");
+	fmt::print("\tDo not attempt to apply Box16 options from any ini file.\n");
 
-	printf("-ini <inifile.ini>\n");
-	printf("\tUse this ini file for emulator settings and options.\n");
-	printf("\tIf -ignore_ini is also specified, this will set the location of the ini file, but not actually load settings from it.\n");
-	printf("\tIf -save_ini is also specified, the emulator settings for this run will be saved to this ini file.\n");
+	fmt::print("-ini <inifile.ini>\n");
+	fmt::print("\tUse this ini file for emulator settings and options.\n");
+	fmt::print("\tIf -ignore_ini is also specified, this will set the location of the ini file, but not actually load settings from it.\n");
+	fmt::print("\tIf -save_ini is also specified, the emulator settings for this run will be saved to this ini file.\n");
 
-	printf("-keymap <keymap>\n");
-	printf("\tEnable a specific keyboard layout decode table.\n");
+	fmt::print("-keymap <keymap>\n");
+	fmt::print("\tEnable a specific keyboard layout decode table.\n");
 
 #if defined(TRACE)
-	printf("-log {K|S|V|Cl|Cb|Ca|Co|Mw|Mr}...\n");
-	printf("\tEnable logging of (K)eyboard, (S)peed, (V)ideo, (C)pu, (M)emory.\n");
-	printf("\tMultiple characters are possible, e.g. -log KS\n");
-	printf("\tCpu activity logging works with zones:\n");
-	printf("\t\t- Cl = Cpu activity logging in low ram,     from $0000 to $07FF.\n");
-	printf("\t\t- Cm = Cpu activity logging in main ram,    from $0800 to $9FFF.\n");
-	printf("\t\t- Ca = Cpu activity logging in banked ram,  from $A000 to $BFFF.\n");
-	printf("\t\t- Co = Cpu activity logging in banked rom,  from $C000 to $FFFF.\n");
-	printf("\tMemory activity logging works in two modes:\n");
-	printf("\t\t- Mr = Memory read activity logging.\n");
-	printf("\t\t- Mw = Memory write activity logging.\n");
+	fmt::print("-log {{K|S|V|Cl|Cb|Ca|Co|Mw|Mr}}...\n");
+	fmt::print("\tEnable logging of (K)eyboard, (S)peed, (V)ideo, (C)pu, (M)emory.\n");
+	fmt::print("\tMultiple characters are possible, e.g. -log KS\n");
+	fmt::print("\tCpu activity logging works with zones:\n");
+	fmt::print("\t\t- Cl = Cpu activity logging in low ram,     from $0000 to $07FF.\n");
+	fmt::print("\t\t- Cm = Cpu activity logging in main ram,    from $0800 to $9FFF.\n");
+	fmt::print("\t\t- Ca = Cpu activity logging in banked ram,  from $A000 to $BFFF.\n");
+	fmt::print("\t\t- Co = Cpu activity logging in banked rom,  from $C000 to $FFFF.\n");
+	fmt::print("\tMemory activity logging works in two modes:\n");
+	fmt::print("\t\t- Mr = Memory read activity logging.\n");
+	fmt::print("\t\t- Mw = Memory write activity logging.\n");
 
 #else
-	printf("-log {K|S|V}...\n");
-	printf("\tEnable logging of (K)eyboard, (S)peed, (V)ideo, (C)pu.\n");
-	printf("\tMultiple characters are possible, e.g. -log KS\n");
+	fmt::print("-log {{K|S|V}}...\n");
+	fmt::print("\tEnable logging of (K)eyboard, (S)peed, (V)ideo, (C)pu.\n");
+	fmt::print("\tMultiple characters are possible, e.g. -log KS\n");
 #endif
 
-	printf("-nobinds\n");
-	printf("\tDisable most emulator keyboard shortcuts.\n");
+	fmt::print("-memorystats\n");
+	fmt::print("\tGenerate a memory_stats.txt file when the emulator exits.\n");
 
-	printf("-noemucmdkeys\n");
-	printf("\tAlias for -nobinds.\n");
+	fmt::print("-nobinds\n");
+	fmt::print("\tDisable most emulator keyboard shortcuts.\n");
 
-	printf("-nofullscreen\n");
-	printf("\tClears the -fullscreen option if it was set. This overrides -fullscreen.");
+	fmt::print("-noemucmdkeys\n");
+	fmt::print("\tAlias for -nobinds.\n");
 
-	printf("-nohostieee\n");
-	printf("\tDisable IEEE-488 hypercalls. These are normally enabled unless an SD card is attached or -serial is specified.\n");
+	fmt::print("-nofullscreen\n");
+	fmt::print("\tClears the -fullscreen option if it was set. This overrides -fullscreen.");
 
-	printf("-nohypercalls\n");
-	printf("\tDisable all hypercalls in Box16.\n");
+	fmt::print("-nohostieee\n");
+	fmt::print("\tDisable IEEE-488 hypercalls. These are normally enabled unless an SD card is attached or -serial is specified.\n");
 
-	printf("-nopanels\n");
-	printf("\tDo not automatically re-open any panels from the previous session.\n");
+	fmt::print("-nohypercalls\n");
+	fmt::print("\tDisable all hypercalls in Box16.\n");
 
-	printf("-nosound\n");
-	printf("\tDisables audio. Incompatible with -sound.\n");
+	fmt::print("-nopanels\n");
+	fmt::print("\tDo not automatically re-open any panels from the previous session.\n");
 
-	printf("-nvram <nvram.bin>\n");
-	printf("\tSpecify NVRAM image. By default, the machine starts with\n");
-	printf("\tempty NVRAM and does not save it to disk.\n");
+	fmt::print("-nosound\n");
+	fmt::print("\tDisables audio. Incompatible with -sound.\n");
 
-	printf("-prg <app.prg>[,<load_addr>]\n");
-	printf("\tLoad application from the local disk into RAM\n");
-	printf("\t(.PRG file with 2 byte start address header)\n");
-	printf("\tThe override load address is hex without a prefix.\n");
+	fmt::print("-nvram <nvram.bin>\n");
+	fmt::print("\tSpecify NVRAM image. By default, the machine starts with\n");
+	fmt::print("\tempty NVRAM and does not save it to disk.\n");
 
-	printf("-quality {nearest|linear|best}\n");
-	printf("\tScaling algorithm quality\n");
+	fmt::print("-prg <app.prg>[,<load_addr>]\n");
+	fmt::print("\tLoad application from the local disk into RAM\n");
+	fmt::print("\t(.PRG file with 2 byte start address header)\n");
+	fmt::print("\tThe override load address is hex without a prefix.\n");
 
-	printf("-ram <ramsize>\n");
-	printf("\tSpecify banked RAM size in KB (8, 16, 32, ..., 2048).\n");
-	printf("\tThe default is 512.\n");
+	fmt::print("-quality {{nearest|linear|best}}\n");
+	fmt::print("\tScaling algorithm quality\n");
 
-	printf("-rom <rom.bin>\n");
-	printf("\tOverride KERNAL/BASIC/* ROM file.\n");
+	fmt::print("-ram <ramsize>\n");
+	fmt::print("\tSpecify banked RAM size in KB (8, 16, 32, ..., 2048).\n");
+	fmt::print("\tThe default is 512.\n");
 
-	printf("-romcart <cart.bin>[,<banknum>]\n");
-	printf("\tLoad a cartridge into ROM space starting at the specified banknum, or bank 32 if omitted.\n");
-	printf("\t-romcart can be specified multiple times, or its arguments can be specified as a comma-separated list.\n");
-	printf("\t(example: `-romcart cart0.bin,32,cart1.bin,36,cart2.bin,40`)\n");
+	fmt::print("-rom <rom.bin>\n");
+	fmt::print("\tOverride KERNAL/BASIC/* ROM file.\n");
 
-	printf("-rtc\n");
-	printf("\tSet the real-time-clock to the current system time and date.\n");
+	fmt::print("-romcart <cart.bin>[,<banknum>]\n");
+	fmt::print("\tLoad a cartridge into ROM space starting at the specified banknum, or bank 32 if omitted.\n");
+	fmt::print("\t-romcart can be specified multiple times, or its arguments can be specified as a comma-separated list.\n");
+	fmt::print("\t(example: `-romcart cart0.bin,32,cart1.bin,36,cart2.bin,40`)\n");
 
-	printf("-randram\n");
-	printf("\t(deprecated, no effect)\n");
-	printf("-zeroram\n");
-	printf("\tSet all RAM to zero instead of uninitialized random values at boot.\n");
+	fmt::print("-rtc\n");
+	fmt::print("\tSet the real-time-clock to the current system time and date.\n");
 
-	printf("-run\n");
-	printf("\tStart the -prg/-bas program using RUN or SYS, depending\n");
-	printf("\ton the load address.\n");
+	fmt::print("-randram\n");
+	fmt::print("\t(deprecated, no effect)\n");
+	fmt::print("-zeroram\n");
+	fmt::print("\tSet all RAM to zero instead of uninitialized random values at boot.\n");
 
-	printf("-save_ini\n");
-	printf("\tSave current emulator settings to ini file. This includes the other command-line options specified with this run.\n");
-	printf("\tIf -ini has not been specified, this uses the default ini location under %%APPDATA%%\\Box16\\Box16 or ~/.local/Box16.\n");
+	fmt::print("-run\n");
+	fmt::print("\tStart the -prg/-bas program using RUN or SYS, depending\n");
+	fmt::print("\ton the load address.\n");
 
-	printf("-scale {1|2|3|4}\n");
-	printf("\tScale output to an integer multiple of 640x480\n");
+	fmt::print("-save_ini\n");
+	fmt::print("\tSave current emulator settings to ini file. This includes the other command-line options specified with this run.\n");
+	fmt::print("\tIf -ini has not been specified, this uses the default ini location under %%APPDATA%%\\Box16\\Box16 or ~/.local/Box16.\n");
 
-	printf("-sdcard <sdcard.img>\n");
-	printf("\tSpecify SD card image (partition map + FAT32)\n");
+	fmt::print("-scale {{1|2|3|4}}\n");
+	fmt::print("\tScale output to an integer multiple of 640x480\n");
 
-	printf("-serial\n");
-	printf("\tEnable the serial bus (experimental)\n");
+	fmt::print("-sdcard <sdcard.img>\n");
+	fmt::print("\tSpecify SD card image (partition map + FAT32)\n");
 
-	printf("-sound <output device>\n");
-	printf("\tSet the output device used for audio emulation. Incompatible with -nosound.\n");
+	fmt::print("-serial\n");
+	fmt::print("\tEnable the serial bus (experimental)\n");
 
-	printf("-stds\n");
-	printf("\tLoad standard (ROM) symbol files\n");
+	fmt::print("-sound <output device>\n");
+	fmt::print("\tSet the output device used for audio emulation. Incompatible with -nosound.\n");
 
-	printf("-sym <filename>[,<bank_num>]\n");
-	printf("\tLoad a VICE label file. Note that not all VICE debug commands are available.\n");
-	printf("\tLabels in banked memory will be assigned to the specified bank_num, or bank 0 if omitted.\n");
-	printf("\tSupported commands are:\n");
-	printf("\t\tadd_label <address> <label>\n");
-	printf("\t\tal <address> <label>\n");
-	printf("\t\t\tMap a given address to a label.\n");
-	printf("\t\tbreak <address>\n");
-	printf("\t\t\tSet a breakpoint at the specified address.\n");
+	fmt::print("-stds\n");
+	fmt::print("\tLoad standard (ROM) symbol files\n");
 
-	printf("-test {0, 1, 2, 3}\n");
-	printf("\tImmediately invoke the TEST command with the provided test number.\n");
+	fmt::print("-sym <filename>[,<bank_num>]\n");
+	fmt::print("\tLoad a VICE label file. Note that not all VICE debug commands are available.\n");
+	fmt::print("\tLabels in banked memory will be assigned to the specified bank_num, or bank 0 if omitted.\n");
+	fmt::print("\tSupported commands are:\n");
+	fmt::print("\t\tadd_label <address> <label>\n");
+	fmt::print("\t\tal <address> <label>\n");
+	fmt::print("\t\t\tMap a given address to a label.\n");
+	fmt::print("\t\tbreak <address>\n");
+	fmt::print("\t\t\tSet a breakpoint at the specified address.\n");
 
-	printf("-verbose\n");
-	printf("\tPrint additional debug output from the emulator.\n");
+	fmt::print("-test {{0, 1, 2, 3}}\n");
+	fmt::print("\tImmediately invoke the TEST command with the provided test number.\n");
 
-	printf("-version\n");
-	printf("\tPrint additional version information the emulator and ROM.\n");
+	fmt::print("-verbose\n");
+	fmt::print("\tPrint additional debug output from the emulator.\n");
 
-	printf("-vsync {none|get|wait}\n");
-	printf("\tUse specified vsync rendering strategy to avoid visual tearing.\n");
-	printf("\tUse 'none' if the content area remains white after start.\n");
+	fmt::print("-version\n");
+	fmt::print("\tPrint additional version information the emulator and ROM.\n");
 
-	printf("-warp {factor}\n");
-	printf("\tEnable warp mode, run emulator as fast as possible.\n");
-	printf("\tIf specified, the warp factor [1...16] determines how frequently to skip video rendering.\n");
-	printf("\tThis can significantly boost the emulated speed, at the cost of not seeing video.\n");
+	fmt::print("-vsync {{none|get|wait}}\n");
+	fmt::print("\tUse specified vsync rendering strategy to avoid visual tearing.\n");
+	fmt::print("\tUse 'none' if the content area remains white after start.\n");
 
-	printf("-wav <file.wav>[{,wait|,auto}]\n");
-	printf("\tRecord a wav for the audio output.\n");
-	printf("\tUse ,wait to start paused.\n");
-	printf("\tUse ,auto to start paused, but begin recording once a non-zero audio signal is detected.\n");
+	fmt::print("-warp {{factor}}\n");
+	fmt::print("\tEnable warp mode, run emulator as fast as possible.\n");
+	fmt::print("\tIf specified, the warp factor [1...16] determines how frequently to skip video rendering.\n");
+	fmt::print("\tThis can significantly boost the emulated speed, at the cost of not seeing video.\n");
 
-	printf("-widescreen\n");
-	printf("\tDisplay the emulated X16 in a 16:9 aspect ratio instead of 4:3.\n");
+	fmt::print("-wav <file.wav>[{{,wait|,auto}}]\n");
+	fmt::print("\tRecord a wav for the audio output.\n");
+	fmt::print("\tUse ,wait to start paused.\n");
+	fmt::print("\tUse ,auto to start paused, but begin recording once a non-zero audio signal is detected.\n");
 
-	printf("-wuninit\n");
-	printf("\tPrint a warning whenever uninitialized RAM is accessed.\n");
+	fmt::print("-widescreen\n");
+	fmt::print("\tDisplay the emulated X16 in a 16:9 aspect ratio instead of 4:3.\n");
 
-	printf("-ymirq\n");
-	printf("\tEnable the YM2151's IRQ generation.\n");
+	fmt::print("-wuninit\n");
+	fmt::print("\tPrint a warning whenever uninitialized RAM is accessed.\n");
 
-	printf("-ymstrict\n");
-	printf("\tEnable strict enforcement of YM behaviors.\n");
-	printf("\n");
+	fmt::print("-ymirq\n");
+	fmt::print("\tEnable the YM2151's IRQ generation.\n");
 
-	printf("\nThe following options are deprecated and will be ignored:\n\n");
+	fmt::print("-ymstrict\n");
+	fmt::print("\tEnable strict enforcement of YM behaviors.\n");
+	fmt::print("\n");
 
-	printf("-create_patch <target.bin>\n");
-	// printf("\tCreate a patch from the current ROM image (specified by -rom) to this target ROM image.\n");
+	fmt::print("\nThe following options are deprecated and will be ignored:\n\n");
 
-	printf("-ignore_patch\n");
-	// printf("\tWhen loading ROM data, ignore the current patch file.\n");
+	fmt::print("-create_patch <target.bin>\n");
+	// fmt::print("\tCreate a patch from the current ROM image (specified by -rom) to this target ROM image.\n");
 
-	printf("-joy1\n");
-	// printf("\tEnable binding a gamepad to SNES controller port 1\n");
+	fmt::print("-ignore_patch\n");
+	// fmt::print("\tWhen loading ROM data, ignore the current patch file.\n");
 
-	printf("-joy2\n");
-	// printf("\tEnable binding a gamepad to SNES controller port 2\n");
+	fmt::print("-joy1\n");
+	// fmt::print("\tEnable binding a gamepad to SNES controller port 1\n");
 
-	printf("-joy3\n");
-	// printf("\tEnable binding a gamepad to SNES controller port 3\n");
+	fmt::print("-joy2\n");
+	// fmt::print("\tEnable binding a gamepad to SNES controller port 2\n");
 
-	printf("-joy4\n");
-	// printf("\tEnable binding a gamepad to SNES controller port 4\n");
+	fmt::print("-joy3\n");
+	// fmt::print("\tEnable binding a gamepad to SNES controller port 3\n");
 
-	printf("-nopatch\n");
-	// printf("\tThis is an alias for -ignore_patch.\n");
+	fmt::print("-joy4\n");
+	// fmt::print("\tEnable binding a gamepad to SNES controller port 4\n");
 
-	printf("-patch <patch.bpf>\n");
-	// printf("\tApply the following patch file to rom.\n");
-	// printf("\tIf -create_patch has also been specified, this patch file is overwritten with the newly created patch data.\n");
-	// printf("\tIf -ignore_patch has also specified, this patch file will not be applied during system boot.\n");
+	fmt::print("-nopatch\n");
+	// fmt::print("\tThis is an alias for -ignore_patch.\n");
+
+	fmt::print("-patch <patch.bpf>\n");
+	// fmt::print("\tApply the following patch file to rom.\n");
+	// fmt::print("\tIf -create_patch has also been specified, this patch file is overwritten with the newly created patch data.\n");
+	// fmt::print("\tIf -ignore_patch has also specified, this patch file will not be applied during system boot.\n");
 
 	exit(1);
 }
@@ -339,22 +342,22 @@ static constexpr const char *keymaps_strict[] = {
 
 void usage_ram()
 {
-	printf("The following ram are supported:\n");
+	fmt::print("The following ram are supported:\n");
 	for (int cmp = 8; cmp <= 2048; cmp *= 2) {
-		printf("\t%d\n", cmp);
+		fmt::print("\t{:d}\n", cmp);
 	}
 	exit(1);
 }
 
 void usage_keymap()
 {
-	printf("The following keymaps are supported:\n");
+	fmt::print("The following keymaps are supported:\n");
 	for (size_t i = 0; i < sizeof(keymaps) / sizeof(*keymaps); i++) {
-		printf("\t%s\n", keymaps_strict[i]);
+		fmt::print("\t{}\n", keymaps_strict[i]);
 	}
-	printf("\nAlternatively, the following labels may also be used:\n");
+	fmt::print("\nAlternatively, the following labels may also be used:\n");
 	for (size_t i = 0; i < sizeof(keymaps) / sizeof(*keymaps); i++) {
-		printf("\t%s\n", keymaps[i]);
+		fmt::print("\t{}\n", keymaps[i]);
 	}
 	exit(1);
 }
@@ -528,7 +531,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			argc--;
 			argv++;
 			if (ini["fullscreen"] == "true") {
-				printf("Warning: -fullscreen and -nofullscreen found, -nofullscreen will take priority.\n");
+				fmt::print("Warning: -fullscreen and -nofullscreen found, -nofullscreen will take priority.\n");
 			}
 			ini["fullscreen"] = "false";
 
@@ -759,7 +762,7 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 		} else if (!strcmp(argv[0], "-version")) {
 			argc--;
 			argv++;
-			printf("%s %s\n", VER_NUM, VER_NAME);
+			fmt::print("{} {}\n", VER_NUM, VER_NAME);
 			exit(0);
 
 		} else if (!strcmp(argv[0], "-vsync")) {
@@ -1528,7 +1531,7 @@ void options_init(const char *base_path, const char *prefs_path, int argc, char 
 	auto apply_ini = [&](mINI::INIMap<std::string> &ini) {
 		const char *fail = set_options(Options, ini);
 		if (fail != nullptr) {
-			printf("Error applying ini file option \"%s\"\n", fail);
+			fmt::print("Error applying ini file option \"{}\"\n", fail);
 
 			if (!strcmp(fail, "ram")) {
 				usage_ram();
@@ -1673,25 +1676,13 @@ bool options_find_file(std::filesystem::path &real_path, const std::filesystem::
 		}
 	}
 
-	printf("Could not find %s in the following locations:\n", search_path.generic_string().c_str());
-	printf("\t%s\n", search_path.generic_string().c_str());
+	fmt::print("Could not find {} in the following locations:\n", search_path.generic_string().c_str());
+	fmt::print("\t{}\n", search_path.generic_string());
 	if (!search_path.is_absolute()) {
-		printf("\t%s\n", (Options_base_path / search_path).generic_string().c_str());
-		printf("\t%s\n", (Options_prefs_path / search_path).generic_string().c_str());
+		fmt::print("\t{}\n", (Options_base_path / search_path).generic_string());
+		fmt::print("\t{}\n", (Options_prefs_path / search_path).generic_string());
 	}
 	return false;
-}
-
-int options_log_verbose(const char *format, ...)
-{
-	if (Options.log_verbose) {
-		va_list ap;
-		va_start(ap, format);
-		int result = vprintf(format, ap);
-		va_end(ap);
-		return result;
-	}
-	return 0;
 }
 
 const std::filesystem::path &options_get_base_path()

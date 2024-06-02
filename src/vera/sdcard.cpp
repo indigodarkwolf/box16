@@ -89,11 +89,11 @@ void sdcard_attach()
 	if (!sdcard_attached && sdcard_path_is_set()) {
 		sdcard_file = x16open(sdcard_path, "r+b");
 		if (sdcard_file == nullptr) {
-			printf("Cannot open SDCard file %s!\n", sdcard_path);
+			fmt::print("Cannot open SDCard file {}!\n", sdcard_path);
 			return;
 		}
 
-		printf("SD card attached.\n");
+		fmt::print("SD card attached.\n");
 		sdcard_attached = true;
 		is_initialized  = false;
 
@@ -107,7 +107,7 @@ void sdcard_detach()
 		x16close(sdcard_file);
 		sdcard_file = nullptr;
 
-		printf("SD card detached.\n");
+		fmt::print("SD card detached.\n");
 		sdcard_attached = false;
 
 		hypercalls_update();
@@ -124,7 +124,7 @@ void sdcard_select(bool select)
 	selected  = select;
 	rxbuf_idx = 0;
 #if defined(VERBOSE) && VERBOSE >= 2
-	printf("*** SD card select: %u\n", select);
+	fmt::print("*** SD card select: %u\n", select);
 #endif
 }
 
@@ -168,7 +168,7 @@ uint8_t sdcard_handle(uint8_t inbyte)
 	if (!selected || sdcard_file == nullptr) {
 		return 0xFF;
 	}
-	// printf("sdcard_handle: %02X\n", inbyte);
+	// fmt::print("sdcard_handle: {:02X}\n", inbyte);
 
 	uint8_t outbyte = 0xFF;
 
@@ -203,7 +203,7 @@ uint8_t sdcard_handle(uint8_t inbyte)
 			last_cmd = rxbuf[0];
 
 #if defined(VERBOSE) && VERBOSE >= 2
-			printf("*** SD %sCMD%d -> Response:", (rxbuf[0] & 0x80) ? "A" : "", rxbuf[0] & 0x3F);
+			fmt::print("*** SD {}CMD{:d} -> Response:", (rxbuf[0] & 0x80) ? "A" : "", rxbuf[0] & 0x3F);
 #endif
 			switch (rxbuf[0]) {
 				case CMD0: {
@@ -244,7 +244,7 @@ uint8_t sdcard_handle(uint8_t inbyte)
 					read_block_response[0] = 0;
 					read_block_response[1] = 0xFE;
 #ifdef VERBOSE
-					printf("*** SD Reading LBA %d\n", lba);
+					fmt::print("*** SD Reading LBA {:d}\n", lba);
 #endif
 					if ((uint64_t)lba * 512 >= x16size(sdcard_file)) {
 						read_block_response[1] = 0x08; // out of range
@@ -253,7 +253,7 @@ uint8_t sdcard_handle(uint8_t inbyte)
 						x16seek(sdcard_file, (Sint64)lba * 512, XSEEK_SET);
 						size_t bytes_read = x16read(sdcard_file, &read_block_response[2], 1, 512);
 						if (bytes_read != 512) {
-							printf("Warning: short read!\n");
+							fmt::print("Warning: short read!\n");
 						}
 
 						response        = read_block_response;
@@ -294,9 +294,9 @@ uint8_t sdcard_handle(uint8_t inbyte)
 
 #if defined(VERBOSE) && VERBOSE >= 2
 			for (int i = 0; i < (response_length < 16 ? response_length : 16); i++) {
-				printf(" %02X", response[i]);
+				fmt::print(" {:02X}", response[i]);
 			}
-			printf("\n");
+			fmt::print("\n");
 #endif
 
 		} else if (rxbuf_idx == 515) {
@@ -304,7 +304,7 @@ uint8_t sdcard_handle(uint8_t inbyte)
 			// Check for 'start block' byte
 			if (last_cmd == CMD24 && rxbuf[0] == 0xFE) {
 #ifdef VERBOSE
-				printf("*** SD Writing LBA %d\n", lba);
+				fmt::print("*** SD Writing LBA {:d}\n", lba);
 #endif
 				if ((uint64_t)lba * 512 >= x16size(sdcard_file)) {
 					// do nothing?
@@ -312,7 +312,7 @@ uint8_t sdcard_handle(uint8_t inbyte)
 					x16seek(sdcard_file, (Sint64)lba * 512, XSEEK_SET);
 					size_t bytes_written = x16write(sdcard_file, rxbuf + 1, 1, 512);
 					if (bytes_written != 512) {
-						printf("Warning: short write!\n");
+						fmt::print("Warning: short write!\n");
 					}
 				}
 			}

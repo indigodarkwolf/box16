@@ -98,7 +98,7 @@ bool icon_set::load_file(const char *filename, int icon_width, int icon_height)
 	unsigned                   icons_w;
 	unsigned                   icons_h;
 	if (lodepng::decode(icons_buf, icons_w, icons_h, filename, LCT_RGBA) != 0) {
-		printf("Unable to load file %s\n", filename);
+		fmt::print("Unable to load file {}\n", filename);
 		return false;
 	}
 	SDL_Surface *icons = SDL_CreateRGBSurfaceWithFormatFrom(icons_buf.data(), icons_w, icons_h, 32, icons_w * 4, SDL_PIXELFORMAT_RGBA8888);
@@ -231,7 +231,7 @@ void display_video()
 		}
 		GLenum result = glGetError();
 		if (result != GL_NO_ERROR) {
-			printf("GL error %d\n", result);
+			fmt::print("GL error {}\n", result);
 		}
 	}
 
@@ -285,7 +285,7 @@ bool display_init()
 	{
 		IMGUI_CHECKVERSION();
 		if (ImGui::CreateContext() == nullptr) {
-			printf("Unable to create ImGui context\n");
+			fmt::print("Unable to create ImGui context\n");
 			return false;
 		}
 
@@ -325,32 +325,27 @@ bool display_init()
 #endif
 
 		if (SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1) < 0) {
-			printf("Unable to set SDL GL attribute SDL_GL_DOUBLEBUFFER: %s\n", SDL_GetError());
+			fmt::print("Unable to set SDL GL attribute SDL_GL_DOUBLEBUFFER: {}\n", SDL_GetError());
 			return false;
 		}
 		if (SDL_GL_SetAttribute(SDL_GL_BUFFER_SIZE, 32) < 0) {
-			printf("Unable to set SDL GL attribute SDL_GL_BUFFER_SIZE: %s\n", SDL_GetError());
+			fmt::print("Unable to set SDL GL attribute SDL_GL_BUFFER_SIZE: {}\n", SDL_GetError());
 			return false;
 		}
 		if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2) < 0) {
-			printf("Unable to set SDL GL attribute SDL_GL_CONTEXT_MAJOR_VERSION: %s\n", SDL_GetError());
+			fmt::print("Unable to set SDL GL attribute SDL_GL_CONTEXT_MAJOR_VERSION: {}\n", SDL_GetError());
 			return false;
 		}
 		if (SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2) < 0) {
-			printf("Unable to set SDL GL attribute SDL_GL_CONTEXT_MINOR_VERSION: %s\n", SDL_GetError());
+			fmt::print("Unable to set SDL GL attribute SDL_GL_CONTEXT_MINOR_VERSION: {}\n", SDL_GetError());
 			return false;
 		}
 
-		char title[128];
-#if defined(WIN32)
-		sprintf_s(title, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
-#else
-		sprintf(title, "%s %s (%s)", VER_TITLE, VER_NUM, VER_NAME);
-#endif
+		const std::string title = fmt::format("{} {} ({})", VER_TITLE, VER_NUM, VER_NAME);
 
-		Display_window = SDL_CreateWindow(title, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, Options.window_width, Options.window_height, sdl_window_flags);
+		Display_window = SDL_CreateWindow(title.c_str(), SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, Options.window_width, Options.window_height, sdl_window_flags);
 		if (Display_window == nullptr) {
-			printf("Unable to create SDL window: %s\n", SDL_GetError());
+			fmt::print("Unable to create SDL window: {}\n", SDL_GetError());
 			return false;
 		}
 
@@ -399,12 +394,12 @@ bool display_init()
 		Display_context = SDL_GL_CreateContext(Display_window);
 
 		if (SDL_GL_MakeCurrent(Display_window, Display_context) < 0) {
-			printf("Create display context (SDL_GL_MakeCurrent): %s\n", SDL_GetError());
+			fmt::print("Create display context (SDL_GL_MakeCurrent): {}\n", SDL_GetError());
 			return false;
 		}
 
 		if (SDL_GL_SetSwapInterval(1) < 0) {
-			printf("Create display context (SDL_GL_SetSwapInterval): %s\n", SDL_GetError());
+			fmt::print("Create display context (SDL_GL_SetSwapInterval): {}\n", SDL_GetError());
 		}
 	}
 	Initd_display_context = true;
@@ -412,16 +407,16 @@ bool display_init()
 	// Initialize GLAD
 	{
 		int version = gladLoadGLES2((GLADloadfunc)SDL_GL_GetProcAddress);
-		printf("GLES %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+		fmt::print("GLES {:d}.{:d}\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
 		if (version == 0) {
-			printf("Failed to initialize OpenGL context (`gladLoadGLES2()` returned 0)\n");
+			fmt::print("Failed to initialize OpenGL context (`gladLoadGLES2()` returned 0)\n");
 			return false;
 		}
 
 		version = gladLoadGL((GLADloadfunc)SDL_GL_GetProcAddress);
-		printf("GL %d.%d\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+		fmt::print("GL {:d}.{:d}\n", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
 		if (version == 0) {
-			printf("Failed to initialize OpenGL context (`gladLoadGL()` returned 0)\n");
+			fmt::print("Failed to initialize OpenGL context (`gladLoadGL()` returned 0)\n");
 			return false;
 		}
 	}
@@ -449,7 +444,7 @@ bool display_init()
 		// attach texture to framebuffer
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, Display_framebuffer_texture_handle, 0);
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			printf("Unable to create framebuffer for render to texture: %d.\n", glCheckFramebufferStatus(GL_FRAMEBUFFER));
+			fmt::print("Unable to create framebuffer for render to texture: {:d}.\n", glCheckFramebufferStatus(GL_FRAMEBUFFER));
 			return false;
 		}
 	}
@@ -468,20 +463,20 @@ bool display_init()
 		// attach texture to framebuffer
 		glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, Video_framebuffer_texture_handle, 0);
 		if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-			printf("Unable to create framebuffer for render to texture.\n");
+			fmt::print("Unable to create framebuffer for render to texture.\n");
 			return false;
 		}
 	}
 	Initd_video_framebuffer = true;
 
 	if (!ImGui_ImplSDL2_InitForOpenGL(Display_window, Display_context)) {
-		printf("Unable to init ImGui SDL2\n");
+		fmt::print("Unable to init ImGui SDL2\n");
 		return false;
 	}
 	Initd_imgui_sdl2 = true;
 
 	if (!ImGui_ImplOpenGL2_Init()) {
-		printf("Unable to init ImGui OpenGL\n");
+		fmt::print("Unable to init ImGui OpenGL\n");
 		return false;
 	}
 	Initd_imgui_opengl = true;
@@ -495,7 +490,7 @@ bool display_init()
 		std::filesystem::path icons_path = options_get_base_path() / "box16-icon56-24.png";
 
 		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path.generic_string(), LCT_RGB) != 0) {
-			printf("Unable to load icon resources from %s\n", icons_path.generic_string().c_str());
+			fmt::print("Unable to load icon resources from {}\n", icons_path.generic_string().c_str());
 			return false;
 		}
 
@@ -513,7 +508,7 @@ bool display_init()
 		std::filesystem::path icons_path = options_get_base_path() / "icons.png";
 
 		if (lodepng::decode(icons_buf, icons_w, icons_h, icons_path.generic_string(), LCT_RGBA) != 0) {
-			printf("Unable to load icon resources from %s\n", icons_path.generic_string().c_str());
+			fmt::print("Unable to load icon resources from {}\n", icons_path.generic_string());
 			return false;
 		}
 		SDL_Surface *icons = SDL_CreateRGBSurfaceWithFormatFrom(icons_buf.data(), icons_w, icons_h, 32, icons_w * 4, SDL_PIXELFORMAT_RGBA8888);
@@ -673,7 +668,7 @@ void display_process()
 	if (vsync_is_enabled()) {
 		Render_complete = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
 		if (Render_complete == 0) {
-			printf("Error: glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0) returned 0, V-Sync is probably not supported by this system's drivers.\n");
+			fmt::print("Error: glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0) returned 0, V-Sync is probably not supported by this system's drivers.\n");
 		}
 	}
 

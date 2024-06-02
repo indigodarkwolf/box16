@@ -364,7 +364,7 @@ static uint8_t get_ym_velocitated_volume(int volume, int velocity)
 static void note_off(open_midi_port &port, uint8_t channel, int keynum, int velocity)
 {
 	if (Show_midi_messages) {
-		printf("note off %d %d %d\n", channel, keynum, velocity);
+		fmt::print("note off {:d} {:d} {:d}\n", channel, keynum, velocity);
 	}
 
 	midi_key &key = port.channels[channel].keys_on[keynum];
@@ -391,7 +391,7 @@ static void note_off(open_midi_port &port, uint8_t channel, int keynum, int velo
 static void note_on(open_midi_port &port, uint8_t channel, int keynum, int velocity)
 {
 	if (Show_midi_messages) {
-		printf("note on %d %d %d\n", channel, keynum, velocity);
+		fmt::print("note on {:d} {:d} {:d}\n", channel, keynum, velocity);
 	}
 
 	if (velocity == 0) {
@@ -445,7 +445,7 @@ static void note_on(open_midi_port &port, uint8_t channel, int keynum, int veloc
 static void polyphonic_key_pressure(open_midi_port &port, uint8_t channel, int keynum, int pressure)
 {
 	if (Show_midi_messages) {
-		printf("polyphonic key pressure %d %d %d\n", channel, keynum, pressure);
+		fmt::print("polyphonic key pressure {:d} {:d} {:d}\n", channel, keynum, pressure);
 	}
 	// TODO: Write me.
 }
@@ -517,7 +517,7 @@ static void control_change_balance(open_midi_port &port, uint8_t channel, int co
 static void control_change(open_midi_port &port, uint8_t channel, int controller_number, int controller_value)
 {
 	if (Show_midi_messages) {
-		printf("control change %d %d %d\n", channel, controller_number, controller_value);
+		fmt::print("control change {:d} {:d} {:d}\n", channel, controller_number, controller_value);
 	}
 
 	switch (controller_number) {
@@ -696,7 +696,7 @@ static void control_change(open_midi_port &port, uint8_t channel, int controller
 static void program_change(open_midi_port &port, uint8_t channel, int program)
 {
 	if (Show_midi_messages) {
-		printf("program change %d %d\n", channel, program);
+		fmt::print("program change {:d} {:d}\n", channel, program);
 	}
 	// TODO: Write me.
 }
@@ -704,7 +704,7 @@ static void program_change(open_midi_port &port, uint8_t channel, int program)
 static void channel_pressure(open_midi_port &port, uint8_t channel, int pressure)
 {
 	if (Show_midi_messages) {
-		printf("channel pressure %d %d\n", channel, pressure);
+		fmt::print("channel pressure {:d} {:d}\n", channel, pressure);
 	}
 	// TODO: Write me.
 }
@@ -712,7 +712,7 @@ static void channel_pressure(open_midi_port &port, uint8_t channel, int pressure
 static void pitch_bend(open_midi_port &port, uint8_t channel, int bend)
 {
 	if (Show_midi_messages) {
-		printf("pitch bend %d %d\n", channel, bend);
+		fmt::print("pitch bend {:d} {:d}\n", channel, bend);
 	}
 
 	midi_channel_settings &settings = port.channels[channel].settings;
@@ -817,7 +817,7 @@ void midi_process()
 		while (message.size() > 0) {
 			if (Show_midi_messages) {
 				midi_port_descriptor desc(port);
-				printf("midi [%d,%d]: ", (int)desc.api, (int)desc.port_number);
+				fmt::print("midi [{:d},{:d}]: ", (int)desc.api, (int)desc.port_number);
 			}
 			parse_message(open_port, message);
 			open_port.controller->getMessage(&message);

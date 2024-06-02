@@ -27,3 +27,5 @@ uint8_t
 #include <stdio.h>
 #include <unistd.h>
 #endif
+
+#include <fmt/format.h>
