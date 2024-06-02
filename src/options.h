@@ -79,6 +79,7 @@ struct options {
 	bool dump_ram      = true;
 	bool dump_bank     = true;
 	bool dump_vram     = true;
+	bool dump_memstats = false;
 
 	echo_mode_t echo_mode = echo_mode_t::ECHO_MODE_NONE;
 

@@ -5,10 +5,12 @@
 
 #include "memory.h"
 
+#include <inttypes.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <fmt/format.h>
 
 #include "cpu/fake6502.h"
 #include "debugger.h"
@@ -35,7 +37,13 @@ uint8_t rom_bank_register;
 #define RAM_WRITE_BLOCKS (((RAM_SIZE) + 0x3f) >> 6)
 static uint64_t *RAM_written;
 
-static uint8_t addr_ym = 0;
+static uint64_t *RAM_read_counts;
+static uint64_t *RAM_write_counts;
+
+static uint64_t *ROM_read_counts;
+static uint64_t *ROM_write_counts;
+
+static uint8_t  addr_ym    = 0;
 static uint64_t clock_snap = 0UL;
 static uint64_t clock_base = 0UL;
 
@@ -117,16 +125,26 @@ void memory_init(const memory_init_params &init_params)
 	RAM                     = new uint8_t[ram_size];
 	if (Memory_params.randomize) {
 		srand((uint32_t)SDL_GetPerformanceCounter());
-		for (uint32_t i = 0; i < RAM_SIZE; ++i) {
+		for (uint32_t i = 0; i < ram_size; ++i) {
 			RAM[i] = rand();
 		}
 	} else {
-		memset(RAM, 0, RAM_SIZE);
+		memset(RAM, 0, ram_size);
 	}
 
 	const uint32_t ram_write_blocks = RAM_WRITE_BLOCKS;
 	RAM_written                     = new uint64_t[RAM_WRITE_BLOCKS];
 	memset(RAM_written, 0, RAM_WRITE_BLOCKS * sizeof(uint64_t));
+
+	RAM_read_counts  = new uint64_t[RAM_SIZE];
+	RAM_write_counts = new uint64_t[RAM_SIZE];
+	ROM_read_counts  = new uint64_t[ROM_SIZE];
+	ROM_write_counts = new uint64_t[ROM_SIZE];
+
+	memset(RAM_read_counts, 0, RAM_SIZE * sizeof(uint64_t));
+	memset(RAM_write_counts, 0, RAM_SIZE * sizeof(uint64_t));
+	memset(ROM_read_counts, 0, ROM_SIZE * sizeof(uint64_t));
+	memset(ROM_write_counts, 0, ROM_SIZE * sizeof(uint64_t));
 
 	build_memory_map(memmap_table_hi, memory_map_hi);
 	build_memory_map(memmap_table_io, memory_map_io);
@@ -170,7 +188,7 @@ static uint8_t real_ram_read(uint16_t address)
 	if ((RAM_written[real_address >> 6] & ((uint64_t)1 << (real_address & 0x3f))) == 0 && Memory_params.enable_uninitialized_access_warning) {
 		fmt::print("Warning: {:02X}:{:04X} accessed uninitialized RAM address {:02X}:{:04X}\n", bank6502(debug_state6502.pc), debug_state6502.pc, address < 0xa000 ? 0 : ramBank, address);
 	}
-
+	++RAM_read_counts[real_address];
 	return RAM[real_address];
 }
 
@@ -186,10 +204,12 @@ static void real_ram_write(uint16_t address, uint8_t value)
 
 	RAM_written[real_address >> 6] |= (uint64_t)1 << (real_address & 0x3f);
 
+	++RAM_write_counts[real_address];
 	RAM[real_address] = value;
 
-	if (address == 1)
+	if (address == 1) {
 		ROM_BANK = value;
+	}
 }
 
 //
@@ -204,12 +224,14 @@ static uint8_t debug_rom_read(uint16_t address, uint8_t bank)
 
 static uint8_t real_rom_read(uint16_t address)
 {
-	return ROM[(ROM_BANK << 14) + address - 0xc000];
+	const int real_address = (ROM_BANK << 14) + address - 0xc000;
+	++ROM_read_counts[real_address];
+	return ROM[real_address];
 }
 
 static void debug_rom_write(uint16_t address, uint8_t bank, uint8_t value)
 {
-	if (bank >= NUM_ROM_BANKS) {
+	if (bank <= NUM_ROM_BANKS) {
 		ROM[((uint32_t)bank << 14) + address - 0xc000] = value;
 	}
 }
@@ -217,9 +239,10 @@ static void debug_rom_write(uint16_t address, uint8_t bank, uint8_t value)
 static void real_rom_write(uint16_t address, uint8_t value)
 {
 	const int romBank = effective_rom_bank();
-	if (romBank >= NUM_ROM_BANKS) {
+	if (romBank <= NUM_ROM_BANKS) {
 		const int real_address = (romBank << 14) + address - 0xc000;
 
+		++ROM_write_counts[real_address];
 		ROM[real_address] = value;
 
 		// fmt::print("Writing to hidden ram at addr: ${:04X}, bank ${:02X}\n", address, romBank);
@@ -241,7 +264,7 @@ uint8_t debug_emu_read(uint8_t reg)
 		case 5: return gif_recorder_get_state();
 		case 6: return wav_recorder_get_state();
 		case 7: return Options.no_keybinds ? 1 : 0;
-		case 8: return (clock_snap >> 0) & 0xff;	// don't do snapshotting here because no state should be changed
+		case 8: return (clock_snap >> 0) & 0xff; // don't do snapshotting here because no state should be changed
 		case 9: return (clock_snap >> 8) & 0xff;
 		case 10: return (clock_snap >> 16) & 0xff;
 		case 11: return (clock_snap >> 24) & 0xff;
@@ -264,9 +287,9 @@ uint8_t real_emu_read(uint8_t reg)
 		case 5: return gif_recorder_get_state();
 		case 6: return wav_recorder_get_state();
 		case 7: return Options.no_keybinds ? 1 : 0;
-		case 8: 
-		    clock_snap = clockticks6502 - clock_base;
-		    return (clock_snap >> 0) & 0xff;
+		case 8:
+			clock_snap = clockticks6502 - clock_base;
+			return (clock_snap >> 0) & 0xff;
 		case 9: return (clock_snap >> 8) & 0xff;
 		case 10: return (clock_snap >> 16) & 0xff;
 		case 11: return (clock_snap >> 24) & 0xff;
@@ -342,18 +365,25 @@ static void real_write(uint16_t address, uint8_t value);
 template <const uint8_t MAP[100], uint8_t BYTE>
 static uint8_t debug_read(uint16_t address, uint8_t bank)
 {
-	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
-		case MEMMAP_NULL: return 0;
-		case MEMMAP_DIRECT: return RAM[address];
-		case MEMMAP_RAMBANK: return debug_ram_read(address, bank);
-		case MEMMAP_ROMBANK: return debug_rom_read(address, bank);
-		case MEMMAP_IO: return debug_read<memory_map_io, 0>(address, bank);
-		case MEMMAP_IO_SOUND: return 0;
-		case MEMMAP_IO_VIDEO: return vera_debug_video_read(address & 0x1f);
-		case MEMMAP_IO_VIA1: return via1_read(address & 0xf, true);
-		case MEMMAP_IO_VIA2: return via2_read(address & 0xf, true);
-		case MEMMAP_IO_EMU: return debug_emu_read(address & 0xf);
-		default: return 0;
+	if constexpr (&MAP[0] == &memory_map_hi[0]) {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: return 0;
+			case MEMMAP_DIRECT: return RAM[address];
+			case MEMMAP_RAMBANK: return debug_ram_read(address, bank);
+			case MEMMAP_ROMBANK: return debug_rom_read(address, bank);
+			case MEMMAP_IO: return debug_read<memory_map_io, 0>(address, bank);
+			default: return 0;
+		}
+	} else {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: return 0;
+			case MEMMAP_IO_SOUND: return 0;
+			case MEMMAP_IO_VIDEO: return vera_debug_video_read(address & 0x1f);
+			case MEMMAP_IO_VIA1: return via1_read(address & 0xf, true);
+			case MEMMAP_IO_VIA2: return via2_read(address & 0xf, true);
+			case MEMMAP_IO_EMU: return debug_emu_read(address & 0xf);
+			default: return 0;
+		}	
 	}
 }
 
@@ -393,44 +423,63 @@ static uint8_t real_read(uint16_t address)
 template <const uint8_t MAP[100], uint8_t BYTE>
 static void debug_write(uint16_t address, uint8_t bank, uint8_t value)
 {
-	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
-		case MEMMAP_NULL: break;
-		case MEMMAP_DIRECT:
-			RAM[address] = value;
-			if (address == 1)
-				ROM_BANK = value;
-			break;
-		case MEMMAP_RAMBANK: debug_ram_write(address, bank, value); break;
-		case MEMMAP_ROMBANK: debug_rom_write(address, bank, value); break;
-		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
-		case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
-		case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
-		case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
-		case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
-		case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
-		default: break;
+	if constexpr (&MAP[0] == &memory_map_hi[0]) {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: break;
+			case MEMMAP_DIRECT:
+				RAM[address] = value;
+				if (address == 1)
+					ROM_BANK = value;
+				break;
+			case MEMMAP_RAMBANK: debug_ram_write(address, bank, value); break;
+			case MEMMAP_ROMBANK: debug_rom_write(address, bank, value); break;
+			case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
+			default: break;
+		}
+	} else {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: break;
+			case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
+			case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
+			case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
+			case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
+			case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
+			default: break;
+		}	
 	}
 }
 
 template <const uint8_t MAP[100], uint8_t BYTE>
 static void real_write(uint16_t address, uint8_t value)
 {
-	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
-		case MEMMAP_NULL: break;
-		case MEMMAP_DIRECT:
-			RAM[address] = value;
-			if (address == 1)
-				ROM_BANK = value;
-			break;
-		case MEMMAP_RAMBANK: real_ram_write(address, value); break;
-		case MEMMAP_ROMBANK: real_rom_write(address, value); break;
-		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
-		case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
-		case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
-		case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
-		case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
-		case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
-		default: break;
+	if constexpr (&MAP[0] == &memory_map_hi[0]) {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: break;
+			case MEMMAP_DIRECT:
+				RAM_written[address >> 6] |= (uint64_t)1 << (address & 0x3f);
+				++RAM_write_counts[address];
+				RAM[address] = value;
+				if (address == 1)
+					ROM_BANK = value;
+				break;
+			case MEMMAP_RAMBANK: real_ram_write(address, value); break;
+			case MEMMAP_ROMBANK: real_rom_write(address, value); break;
+			case MEMMAP_IO: 
+				++RAM_write_counts[address];
+				real_write<memory_map_io, 0>(address, value);
+				break;
+			default: break;
+		}
+	} else {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: break;
+			case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
+			case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
+			case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
+			case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
+			case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
+			default: break;
+		}	
 	}
 }
 
@@ -497,54 +546,9 @@ void memory_save(x16file *f, bool dump_ram, bool dump_bank)
 {
 	if (dump_ram) {
 		x16write_memdump(f, "LOMEM", RAM, 0, 0xa000);
-
-		//std::stringstream ss;
-		//ss << "[LOMEM]";
-		//ss << std::hex;
-		//for (int i = 0; i < 0xa000; ++i) {
-		//	if ((i & 0xf) == 0) {
-		//		ss << std::setw(0) << "\n";
-		//		ss << std::setw(4) << std::setfill('0') << i;
-		//		ss << std::setw(0) << " ";
-		//	} else if ((i & 0x7) == 0) {
-		//		ss << std::setw(0) << "   ";
-		//	} else {
-		//		ss << std::setw(0) << " ";
-		//	}
-		//	ss << std::setw(2) << std::setfill('0') << static_cast<int>(RAM[i]);
-		//}
-		//ss << std::setw(0) << "\n\n";
-		//x16write(f, ss.str());
-
-		// x16write(f, &RAM[0], sizeof(uint8_t), 0xa000);
 	}
 	if (dump_bank) {
 		x16write_bankdump(f, "BANKMEM", RAM + 0xa000, 0xa000, 0xc000, Options.num_ram_banks);
-
-		//std::stringstream ss;
-		//ss << "[BANKMEM]";
-		//ss << std::hex;
-
-		//for (int b = 0; b < Options.num_ram_banks; ++b) {
-		//	for (int i = 0xa000; i <= 0xffff; ++i) {
-		//		if ((i & 0xf) == 0) {
-		//			ss << std::setw(0) << "\n";
-		//			ss << std::setw(2) << std::setfill('0') << 0;
-		//			ss << std::setw(0) << ":";
-		//			ss << std::setw(4) << std::setfill('0') << i;
-		//			ss << std::setw(0) << " ";
-		//		} else if ((i & 0x7) == 0) {
-		//			ss << std::setw(0) << "   ";
-		//		} else {
-		//			ss << std::setw(0) << " ";
-		//		}
-		//		ss << std::setw(2) << std::setfill('0') << static_cast<int>(debug_read6502(static_cast<uint16_t>(i), static_cast<uint8_t>(b)));
-		//	}
-		//}
-		//ss << std::setw(0) << "\n\n";
-		//x16write(f, ss.str());
-
-		// x16write(f, &RAM[0xa000], sizeof(uint8_t), (Options.num_ram_banks * 8192));
 	}
 }
 
@@ -556,7 +560,7 @@ void memory_set_bank(uint16_t address, uint8_t bank)
 {
 	if (address >= 0xc000) {
 		memory_set_rom_bank(bank);
-	} else if(address >= 0xa000) {
+	} else if (address >= 0xa000) {
 		memory_set_ram_bank(bank);
 	}
 }
