@@ -121,6 +121,9 @@ static void usage()
 	printf("\tMultiple characters are possible, e.g. -log KS\n");
 #endif
 
+	printf("-memorystats\n");
+	printf("\tGenerate a memory_stats.txt file when the emulator exits.\n");
+
 	printf("-nobinds\n");
 	printf("\tDisable most emulator keyboard shortcuts.\n");
 
@@ -513,6 +516,11 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 			ini["log"] = argv[0];
 			argc--;
 			argv++;
+
+		} else if (!strcmp(argv[0], "-memorystats")) {
+			argc--;
+			argv++;
+			ini["dump_memstats"] = "true";
 
 		} else if (!strcmp(argv[0], "-nobinds")) {
 			argc--;
@@ -1017,6 +1025,10 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 		}
 	}
 
+	if(ini.has("dump_memstats") && ini["dump_memstats"] == "true") {
+		opts.dump_memstats = true;
+	}
+
 	if (ini.has("gif")) {
 		opts.gif_path     = token_or_empty(ini["gif"], ",");
 		char const *start = token_or_empty(nullptr, ",");
@@ -1380,6 +1392,8 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 		ini_main["dump"] = value.str();
 		value.str(std::string());
 	}
+
+	set_option("dump_memstats", Options.dump_memstats, Default_options.dump_memstats);
 
 	set_comma_option("gif", Options.gif_path, Default_options.gif_path, gif_recorder_start_str(Options.gif_start), gif_recorder_start_str(Default_options.gif_start));
 	set_comma_option("wav", Options.wav_path, Default_options.wav_path, wav_recorder_start_str(Options.wav_start), wav_recorder_start_str(Default_options.wav_start));

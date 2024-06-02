@@ -389,7 +389,9 @@ void main_shutdown() {
 		nvram_dirty = false;
 	}
 
-	memory_dump_usage_counts();
+	if(Options.dump_memstats) {
+		memory_dump_usage_counts();
+	}
 
 	boxmon_system_shutdown();
 	sdcard_shutdown();
