@@ -1592,7 +1592,7 @@ void load_options()
 
 void save_options(bool all)
 {
-	options_log_verbose("Saving ini to: %s\n", std::filesystem::absolute(Options_ini_path).generic_string().c_str());
+	options_log_verbose("Saving ini to: {}\n", std::filesystem::absolute(Options_ini_path).generic_string());
 
 	mINI::INIFile      file(Options_ini_path.generic_string());
 	mINI::INIStructure ini;
@@ -1608,7 +1608,7 @@ void save_options(bool all)
 
 void save_options_on_close(bool all)
 {
-	options_log_verbose("Saving ini (on close) to: %s\n", std::filesystem::absolute(Options_ini_path).generic_string().c_str());
+	options_log_verbose("Saving ini (on close) to: {}\n", std::filesystem::absolute(Options_ini_path).generic_string());
 
 	mINI::INIFile file(Options_ini_path.generic_string());
 
@@ -1662,12 +1662,12 @@ char const *option_get_source_name(option_source source)
 
 bool options_find_file(std::filesystem::path &real_path, const std::filesystem::path &search_path)
 {
-	options_log_verbose("Finding file: %s\n", search_path.generic_string().c_str());
+	options_log_verbose("Finding file: {}\n", search_path.generic_string());
 
 	// 1. Local CWD or absolute path
 	real_path = search_path;
 	if (std::filesystem::exists(real_path)) {
-		options_log_verbose("Found file: %s (%s)\n", real_path.generic_string().c_str(), std::filesystem::absolute(real_path).generic_string().c_str());
+		options_log_verbose("Found file: {} ({})\n", real_path.generic_string(), std::filesystem::absolute(real_path).generic_string());
 		return true;
 	}
 
@@ -1675,19 +1675,19 @@ bool options_find_file(std::filesystem::path &real_path, const std::filesystem::
 		// 2. Relative to the location of box16.exe
 		real_path = Options_base_path / search_path;
 		if (std::filesystem::exists(real_path)) {
-			options_log_verbose("Found file: %s (%s)\n", real_path.generic_string().c_str(), std::filesystem::absolute(real_path).generic_string().c_str());
+			options_log_verbose("Found file: {} ({})\n", real_path.generic_string(), std::filesystem::absolute(real_path).generic_string());
 			return true;
 		}
 
 		// 3. Relative to the prefs directory
 		real_path = Options_prefs_path / search_path;
 		if (std::filesystem::exists(real_path)) {
-			options_log_verbose("Found file: %s (%s)\n", real_path.generic_string().c_str(), std::filesystem::absolute(real_path).generic_string().c_str());
+			options_log_verbose("Found file: {} ({})\n", real_path.generic_string(), std::filesystem::absolute(real_path).generic_string());
 			return true;
 		}
 	}
 
-	fmt::print("Could not find {} in the following locations:\n", search_path.generic_string().c_str());
+	fmt::print("Could not find {} in the following locations:\n", search_path.generic_string());
 	fmt::print("\t{}\n", search_path.generic_string());
 	if (!search_path.is_absolute()) {
 		fmt::print("\t{}\n", (Options_base_path / search_path).generic_string());

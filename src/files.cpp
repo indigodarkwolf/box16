@@ -13,12 +13,12 @@
 
 bool files_find(std::filesystem::path &real_path, const std::filesystem::path &search_path)
 {
-	options_log_verbose("Finding file: %s\n", search_path.generic_string().c_str());
+	options_log_verbose("Finding file: {}\n", search_path.generic_string());
 
 	// 1. Local CWD or absolute path
 	real_path = search_path;
 	if (std::filesystem::exists(real_path)) {
-		options_log_verbose("Found file: %s (%s)\n", real_path.generic_string().c_str(), std::filesystem::absolute(real_path).generic_string().c_str());
+		options_log_verbose("Found file: {} ({})\n", real_path.generic_string(), std::filesystem::absolute(real_path).generic_string());
 		return true;
 	}
 
@@ -26,14 +26,14 @@ bool files_find(std::filesystem::path &real_path, const std::filesystem::path &s
 		// 2. Relative to the location of box16.exe
 		real_path = options_get_base_path() / search_path;
 		if (std::filesystem::exists(real_path)) {
-			options_log_verbose("Found file: %s (%s)\n", real_path.generic_string().c_str(), std::filesystem::absolute(real_path).generic_string().c_str());
+			options_log_verbose("Found file: {} ({})\n", real_path.generic_string(), std::filesystem::absolute(real_path).generic_string());
 			return true;
 		}
 
 		// 3. Relative to the prefs directory
 		real_path = options_get_prefs_path() / search_path;
 		if (std::filesystem::exists(real_path)) {
-			options_log_verbose("Found file: %s (%s)\n", real_path.generic_string().c_str(), std::filesystem::absolute(real_path).generic_string().c_str());
+			options_log_verbose("Found file: {} ({})\n", real_path.generic_string(), std::filesystem::absolute(real_path).generic_string());
 			return true;
 		}
 	}
@@ -57,7 +57,7 @@ std::tuple<void *, size_t> files_load(const std::filesystem::path &path)
 	const auto [ops_data, ops_size] = [&]() -> std::tuple<void *, size_t> {
 		SDL_RWops *ops = SDL_RWFromFile(real_path.generic_string().c_str(), "r+b");
 		if (ops == nullptr) {
-			options_log_verbose("Could not open file for read: %s", real_path.generic_string().c_str());
+			options_log_verbose("Could not open file for read: {}", real_path.generic_string());
 			return std::make_tuple(nullptr, 0);
 		}
 
