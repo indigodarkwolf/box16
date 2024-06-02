@@ -365,88 +365,121 @@ static void real_write(uint16_t address, uint8_t value);
 template <const uint8_t MAP[100], uint8_t BYTE>
 static uint8_t debug_read(uint16_t address, uint8_t bank)
 {
-	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
-		case MEMMAP_NULL: return 0;
-		case MEMMAP_DIRECT: return RAM[address];
-		case MEMMAP_RAMBANK: return debug_ram_read(address, bank);
-		case MEMMAP_ROMBANK: return debug_rom_read(address, bank);
-		case MEMMAP_IO: return debug_read<memory_map_io, 0>(address, bank);
-		case MEMMAP_IO_SOUND: return 0;
-		case MEMMAP_IO_VIDEO: return vera_debug_video_read(address & 0x1f);
-		case MEMMAP_IO_VIA1: return via1_read(address & 0xf, true);
-		case MEMMAP_IO_VIA2: return via2_read(address & 0xf, true);
-		case MEMMAP_IO_EMU: return debug_emu_read(address & 0xf);
-		default: return 0;
+	if constexpr (&MAP[0] == &memory_map_hi[0]) {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: return 0;
+			case MEMMAP_DIRECT: return RAM[address];
+			case MEMMAP_RAMBANK: return debug_ram_read(address, bank);
+			case MEMMAP_ROMBANK: return debug_rom_read(address, bank);
+			case MEMMAP_IO: return debug_read<memory_map_io, 0>(address, bank);
+			default: return 0;
+		}
+	} else {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: return 0;
+			case MEMMAP_IO_SOUND: return 0;
+			case MEMMAP_IO_VIDEO: return vera_debug_video_read(address & 0x1f);
+			case MEMMAP_IO_VIA1: return via1_read(address & 0xf, true);
+			case MEMMAP_IO_VIA2: return via2_read(address & 0xf, true);
+			case MEMMAP_IO_EMU: return debug_emu_read(address & 0xf);
+			default: return 0;
+		}	
 	}
 }
 
 template <const uint8_t MAP[100], uint8_t BYTE>
 static uint8_t real_read(uint16_t address)
 {
-	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
-		case MEMMAP_NULL: return 0;
-		case MEMMAP_DIRECT: {
-			if ((RAM_written[address >> 6] & ((uint64_t)1 << (address & 0x3f))) == 0 && Memory_params.enable_uninitialized_access_warning) {
-				printf("Warning: %02X:%04X accessed uninitialized RAM address %02X:%04X\n", bank6502(debug_state6502.pc), debug_state6502.pc, 0, address);
+	if constexpr (&MAP[0] == &memory_map_hi[0]) {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: return 0;
+			case MEMMAP_DIRECT: {
+				if ((RAM_written[address >> 6] & ((uint64_t)1 << (address & 0x3f))) == 0 && Memory_params.enable_uninitialized_access_warning) {
+					printf("Warning: %02X:%04X accessed uninitialized RAM address %02X:%04X\n", bank6502(debug_state6502.pc), debug_state6502.pc, 0, address);
+				}
+				++RAM_read_counts[address];
+				return RAM[address];
 			}
-			++RAM_read_counts[address];
-			return RAM[address];
+			case MEMMAP_RAMBANK: return real_ram_read(address); break;
+			case MEMMAP_ROMBANK: return real_rom_read(address); break;
+			case MEMMAP_IO:
+				++RAM_read_counts[address];
+				return real_read<memory_map_io, 0>(address);
+			default: return 0;
 		}
-		case MEMMAP_RAMBANK: return real_ram_read(address); break;
-		case MEMMAP_ROMBANK: return real_rom_read(address); break;
-		case MEMMAP_IO: return real_read<memory_map_io, 0>(address);
-		case MEMMAP_IO_SOUND: return sound_read(address);
-		case MEMMAP_IO_VIDEO: return vera_video_read(address & 0x1f);
-		case MEMMAP_IO_VIA1: return via1_read(address & 0xf, false);
-		case MEMMAP_IO_VIA2: return via2_read(address & 0xf, false);
-		case MEMMAP_IO_EMU: return real_emu_read(address & 0xf);
-		default: return 0;
+	} else {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: return 0;
+			case MEMMAP_IO_SOUND: return sound_read(address);
+			case MEMMAP_IO_VIDEO: return vera_video_read(address & 0x1f);
+			case MEMMAP_IO_VIA1: return via1_read(address & 0xf, false);
+			case MEMMAP_IO_VIA2: return via2_read(address & 0xf, false);
+			case MEMMAP_IO_EMU: return real_emu_read(address & 0xf);
+			default: return 0;
+		}	
 	}
 }
 
 template <const uint8_t MAP[100], uint8_t BYTE>
 static void debug_write(uint16_t address, uint8_t bank, uint8_t value)
 {
-	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
-		case MEMMAP_NULL: break;
-		case MEMMAP_DIRECT:
-			RAM[address] = value;
-			if (address == 1)
-				ROM_BANK = value;
-			break;
-		case MEMMAP_RAMBANK: debug_ram_write(address, bank, value); break;
-		case MEMMAP_ROMBANK: debug_rom_write(address, bank, value); break;
-		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
-		case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
-		case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
-		case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
-		case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
-		case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
-		default: break;
+	if constexpr (&MAP[0] == &memory_map_hi[0]) {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: break;
+			case MEMMAP_DIRECT:
+				RAM[address] = value;
+				if (address == 1)
+					ROM_BANK = value;
+				break;
+			case MEMMAP_RAMBANK: debug_ram_write(address, bank, value); break;
+			case MEMMAP_ROMBANK: debug_rom_write(address, bank, value); break;
+			case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
+			default: break;
+		}
+	} else {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: break;
+			case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
+			case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
+			case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
+			case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
+			case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
+			default: break;
+		}	
 	}
 }
 
 template <const uint8_t MAP[100], uint8_t BYTE>
 static void real_write(uint16_t address, uint8_t value)
 {
-	switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
-		case MEMMAP_NULL: break;
-		case MEMMAP_DIRECT:
-			RAM_written[address >> 6] |= (uint64_t)1 << (address & 0x3f);
-			++RAM_write_counts[address];
-			RAM[address] = value;
-			if (address == 1)
-				ROM_BANK = value;
-			break;
-		case MEMMAP_RAMBANK: real_ram_write(address, value); break;
-		case MEMMAP_ROMBANK: real_rom_write(address, value); break;
-		case MEMMAP_IO: real_write<memory_map_io, 0>(address, value); break;
-		case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
-		case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
-		case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
-		case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
-		case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
-		default: break;
+	if constexpr (&MAP[0] == &memory_map_hi[0]) {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: break;
+			case MEMMAP_DIRECT:
+				RAM_written[address >> 6] |= (uint64_t)1 << (address & 0x3f);
+				++RAM_write_counts[address];
+				RAM[address] = value;
+				if (address == 1)
+					ROM_BANK = value;
+				break;
+			case MEMMAP_RAMBANK: real_ram_write(address, value); break;
+			case MEMMAP_ROMBANK: real_rom_write(address, value); break;
+			case MEMMAP_IO: 
+				++RAM_write_counts[address];
+				real_write<memory_map_io, 0>(address, value);
+				break;
+			default: break;
+		}
+	} else {
+		switch (MAP[(address >> (BYTE * 8)) & 0xff]) {
+			case MEMMAP_NULL: break;
+			case MEMMAP_IO_SOUND: sound_write(address & 0x1f, value); break; // TODO: Sound
+			case MEMMAP_IO_VIDEO: vera_video_write(address & 0x1f, value); break;
+			case MEMMAP_IO_VIA1: via1_write(address & 0xf, value); break;
+			case MEMMAP_IO_VIA2: via2_write(address & 0xf, value); break;
+			case MEMMAP_IO_EMU: emu_write(address & 0xf, value); break;
+			default: break;
+		}	
 	}
 }
 
@@ -563,9 +596,9 @@ uint8_t memory_get_current_bank(uint16_t address)
 
 void memory_dump_usage_counts()
 {
-	x16file *dumpfile = x16open("memory_dump.txt", "w");
+	x16file *dumpfile = x16open("memory_stats.txt", "w");
 	if (dumpfile == nullptr) {
-		printf("Warning: Could not dump memory to memory_dump.txt.\n");
+		printf("Warning: Could not dump memory to memory_stats.txt.\n");
 		return;
 	}
 	x16write(dumpfile, "--- begin of memory usage statistics dump ---\n");
