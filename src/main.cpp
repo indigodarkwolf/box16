@@ -442,9 +442,9 @@ void emulator_loop()
 				}
 
 				fmt::print(" ram=${:02x} rom=${:02x} ", ram, rom);
-				const char *label     = disasm_get_label(pc);
-				size_t      label_len = label ? strlen(label) : 0;
-				if (label) {
+				const std::string label = disasm_get_label(pc);
+				size_t      label_len   = label.length();
+				if (!label.empty()) {
 					fmt::print("{}", label);
 				}
 				label_len = (label_len <= 25) ? label_len : 25;
