@@ -598,12 +598,12 @@ uint8_t memory_get_current_bank(uint16_t address)
 
 void memory_dump_usage_counts()
 {
-	x16file *dumpfile = x16open("memory_stats.txt", "w");
+	const std::string dump_path = Options.dump_memstats_path.generic_string();
+	x16file *dumpfile = x16open(dump_path.c_str(), "w");
 	if (dumpfile == nullptr) {
-		fmt::print("Warning: Could not dump memory to memory_stats.txt.\n");
+		fmt::print("Warning: Could not dump memory to {}.\n", dump_path);
 		return;
 	}
-	x16write(dumpfile, "--- begin of memory usage statistics dump ---\n");
 	x16write(dumpfile, "Usage counts of all memory locations. Locations not printed have count zero.\n");
 	x16write(dumpfile, "Tip: use 'sort -r -n -k 3' to sort it so it shows the most used at the top.\n");
 	x16write(dumpfile, "system RAM reads:\n");
@@ -660,6 +660,5 @@ void memory_dump_usage_counts()
 			}
 		}
 	}
-	x16write(dumpfile, "--- end of memory usage statistics dump ---\n");
 	x16close(dumpfile);
 }

@@ -520,7 +520,14 @@ static void parse_cmdline(mINI::INIMap<std::string> &ini, int argc, char **argv)
 		} else if (!strcmp(argv[0], "-memorystats")) {
 			argc--;
 			argv++;
+			if (!argc || argv[0][0] == '-') {
+				usage();
+			}
+
 			ini["dump_memstats"] = "true";
+			ini["dump_memstats_path"] = argv[0];
+			argv++;
+			argc--;
 
 		} else if (!strcmp(argv[0], "-nobinds")) {
 			argc--;
@@ -1027,6 +1034,7 @@ static char const *set_options(options &opts, mINI::INIMap<std::string> &ini)
 
 	if(ini.has("dump_memstats") && ini["dump_memstats"] == "true") {
 		opts.dump_memstats = true;
+		opts.dump_memstats_path = ini["dump_memstats_path"];
 	}
 
 	if (ini.has("gif")) {
@@ -1394,6 +1402,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 	}
 
 	set_option("dump_memstats", Options.dump_memstats, Default_options.dump_memstats);
+	set_option("dump_memstats_path", Options.dump_memstats_path, Default_options.dump_memstats_path);
 
 	set_comma_option("gif", Options.gif_path, Default_options.gif_path, gif_recorder_start_str(Options.gif_start), gif_recorder_start_str(Default_options.gif_start));
 	set_comma_option("wav", Options.wav_path, Default_options.wav_path, wav_recorder_start_str(Options.wav_start), wav_recorder_start_str(Default_options.wav_start));

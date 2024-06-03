@@ -54,7 +54,7 @@ struct options {
 	std::filesystem::path                                 sdcard_path = "";
 	std::filesystem::path                                 gif_path    = "";
 	std::filesystem::path                                 wav_path    = "";
-
+	std::filesystem::path								  dump_memstats_path = "memory_stats.txt";
 	uint16_t prg_override_start = 0;
 
 	gif_recorder_start_t gif_start = gif_recorder_start_t::GIF_RECORDER_START_NOW;
