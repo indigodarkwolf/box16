@@ -428,8 +428,9 @@ static void debug_write(uint16_t address, uint8_t bank, uint8_t value)
 			case MEMMAP_NULL: break;
 			case MEMMAP_DIRECT:
 				RAM[address] = value;
-				if (address == 1)
+				if (address == 1) {
 					ROM_BANK = value;
+				}
 				break;
 			case MEMMAP_RAMBANK: debug_ram_write(address, bank, value); break;
 			case MEMMAP_ROMBANK: debug_rom_write(address, bank, value); break;
@@ -459,8 +460,9 @@ static void real_write(uint16_t address, uint8_t value)
 				RAM_written[address >> 6] |= (uint64_t)1 << (address & 0x3f);
 				++RAM_write_counts[address];
 				RAM[address] = value;
-				if (address == 1)
+				if (address == 1) {
 					ROM_BANK = value;
+				}
 				break;
 			case MEMMAP_RAMBANK: real_ram_write(address, value); break;
 			case MEMMAP_ROMBANK: real_rom_write(address, value); break;

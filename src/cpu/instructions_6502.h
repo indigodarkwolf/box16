@@ -93,10 +93,11 @@ bcc()
 	if ((state6502.status & FLAG_CARRY) == 0) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; // check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
@@ -106,10 +107,11 @@ bcs()
 	if ((state6502.status & FLAG_CARRY) == FLAG_CARRY) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; // check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
@@ -119,10 +121,11 @@ beq()
 	if ((state6502.status & FLAG_ZERO) == FLAG_ZERO) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; // check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
@@ -142,10 +145,11 @@ bmi()
 	if ((state6502.status & FLAG_SIGN) == FLAG_SIGN) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; // check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
@@ -155,10 +159,11 @@ bne()
 	if ((state6502.status & FLAG_ZERO) == 0) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; // check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
@@ -168,10 +173,11 @@ bpl()
 	if ((state6502.status & FLAG_SIGN) == 0) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; // check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
@@ -194,10 +200,11 @@ bvc()
 	if ((state6502.status & FLAG_OVERFLOW) == 0) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; // check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
@@ -207,10 +214,11 @@ bvs()
 	if ((state6502.status & FLAG_OVERFLOW) == FLAG_OVERFLOW) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; // check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
@@ -245,14 +253,16 @@ cmp()
 	value     = getvalue();
 	result    = (uint16_t)state6502.a - value;
 
-	if (state6502.a >= (uint8_t)(value & 0x00FF))
+	if (state6502.a >= (uint8_t)(value & 0x00FF)) {
 		setcarry();
-	else
+	} else {
 		clearcarry();
-	if (state6502.a == (uint8_t)(value & 0x00FF))
+	}
+	if (state6502.a == (uint8_t)(value & 0x00FF)) {
 		setzero();
-	else
+	} else {
 		clearzero();
+	}
 	signcalc(result);
 }
 
@@ -262,14 +272,16 @@ cpx()
 	value  = getvalue();
 	result = (uint16_t)state6502.x - value;
 
-	if (state6502.x >= (uint8_t)(value & 0x00FF))
+	if (state6502.x >= (uint8_t)(value & 0x00FF)) {
 		setcarry();
-	else
+	} else {
 		clearcarry();
-	if (state6502.x == (uint8_t)(value & 0x00FF))
+	}
+	if (state6502.x == (uint8_t)(value & 0x00FF)) {
 		setzero();
-	else
+	} else {
 		clearzero();
+	}
 	signcalc(result);
 }
 
@@ -279,14 +291,16 @@ cpy()
 	value  = getvalue();
 	result = (uint16_t)state6502.y - value;
 
-	if (state6502.y >= (uint8_t)(value & 0x00FF))
+	if (state6502.y >= (uint8_t)(value & 0x00FF)) {
 		setcarry();
-	else
+	} else {
 		clearcarry();
-	if (state6502.y == (uint8_t)(value & 0x00FF))
+	}
+	if (state6502.y == (uint8_t)(value & 0x00FF)) {
 		setzero();
-	else
+	} else {
 		clearzero();
+	}
 	signcalc(result);
 }
 

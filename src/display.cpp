@@ -551,20 +551,25 @@ void display_shutdown()
 	Fullscreen = false;
 	SDL_SetWindowFullscreen(Display_window, 0);
 
-	if (Initd_imgui_opengl)
+	if (Initd_imgui_opengl) {
 		ImGui_ImplOpenGL2_Shutdown();
+	}
 
-	if (Initd_imgui_sdl2)
+	if (Initd_imgui_sdl2) {
 		ImGui_ImplSDL2_Shutdown();
+	}
 
-	if (Initd_imgui)
+	if (Initd_imgui) {
 		ImGui::DestroyContext();
+	}
 
-	if (Initd_display_context)
+	if (Initd_display_context) {
 		SDL_GL_DeleteContext(Display_context);
+	}
 
-	if (Initd_sdl_gl)
+	if (Initd_sdl_gl) {
 		SDL_DestroyWindow(Display_window);
+	}
 
 	Initd_sdl_image           = false;
 	Initd_sdl_gl              = false;

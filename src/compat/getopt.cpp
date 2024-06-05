@@ -308,8 +308,9 @@ parse_long_options(char *const *nargv, const char *options, const struct option 
 
 	for (i = 0; long_options[i].name; i++) {
 		/* find matching long option */
-		if (strncmp(current_argv, long_options[i].name, current_argv_len))
+		if (strncmp(current_argv, long_options[i].name, current_argv_len)) {
 			continue;
+		}
 
 		if (strlen(long_options[i].name) == current_argv_len) {
 			/* exact match */
@@ -324,10 +325,11 @@ parse_long_options(char *const *nargv, const char *options, const struct option 
 		if (short_too && current_argv_len == 1)
 			continue;
 
-		if (match == -1) /* partial match */
+		if (match == -1) { /* partial match */
 			match = i;
-		else if (!IDENTICAL_INTERPRETATION(i, match))
+		} else if (!IDENTICAL_INTERPRETATION(i, match)) {
 			ambiguous = 1;
+		}
 	}
 	if (ambiguous) {
 		/* ambiguous abbreviation */

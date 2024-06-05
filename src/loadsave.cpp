@@ -201,8 +201,9 @@ void LOAD()
 			while (1) {
 				size_t len = 0xc000 - start;
 				bytes_read = (uint16_t)x16read(f, RAM + (((memory_get_ram_bank() % (uint16_t)Options.num_ram_banks) << 13) & 0xffffff) + start, sizeof(uint8_t), static_cast<unsigned int>(len));
-				if (bytes_read < len)
+				if (bytes_read < len) {
 					break;
+				}
 
 				// Wrap into the next bank
 				start = 0xa000;

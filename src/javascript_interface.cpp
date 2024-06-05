@@ -25,8 +25,9 @@ void j2c_paste(char *buffer)
 
 void j2c_start_audio(bool start)
 {
-	if (start)
+	if (start) {
 		audio_init(NULL, 8);
-	else
+	} else {
 		audio_close();
+	}
 }

@@ -1052,8 +1052,9 @@ static void draw_debugger_vera_sprite()
 		if (box[3] < box[2])
 			box[2] = 0;
 		spr->off_screen = (box[0] >= screen_width && box[1] >= screen_width) || (box[2] >= screen_height && box[3] >= screen_height);
-		if (!((hide_disabled && (spr->prop.sprite_zdepth == 0)) || (hide_offscreen && spr->off_screen)))
+		if (!((hide_disabled && (spr->prop.sprite_zdepth == 0)) || (hide_offscreen && spr->off_screen))) {
 			sprite_table_entries.push_back(i);
+		}
 
 		uint32_t *dstpix = &sprite_pixels[i * 64 * 64];
 		int       src    = 0;
@@ -1334,12 +1335,15 @@ static void draw_debugger_vera_sprite()
 					if (ImGui::InputText("flg", flags_txt, 4)) {
 						uint8_t b1_new = b1 & ~mask_8;
 						uint8_t b6_new = b6 & ~mask_h & ~mask_v;
-						if (strchr(flags_txt, '8'))
+						if (strchr(flags_txt, '8')) {
 							b1_new |= mask_8;
-						if (strchr(flags_txt, 'H') || strchr(flags_txt, 'h'))
+						}
+						if (strchr(flags_txt, 'H') || strchr(flags_txt, 'h')) {
 							b6_new |= mask_h;
-						if (strchr(flags_txt, 'V') || strchr(flags_txt, 'v'))
+						}
+						if (strchr(flags_txt, 'V') || strchr(flags_txt, 'v')) {
 							b6_new |= mask_v;
+						}
 						vera_video_space_write(dst + 1, b1_new);
 						vera_video_space_write(dst + 6, b6_new);
 					}
@@ -1565,12 +1569,15 @@ public:
 		if (ImGui::BeginCombo("Source", source_txts[active.mem_source])) {
 			for (int i = 0; i < 3; i++) {
 				const bool selected = active.mem_source == i;
-				if (ImGui::Selectable(source_txts[i], selected))
+				if (ImGui::Selectable(source_txts[i], selected)) {
 					active.mem_source = i;
-				if (selected)
+				}
+				if (selected) {
 					ImGui::SetItemDefaultFocus();
-				if (i == 0)
+				}
+				if (i == 0) {
 					ImGui::Separator();
+				}
 			}
 			ImGui::EndCombo();
 		}

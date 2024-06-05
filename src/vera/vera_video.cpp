@@ -1133,15 +1133,17 @@ static uint32_t get_and_inc_address(uint8_t sel, bool write)
 
 	if (sel == 1 && fx_16bit_hop) {
 		if (incr == 4) {
-			if (fx_16bit_hop_align == (address & 0x3))
+			if (fx_16bit_hop_align == (address & 0x3)) {
 				incr = 1;
-			else
+			} else {
 				incr = 3;
+			}
 		} else if (incr == 320) {
-			if (fx_16bit_hop_align == (address & 0x3))
+			if (fx_16bit_hop_align == (address & 0x3)) {
 				incr = 1;
-			else
+			} else {
 				incr = 319;
+			}
 		}
 	}
 

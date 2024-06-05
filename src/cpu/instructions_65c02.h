@@ -70,8 +70,9 @@ bra()
 {
 	oldpc = state6502.pc;
 	state6502.pc += reladdr;
-	if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+	if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 		clockticks6502++; //check if jump crossed a page boundary
+	}
 }
 
 // *******************************************************************************************
@@ -171,10 +172,11 @@ bbr(uint16_t bitmask)
 	if ((getvalue() & bitmask) == 0) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; //check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
@@ -225,10 +227,11 @@ bbs(uint16_t bitmask)
 	if ((getvalue() & bitmask) != 0) {
 		oldpc = state6502.pc;
 		state6502.pc += reladdr;
-		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00))
+		if ((oldpc & 0xFF00) != (state6502.pc & 0xFF00)) {
 			clockticks6502 += 2; //check if jump crossed a page boundary
-		else
+		} else {
 			clockticks6502++;
+		}
 	}
 }
 
