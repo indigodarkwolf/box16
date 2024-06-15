@@ -252,7 +252,7 @@ struct BoxmonAppConsole {
 
 				if (candidates.size() == 0) {
 					// No match
-					boxmon_console_printf("No match for \"%.*s\"\n", (int)(word_end - word_start), word_start);
+					boxmon_console_print("No match for \"{:.{}s}\"\n", word_start, (int)(word_end - word_start));
 				} else if (perfect_match != nullptr) {
 					// Single match. Delete the beginning of the word and replace it entirely so we've got nice casing.
 					data->DeleteChars((int)(word_start - data->Buf), (int)(word_end - word_start));
@@ -286,9 +286,9 @@ struct BoxmonAppConsole {
 					}
 
 					// List matches
-					boxmon_console_printf("Possible matches:\n");
+					boxmon_console_print("Possible matches:\n");
 					for (size_t i = 0; i < candidates.size(); i++) {
-						boxmon_console_printf("    %s: %s\n", candidates[i]->get_name(), candidates[i]->get_description());
+						boxmon_console_print("    {}: {}\n", candidates[i]->get_name(), candidates[i]->get_description());
 					}
 				}
 
@@ -839,14 +839,14 @@ static void draw_debugger_vera_status()
 
 			sprintf(hex, "%02X", (int)vera_video_get_dc_hscale());
 			if (ImGui::InputText("H", hex, 5, hex_flags)) {
-				vera_video_set_dc_hscale(parse<8>(hex));
+				vera_video_set_dc_hscale(parse(hex));
 			}
 
 			ImGui::SameLine();
 
 			sprintf(hex, "%02X", (int)vera_video_get_dc_vscale());
 			if (ImGui::InputText("V", hex, 3, hex_flags)) {
-				vera_video_set_dc_vscale(parse<8>(hex));
+				vera_video_set_dc_vscale(parse(hex));
 			}
 		}
 
@@ -856,13 +856,13 @@ static void draw_debugger_vera_status()
 		ImGui::PushID("vstart");
 		sprintf(hex, "%02X", (int)vera_video_get_dc_vstart());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
-			vera_video_set_dc_vstart(parse<8>(hex));
+			vera_video_set_dc_vstart(parse(hex));
 		}
 		ImGui::PopID();
 		ImGui::PushID("hstart");
 		sprintf(hex, "%02X", (int)vera_video_get_dc_hstart());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
-			vera_video_set_dc_hstart(parse<8>(hex));
+			vera_video_set_dc_hstart(parse(hex));
 		}
 		ImGui::PopID();
 		ImGui::SameLine();
@@ -871,7 +871,7 @@ static void draw_debugger_vera_status()
 		ImGui::PushID("hstop");
 		sprintf(hex, "%02X", (int)vera_video_get_dc_hstop());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
-			vera_video_set_dc_hstop(parse<8>(hex));
+			vera_video_set_dc_hstop(parse(hex));
 		}
 		ImGui::PopID();
 		ImGui::Dummy(ImVec2(width_uint8, 0));
@@ -879,7 +879,7 @@ static void draw_debugger_vera_status()
 		ImGui::PushID("vstop");
 		sprintf(hex, "%02X", (int)vera_video_get_dc_vstop());
 		if (ImGui::InputText("", hex, 3, hex_flags)) {
-			vera_video_set_dc_vstop(parse<8>(hex));
+			vera_video_set_dc_vstop(parse(hex));
 		}
 		ImGui::PopID();
 

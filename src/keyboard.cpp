@@ -143,6 +143,7 @@ void keyboard_process()
 			break;
 		case keyboard_event_type::text_input:
 			if (process_text_input(evt.data.text_input)) {
+				delete [] evt.data.text_input.file_chars;
 				Keyboard_event_list.pop_front();
 			}
 			break;

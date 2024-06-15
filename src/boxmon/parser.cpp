@@ -418,7 +418,7 @@ namespace boxmon
 		auto pop_op = [&]() -> bool {
 			if (operator_stack.empty()) {
 				if ((flags & expression_parse_flags_suppress_errors) == 0) {
-					boxmon_error_printf("Expression parse failed (internal error, popping op with no more ops left) at: \"%s\"\n", look);
+					boxmon_error_print("Expression parse failed (internal error, popping op with no more ops left) at: \"{}\"\n", look);
 				}
 				return false;
 			}
@@ -427,7 +427,7 @@ namespace boxmon
 
 			if (expression_stack.empty()) {
 				if ((flags & expression_parse_flags_suppress_errors) == 0) {
-					boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
+					boxmon_error_print("Expression parse failed (operand expected) at: \"{}\"\n", look);
 				}
 				return false;
 			}
@@ -444,7 +444,7 @@ namespace boxmon
 				default:
 					if (expression_stack.empty()) {
 						if ((flags & expression_parse_flags_suppress_errors) == 0) {
-							boxmon_error_printf("Expression parse failed (operand expected) at: \"%s\"\n", look);
+							boxmon_error_print("Expression parse failed (operand expected) at: \"{}\"\n", look);
 						}
 						return false;
 					} else {
@@ -586,7 +586,7 @@ namespace boxmon
 							return expression_stack.top()->get_type();
 						}
 						if ((flags & expression_parse_flags_suppress_errors) == 0) {
-							boxmon_error_printf("Expression parse failed (invalid symbol name) at: \"%s\"\n", look);
+							boxmon_error_print("Expression parse failed (invalid symbol name) at: \"{}\"\n", look);
 						}
 						return expression_type::invalid;
 					} else {
@@ -603,7 +603,7 @@ namespace boxmon
 			switch (parse_type) {
 				case expression_type::invalid:
 					if ((flags & expression_parse_flags_suppress_errors) == 0) {
-						boxmon_error_printf("Expression parse failed (invalid token) at: \"%s\"\n", look);
+						boxmon_error_print("Expression parse failed (invalid token) at: \"{}\"\n", look);
 					}
 					clear_stacks();
 					return false;
@@ -623,7 +623,7 @@ namespace boxmon
 					}
 					if (operator_stack.empty()) {
 						if ((flags & expression_parse_flags_suppress_errors) == 0) {
-							boxmon_error_printf("Expression parse failed (mismatched parenthesis) at: \"%s\"\n", look);
+							boxmon_error_print("Expression parse failed (mismatched parenthesis) at: \"{}\"\n", look);
 						}
 					} else {
 						operator_stack.pop();
@@ -660,7 +660,7 @@ namespace boxmon
 
 		if (expression_stack.empty()) {
 			if ((flags & expression_parse_flags_suppress_errors) == 0) {
-				boxmon_error_printf("Expression parse failed (internal error, no final expression) at: \"%s\"\n", look);
+				boxmon_error_print("Expression parse failed (internal error, no final expression) at: \"{}\"\n", look);
 			}
 			return false;
 		}
@@ -670,14 +670,14 @@ namespace boxmon
 
 		if (!expression_stack.empty()) {
 			if ((flags & expression_parse_flags_suppress_errors) == 0) {
-				boxmon_error_printf("Expression parse failed (too many expressions) at: \"%s\"\n", look);
+				boxmon_error_print("Expression parse failed (too many expressions) at: \"{}\"\n", look);
 			}
 			return false;
 		}
 
 		if ((flags & expression_parse_flags_must_consume_all) != 0 && *look != '\0') {
 			if ((flags & expression_parse_flags_suppress_errors) == 0) {
-				boxmon_error_printf("Expression parse failed (invalid token) at: \"%s\"\n", look);
+				boxmon_error_print("Expression parse failed (invalid token) at: \"{}\"\n", look);
 			}
 			return false;
 		}

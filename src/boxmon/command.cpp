@@ -101,8 +101,8 @@ namespace boxmon
 BOXMON_COMMAND(help, "help [<command>]")
 {
 	if (help) {
-		boxmon_console_printf("Print extended use information about a command.");
-		boxmon_console_printf("If no command is specified, help returns a list of all commands the console will accept.");
+		boxmon_console_print("Print extended use information about a command.");
+		boxmon_console_print("If no command is specified, help returns a list of all commands the console will accept.");
 		return true;
 	}
 
@@ -110,9 +110,9 @@ BOXMON_COMMAND(help, "help [<command>]")
 	if (parser.parse_word(command, input)) {
 		auto const *cmd = boxmon::boxmon_command::find(command.c_str());
 		if (cmd == nullptr) {
-			boxmon_warning_printf("Could not find any command named \"%s\"", command.c_str());
+			boxmon_warning_print("Could not find any command named \"{}\"", command.c_str());
 		} else {
-			boxmon_console_printf("%s", cmd->get_description());
+			boxmon_console_print("{}", cmd->get_description());
 			const char *help_input = "";
 			return cmd->run(help_input, parser, true);
 		}
@@ -120,12 +120,12 @@ BOXMON_COMMAND(help, "help [<command>]")
 		std::string name;
 		if (parser.parse_word(name, input)) {
 			if (auto *cmd = boxmon::boxmon_command::find(name.c_str()); cmd != nullptr) {
-				boxmon_console_printf("%s: %s", cmd->get_name(), cmd->get_description());
+				boxmon_console_print("{}: {}", cmd->get_name(), cmd->get_description());
 				return true;
 			}
 		}
 		boxmon::boxmon_command::for_each([](const boxmon::boxmon_command *cmd) {
-			boxmon_console_printf("%s: %s", cmd->get_name(), cmd->get_description());
+			boxmon_console_print("{}: {}", cmd->get_name(), cmd->get_description());
 		});
 	}
 	return true;
@@ -134,56 +134,56 @@ BOXMON_COMMAND(help, "help [<command>]")
 BOXMON_COMMAND(eval, "eval <expr>")
 {
 	if (help) {
-		boxmon_console_printf("Evaluates an expression and prints the result to the console as a decimal integer.");
-		boxmon_console_printf("Intermediate values are stored as signed 32-bit integers. Memory reads from dereferencing are treated as unsigned 8-bit integers.");
-		boxmon_console_printf("Expressions support most C-style mathematical, comparison, boolean, and bitwise operators:");
-		boxmon_console_printf("Math: +, -, *, /, %, ^^, ()");
-		boxmon_console_printf("\t+: Addition. 2+3 returns 5.");
-		boxmon_console_printf("\t-: Subtraction and negation. 2-3 returns -1. -2 returns -2.");
-		boxmon_console_printf("\t*: Multiplication. 2*3 returns 6.");
-		boxmon_console_printf("\t/: Division. 10/2 returns 5.");
-		boxmon_console_printf("\t%: Modulo. 4%3 returns 1.");
-		boxmon_console_printf("\t^^: Exponentiation. 2^^3 returns 8.");
-		boxmon_console_printf("\t(): Parenthesis. (1+2)*3 returns 9.");
-		boxmon_console_printf("Compare: ==, !=, <, >, <=, >=");
-		boxmon_console_printf("\t==: Equality. 2==2 returns 1 (true), 2==3 returns 0 (false).");
-		boxmon_console_printf("\t!=: Inequality. 2!=2 returns 0 (false), 2!=3 returns 1 (true).");
-		boxmon_console_printf("\t<: Less than. 2<3 returns 1 (true), 3<2 returns 0 (false).");
-		boxmon_console_printf("\t>: Greater than. 2>3 returns 0 (false), 3>2 returns 1 (true).");
-		boxmon_console_printf("\t<=: Less than or equal to. 2<=2 returns 1, 2<=3 returns 1.");
-		boxmon_console_printf("\t>=: Greater than or equal to. 2>=2 returns 1, 3>=2 returns 1.");
-		boxmon_console_printf("Bool: &&, ||, !");
-		boxmon_console_printf("\t&&: Boolean AND. 1 && 1 returns 1, 1 && 0 returns 0, 0 && 0 returns 0.");
-		boxmon_console_printf("\t||: Boolean OR. 1 || 1 returns 1, 1 || 0 returns 1, 0 || 0 returns 0.");
-		boxmon_console_printf("\t!: Boolean NOT. !1 returns 0, !0 returns 1.");
-		boxmon_console_printf("Bitwise: &, |, ~, ^, <<, >>");
-		boxmon_console_printf("\t&: Bitwise AND. 3&1 returns 1, 2&1 returns 0.");
-		boxmon_console_printf("\t|: Bitwise OR. 3|1 returns 3, 2|1 returns 3.");
-		boxmon_console_printf("\t~: Bitwise NOT. ~1 returns -2, ~2 returns -3. (Additional reading left to the user: Two's complement signed integers.)");
-		boxmon_console_printf("\t^: Bitwise XOR. 3^1 returns 2, 2^1 returns 3.");
-		boxmon_console_printf("\t<<: Left shift. 1<<2 returns 4.");
-		boxmon_console_printf("\t>>: Right shift. 4>>2 returns 1.");
-		boxmon_console_printf("Additionally, the symbol @ will treat the value to its right as a memory address and attempt to retrieve the value at that address, similar to the C-style * for pointer dereferencing.");
-		boxmon_console_printf("\t@: Dereferencing. @3 returns the value stored at $0003.");
-		boxmon_console_printf("C-style precedence rules should apply to each of these operators.");
-		boxmon_console_printf("Expressions may include integer values and symbol names. Symbol names are substituted as the address associated with the symbol.");
-		boxmon_console_printf("If the same symbol name is defined multiple times, the selection process is undefined.");
-		boxmon_console_printf("Numbers are parsed assuming a default radix, see the \"radix\" command for more information.");
-		boxmon_console_printf("The default radix can be overridden, however, by specifying a radix followed by a space, immediately before a number. Examples include:");
-		boxmon_console_printf("\t\"b <number>\": Parse this number as a binary integer.");
-		boxmon_console_printf("\t\"o <number>\": Parse this number as an octal integer.");
-		boxmon_console_printf("\t\"d <number>\": Parse this number as a decimal integer.");
-		boxmon_console_printf("\t\"h <number>\": Parse this number as a hexadecimal integer.");
-		boxmon_console_printf("Certain C-like number prefixes will also override the default radix:");
-		boxmon_console_printf("\t%%101: This number is parsed as a binary integer.");
-		boxmon_console_printf("\t0101, o101, O101: These numbers are parsed as octal integers.");
-		boxmon_console_printf("\t#101: This number is parsed as a decimal integer.");
-		boxmon_console_printf("\t$101, h101, 0x101: These numbers are parsed as hexadecimal integers.");
+		boxmon_console_print("Evaluates an expression and prints the result to the console as a decimal integer.");
+		boxmon_console_print("Intermediate values are stored as signed 32-bit integers. Memory reads from dereferencing are treated as unsigned 8-bit integers.");
+		boxmon_console_print("Expressions support most C-style mathematical, comparison, boolean, and bitwise operators:");
+		boxmon_console_print("Math: +, -, *, /, %, ^^, ()");
+		boxmon_console_print("\t+: Addition. 2+3 returns 5.");
+		boxmon_console_print("\t-: Subtraction and negation. 2-3 returns -1. -2 returns -2.");
+		boxmon_console_print("\t*: Multiplication. 2*3 returns 6.");
+		boxmon_console_print("\t/: Division. 10/2 returns 5.");
+		boxmon_console_print("\t%: Modulo. 4%3 returns 1.");
+		boxmon_console_print("\t^^: Exponentiation. 2^^3 returns 8.");
+		boxmon_console_print("\t(): Parenthesis. (1+2)*3 returns 9.");
+		boxmon_console_print("Compare: ==, !=, <, >, <=, >=");
+		boxmon_console_print("\t==: Equality. 2==2 returns 1 (true), 2==3 returns 0 (false).");
+		boxmon_console_print("\t!=: Inequality. 2!=2 returns 0 (false), 2!=3 returns 1 (true).");
+		boxmon_console_print("\t<: Less than. 2<3 returns 1 (true), 3<2 returns 0 (false).");
+		boxmon_console_print("\t>: Greater than. 2>3 returns 0 (false), 3>2 returns 1 (true).");
+		boxmon_console_print("\t<=: Less than or equal to. 2<=2 returns 1, 2<=3 returns 1.");
+		boxmon_console_print("\t>=: Greater than or equal to. 2>=2 returns 1, 3>=2 returns 1.");
+		boxmon_console_print("Bool: &&, ||, !");
+		boxmon_console_print("\t&&: Boolean AND. 1 && 1 returns 1, 1 && 0 returns 0, 0 && 0 returns 0.");
+		boxmon_console_print("\t||: Boolean OR. 1 || 1 returns 1, 1 || 0 returns 1, 0 || 0 returns 0.");
+		boxmon_console_print("\t!: Boolean NOT. !1 returns 0, !0 returns 1.");
+		boxmon_console_print("Bitwise: &, |, ~, ^, <<, >>");
+		boxmon_console_print("\t&: Bitwise AND. 3&1 returns 1, 2&1 returns 0.");
+		boxmon_console_print("\t|: Bitwise OR. 3|1 returns 3, 2|1 returns 3.");
+		boxmon_console_print("\t~: Bitwise NOT. ~1 returns -2, ~2 returns -3. (Additional reading left to the user: Two's complement signed integers.)");
+		boxmon_console_print("\t^: Bitwise XOR. 3^1 returns 2, 2^1 returns 3.");
+		boxmon_console_print("\t<<: Left shift. 1<<2 returns 4.");
+		boxmon_console_print("\t>>: Right shift. 4>>2 returns 1.");
+		boxmon_console_print("Additionally, the symbol @ will treat the value to its right as a memory address and attempt to retrieve the value at that address, similar to the C-style * for pointer dereferencing.");
+		boxmon_console_print("\t@: Dereferencing. @3 returns the value stored at $0003.");
+		boxmon_console_print("C-style precedence rules should apply to each of these operators.");
+		boxmon_console_print("Expressions may include integer values and symbol names. Symbol names are substituted as the address associated with the symbol.");
+		boxmon_console_print("If the same symbol name is defined multiple times, the selection process is undefined.");
+		boxmon_console_print("Numbers are parsed assuming a default radix, see the \"radix\" command for more information.");
+		boxmon_console_print("The default radix can be overridden, however, by specifying a radix followed by a space, immediately before a number. Examples include:");
+		boxmon_console_print("\t\"b <number>\": Parse this number as a binary integer.");
+		boxmon_console_print("\t\"o <number>\": Parse this number as an octal integer.");
+		boxmon_console_print("\t\"d <number>\": Parse this number as a decimal integer.");
+		boxmon_console_print("\t\"h <number>\": Parse this number as a hexadecimal integer.");
+		boxmon_console_print("Certain C-like number prefixes will also override the default radix:");
+		boxmon_console_print("\t%101: This number is parsed as a binary integer.");
+		boxmon_console_print("\t0101, o101, O101: These numbers are parsed as octal integers.");
+		boxmon_console_print("\t#101: This number is parsed as a decimal integer.");
+		boxmon_console_print("\t$101, h101, 0x101: These numbers are parsed as hexadecimal integers.");
 		return true;
 	}
 	const boxmon::expression *expr;
 	if (parser.parse_expression(expr, input, boxmon::expression_parse_flags_must_consume_all)) {
-		boxmon_console_printf("%d", expr->evaluate());
+		boxmon_console_print("{}", expr->evaluate());
 		return true;
 	}
 
@@ -195,13 +195,13 @@ BOXMON_ALIAS(print, eval);
 BOXMON_COMMAND(break, "break [load|store|exec] [address [address] [if <cond_expr>]]")
 {
 	if (help) {
-		boxmon_console_printf("Create a breakpoint, optionally with a conditional expression.");
-		boxmon_console_printf("\tload: Break if the CPU attempts to load data from this address.");
-		boxmon_console_printf("\tstore: Break if the CPU attempts to store data to this address.");
-		boxmon_console_printf("\texec: Break if the CPU attempts to execute an instruction from this address.");
-		boxmon_console_printf("\taddress: One or more addresses to set as breakpoints.");
-		boxmon_console_printf("\tcond_expr: Conditional expression following the same rules and syntax as \"eval\". If specified, the breakpoint will only pause execution if the conditional expression evaluates to a non-zero value.");
-		boxmon_console_printf("\t           (In the case of boolean comparisons, \"true\" evaluates to 1, \"false\" evaluates to 0.)");
+		boxmon_console_print("Create a breakpoint, optionally with a conditional expression.");
+		boxmon_console_print("\tload: Break if the CPU attempts to load data from this address.");
+		boxmon_console_print("\tstore: Break if the CPU attempts to store data to this address.");
+		boxmon_console_print("\texec: Break if the CPU attempts to execute an instruction from this address.");
+		boxmon_console_print("\taddress: One or more addresses to set as breakpoints.");
+		boxmon_console_print("\tcond_expr: Conditional expression following the same rules and syntax as \"eval\". If specified, the breakpoint will only pause execution if the conditional expression evaluates to a non-zero value.");
+		boxmon_console_print("\t           (In the case of boolean comparisons, \"true\" evaluates to 1, \"false\" evaluates to 0.)");
 		return true;
 	}
 	uint8_t breakpoint_flags = 0;
@@ -239,7 +239,7 @@ BOXMON_ALIAS(br, break);
 BOXMON_COMMAND(add_label, "add_label <address> <label>")
 {
 	if (help) {
-		boxmon_console_printf("Add a label for a specified address.");
+		boxmon_console_print("Add a label for a specified address.");
 		return true;
 	}
 	boxmon::address_type addr;
@@ -261,9 +261,9 @@ BOXMON_ALIAS(al, add_label);
 BOXMON_COMMAND(backtrace, "backtrace")
 {
 	if (help) {
-		boxmon_console_printf("Attempt to unwind the callstack of execution.");
-		boxmon_console_printf("This is a best-effort attempt based on a history of jsr, rts, and rti instructions, as well as interrupt triggers.");
-		boxmon_console_printf("Coding practices that manually push or pop values in lieu of subroute and interrupt instructions will easily confuse this.");
+		boxmon_console_print("Attempt to unwind the callstack of execution.");
+		boxmon_console_print("This is a best-effort attempt based on a history of jsr, rts, and rti instructions, as well as interrupt triggers.");
+		boxmon_console_print("Coding practices that manually push or pop values in lieu of subroute and interrupt instructions will easily confuse this.");
 		return true;
 	}
 
@@ -293,7 +293,7 @@ BOXMON_COMMAND(backtrace, "backtrace")
 			return "???";
 		}();
 
-		boxmon_console_printf("% 3d: %s PC:%02x:%04X -> %02x:%04X A:%02X X:%02X Y:%02X SP:%02X ST:%c%c-%c%c%c%c%c", 
+		boxmon_console_print("{: 3d}: {} PC:{:02x}:{:04x} -> {:02x}:{:04x} A:{:02x} X:{:02x} Y:{:02x} SP:{:02x} ST:{:c}{:c}-{:c}{:c}{:c}{:c}{:c}", 
 			i, 
 			op, ss.push.pc_bank, ss.push.state.pc, ss.push.jmp_data.dest_bank, ss.push.jmp_data.dest_pc, ss.push.state.a, ss.push.state.x, ss.push.state.y, ss.push.state.sp, 
 			ss.push.state.status & 0x80 ? 'N' : '-', 
@@ -313,8 +313,8 @@ BOXMON_ALIAS(bt, backtrace);
 BOXMON_COMMAND(cpuhistory, "cpuhistory [length]")
 {
 	if (help) {
-		boxmon_console_printf("Show a history of recently-executed instructions, up to the specified number of instructions ago.");
-		boxmon_console_printf("If omitted, the default is 128 instructions.");
+		boxmon_console_print("Show a history of recently-executed instructions, up to the specified number of instructions ago.");
+		boxmon_console_print("If omitted, the default is 128 instructions.");
 		return true;
 	}
 	int history_length = 0;
@@ -329,7 +329,7 @@ BOXMON_COMMAND(cpuhistory, "cpuhistory [length]")
 
 		char const *op = mnemonics[history.opcode];
 
-		boxmon_console_printf("% 3d: %s PC:%02x:%04X A:%02X X:%02X Y:%02X SP:%02X ST:%c%c-%c%c%c%c%c", history6502.count() - i, op, history.bank, history.state.pc, history.state.a, history.state.x, history.state.y, history.state.sp, history.state.status & 0x80 ? 'N' : '-', history.state.status & 0x40 ? 'V' : '-', history.state.status & 0x10 ? 'B' : '-', history.state.status & 0x08 ? 'D' : '-', history.state.status & 0x04 ? 'I' : '-', history.state.status & 0x02 ? 'Z' : '-', history.state.status & 0x01 ? 'C' : '-');
+		boxmon_console_print("{: 3d}: {} PC:{:02x}:{:04x} A:{:02x} X:{:02x} Y:{:02x} SP:{:02x} ST:{:c}{:c}-{:c}{:c}{:c}{:c}{:c}", history6502.count() - i, op, history.bank, history.state.pc, history.state.a, history.state.x, history.state.y, history.state.sp, history.state.status & 0x80 ? 'N' : '-', history.state.status & 0x40 ? 'V' : '-', history.state.status & 0x10 ? 'B' : '-', history.state.status & 0x08 ? 'D' : '-', history.state.status & 0x04 ? 'I' : '-', history.state.status & 0x02 ? 'Z' : '-', history.state.status & 0x01 ? 'C' : '-');
 	}
 	return true;
 }
@@ -340,8 +340,8 @@ BOXMON_ALIAS(chis, cpuhistory);
 BOXMON_COMMAND(jmphistory, "jmphistory [length]")
 {
 	if (help) {
-		boxmon_console_printf("Show a history of recently-executed branches and jumps, up to the specified number of instructions ago.");
-		boxmon_console_printf("If omitted, the default is 128 instructions.");
+		boxmon_console_print("Show a history of recently-executed branches and jumps, up to the specified number of instructions ago.");
+		boxmon_console_print("If omitted, the default is 128 instructions.");
 		return true;
 	}
 	int history_length = 0;
@@ -356,7 +356,7 @@ BOXMON_COMMAND(jmphistory, "jmphistory [length]")
 		if (disasm_is_branch(history.opcode)) {
 			char const *op = mnemonics[history.opcode];
 
-			boxmon_console_printf("% 3d: %s PC:%02x:%04X A:%02X X:%02X Y:%02X SP:%02X ST:%c%c-%c%c%c%c%c", history6502.count() - i, op, history.bank, history.state.pc, history.state.a, history.state.x, history.state.y, history.state.sp, history.state.status & 0x80 ? 'N' : '-', history.state.status & 0x40 ? 'V' : '-', history.state.status & 0x10 ? 'B' : '-', history.state.status & 0x08 ? 'D' : '-', history.state.status & 0x04 ? 'I' : '-', history.state.status & 0x02 ? 'Z' : '-', history.state.status & 0x01 ? 'C' : '-');
+			boxmon_console_print("{: 3d}: {} PC:{:02x}:{:04x} A:{:02x} X:{:02x} Y:{:02x} SP:{:02x} ST:{:c}{:c}-{:c}{:c}{:c}{:c}{:c}", history6502.count() - i, op, history.bank, history.state.pc, history.state.a, history.state.x, history.state.y, history.state.sp, history.state.status & 0x80 ? 'N' : '-', history.state.status & 0x40 ? 'V' : '-', history.state.status & 0x10 ? 'B' : '-', history.state.status & 0x08 ? 'D' : '-', history.state.status & 0x04 ? 'I' : '-', history.state.status & 0x02 ? 'Z' : '-', history.state.status & 0x01 ? 'C' : '-');
 		}
 	}
 	return true;
@@ -367,7 +367,7 @@ BOXMON_ALIAS(jhis, jmphistory);
 BOXMON_COMMAND(dump, "dump")
 {
 	if (help) {
-		boxmon_console_printf("Perform a machine dump to file.");
+		boxmon_console_print("Perform a machine dump to file.");
 		return true;
 	}
 
@@ -379,8 +379,8 @@ BOXMON_COMMAND(dump, "dump")
 BOXMON_COMMAND(goto, "goto <address>")
 {
 	if (help) {
-		boxmon_console_printf("Set the program counter to a specified memory address.");
-		boxmon_console_printf("If the address is greater than $FFFF, this will also set the appropriate memory bank to the contents of the high byte in the specified address.");
+		boxmon_console_print("Set the program counter to a specified memory address.");
+		boxmon_console_print("If the address is greater than $FFFF, this will also set the appropriate memory bank to the contents of the high byte in the specified address.");
 		return true;
 	}
 
@@ -401,12 +401,12 @@ BOXMON_ALIAS(g, goto);
 BOXMON_COMMAND(io, "io")
 {
 	if (help) {
-		boxmon_console_printf("Print the current read values of the IO registers to console.");
+		boxmon_console_print("Print the current read values of the IO registers to console.");
 		return true;
 	}
 
 	auto printio = [](char const *name, uint16_t addr) {
-		boxmon_console_printf("%-4s $%04X: $%02X", name, addr, debug_read6502(addr));
+		boxmon_console_print("{:-4} ${:04x}: ${:02x}", name, addr, debug_read6502(addr));
 	};
 
 	// VIA1
@@ -452,12 +452,12 @@ BOXMON_COMMAND(io, "io")
 BOXMON_COMMAND(iowide, "iowide")
 {
 	if (help) {
-		boxmon_console_printf("Print the current read values of the IO registers to console, but grouped into lines of 16 bytes.");
+		boxmon_console_print("Print the current read values of the IO registers to console, but grouped into lines of 16 bytes.");
 		return true;
 	}
 
 	auto printio = [](char const *name, uint16_t addr) {
-		boxmon_console_printf("%-4s $%04X: $%02X $%02X $%02X $%02X $%02X $%02X $%02X $%02X   $%02X $%02X $%02X $%02X $%02X $%02X $%02X $%02X", name, addr, 
+		boxmon_console_print("{:-4} ${:04x}: ${:02x} ${:02x} ${:02x} ${:02x} ${:02x} ${:02x} ${:02x} ${:02x}   ${:02x} ${:02x} ${:02x} ${:02x} ${:02x} ${:02x} ${:02x} ${:02x}", name, addr, 
 			debug_read6502(addr + 0),
 			debug_read6502(addr + 1),
 			debug_read6502(addr + 2),
@@ -490,7 +490,7 @@ BOXMON_COMMAND(iowide, "iowide")
 	}
 	// YM
 	for (uint16_t i = 0; i < 2; i += 16) {
-		boxmon_console_printf("%-4s $%04X: $%02X $%02X", "YM", 0xf940, 
+		boxmon_console_print("{:-4} ${:04x}: ${:02x} ${:02x}", "YM", 0xf940, 
 			debug_read6502(0xf940 + 0), 
 			debug_read6502(0xf940 + 1));
 	}
@@ -523,8 +523,8 @@ BOXMON_ALIAS(iow, iowide);
 BOXMON_COMMAND(next, "next [<count>]")
 {
 	if (help) {
-		boxmon_console_printf("Execute the next <count> instructions.");
-		boxmon_console_printf("If left unspecified, <count> defaults to 1.");
+		boxmon_console_print("Execute the next <count> instructions.");
+		boxmon_console_print("If left unspecified, <count> defaults to 1.");
 		return true;
 	}
 
@@ -547,7 +547,7 @@ BOXMON_COMMAND(next, "next [<count>]")
 BOXMON_COMMAND(reset, "reset")
 {
 	if (help) {
-		boxmon_console_printf("Perform a machine reset.");
+		boxmon_console_print("Perform a machine reset.");
 		return true;
 	}
 
@@ -558,7 +558,7 @@ BOXMON_COMMAND(reset, "reset")
 BOXMON_COMMAND(return, "return")
 {
 	if (help) {
-		boxmon_console_printf("Continue execution until after the next rts or rti instruction.");
+		boxmon_console_print("Continue execution until after the next rts or rti instruction.");
 		return true;
 	}
 
@@ -571,11 +571,11 @@ BOXMON_ALIAS(step, next);
 BOXMON_COMMAND(stopwatch, "stopwatch")
 {
 	if (help) {
-		boxmon_console_printf("Print the current CPU clock tick value to the console.");
+		boxmon_console_print("Print the current CPU clock tick value to the console.");
 		return true;
 	}
 
-	boxmon_console_printf("%" PRIu64, clockticks6502);
+	boxmon_console_print("{}", clockticks6502);
 	return true;
 }
 
@@ -585,10 +585,10 @@ BOXMON_COMMAND(stopwatch, "stopwatch")
 BOXMON_COMMAND(warp, "warp [<factor>]")
 {
 	if (help) {
-		boxmon_console_printf("Set or toggle warp mode.");
-		boxmon_console_printf("\tfactor: A value from 0-16 indicating the warp factor to use. If not specified, warp will be disabled if currently active and will be set to factor 1 if currently inactive.");
-		boxmon_console_printf("\tWhen activated, warp mode removes all throttling from the emulator and attempts to run the emulated system as quickly as possible.");
-		boxmon_console_printf("\tLarger warp factors reduce the number of attempts to draw the screen, as that is the single most expensive task to perform.");
+		boxmon_console_print("Set or toggle warp mode.");
+		boxmon_console_print("\tfactor: A value from 0-16 indicating the warp factor to use. If not specified, warp will be disabled if currently active and will be set to factor 1 if currently inactive.");
+		boxmon_console_print("\tWhen activated, warp mode removes all throttling from the emulator and attempts to run the emulated system as quickly as possible.");
+		boxmon_console_print("\tLarger warp factors reduce the number of attempts to draw the screen, as that is the single most expensive task to perform.");
 		return true;
 	}
 
@@ -651,18 +651,18 @@ BOXMON_COMMAND(warp, "warp [<factor>]")
 static bool check_hostfs()
 {
 	if (!hypercalls_allowed()) {
-		boxmon_warning_printf("Hostfs emulation is currently disabled.");
+		boxmon_warning_print("Hostfs emulation is currently disabled.");
 
 		if (sdcard_is_attached()) {
-			boxmon_warning_printf("SDCard is attached.");
+			boxmon_warning_print("SDCard is attached.");
 		}
 
 		if (Options.no_ieee_hypercalls) {
-			boxmon_warning_printf("IEEE hypercalls have been disabled.");
+			boxmon_warning_print("IEEE hypercalls have been disabled.");
 		}
 
 		if (Options.enable_serial) {
-			boxmon_warning_printf("Bit-level serial bus emulation is enabled.");
+			boxmon_warning_print("Bit-level serial bus emulation is enabled.");
 		}
 		return false;
 	}
@@ -673,9 +673,9 @@ static bool check_hostfs()
 BOXMON_COMMAND(cd, "cd <directory>")
 {
 	if (help) {
-		boxmon_console_printf("Change the base directory for filesystem access.");
-		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
-		boxmon_console_printf("This will also reset the cwd of hostfs emulation to the new location.");
+		boxmon_console_print("Change the base directory for filesystem access.");
+		boxmon_console_print("At present, this only works when in hostfs emulation mode.");
+		boxmon_console_print("This will also reset the cwd of hostfs emulation to the new location.");
 		return true;
 	}
 
@@ -695,12 +695,12 @@ BOXMON_COMMAND(cd, "cd <directory>")
 		if (std::filesystem::is_directory(abs_path)) {
 			Options.fsroot_path = abs_path;
 			Options.startin_path = Options.fsroot_path;
-			boxmon_console_printf("%s", Options.fsroot_path.generic_string().c_str());
+			boxmon_console_print("{}", Options.fsroot_path.generic_string().c_str());
 		} else {
-			boxmon_warning_printf("Path is not a directory: %s", abs_path.generic_string().c_str());		
+			boxmon_warning_print("Path is not a directory: {}", abs_path.generic_string().c_str());		
 		}
 	} else {
-		boxmon_warning_printf("Path does not exist: %s", abs_path.generic_string().c_str());
+		boxmon_warning_print("Path does not exist: {}", abs_path.generic_string().c_str());
 	}
 
 	return true;
@@ -711,8 +711,8 @@ BOXMON_COMMAND(cd, "cd <directory>")
 BOXMON_COMMAND(dir, "dir")
 {
 	if (help) {
-		boxmon_console_printf("List the contents of the current directory.");
-		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		boxmon_console_print("List the contents of the current directory.");
+		boxmon_console_print("At present, this only works when in hostfs emulation mode.");
 		return true;
 	}
 
@@ -720,10 +720,10 @@ BOXMON_COMMAND(dir, "dir")
 		return true;
 	}
 
-	boxmon_console_printf("Directory listing of %s", Options.fsroot_path.generic_string().c_str());
+	boxmon_console_print("Directory listing of {}", Options.fsroot_path.generic_string().c_str());
 	for (auto const &dir_entry : std::filesystem::directory_iterator{ Options.fsroot_path }) {
 		auto const relative = std::filesystem::relative(dir_entry.path(), Options.fsroot_path);
-		boxmon_console_printf("%8d %s", std::filesystem::file_size(dir_entry.path()), relative.generic_string().c_str());
+		boxmon_console_print("{:8d} {}", std::filesystem::file_size(dir_entry.path()), relative.generic_string().c_str());
 	}
 
 	return true;
@@ -733,8 +733,8 @@ BOXMON_COMMAND(dir, "dir")
 BOXMON_COMMAND(pwd, "pwd")
 {
 	if (help) {
-		boxmon_console_printf("Print the current working directory.");
-		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		boxmon_console_print("Print the current working directory.");
+		boxmon_console_print("At present, this only works when in hostfs emulation mode.");
 		return true;
 	}
 
@@ -742,7 +742,7 @@ BOXMON_COMMAND(pwd, "pwd")
 		return true;
 	}
 
-	boxmon_console_printf("%s", Options.fsroot_path.generic_string().c_str());
+	boxmon_console_print("{}", Options.fsroot_path.generic_string().c_str());
 	return true;
 }
 
@@ -750,8 +750,8 @@ BOXMON_COMMAND(pwd, "pwd")
 BOXMON_COMMAND(mkdir, "mkdir <directory>")
 {
 	if (help) {
-		boxmon_console_printf("Make a directory at the current filesystem location.");
-		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		boxmon_console_print("Make a directory at the current filesystem location.");
+		boxmon_console_print("At present, this only works when in hostfs emulation mode.");
 		return true;
 	}
 
@@ -768,13 +768,13 @@ BOXMON_COMMAND(mkdir, "mkdir <directory>")
 	std::filesystem::path abs_path = path.is_absolute() ? path : std::filesystem::absolute(Options.fsroot_path / path);
 
 	if (std::filesystem::exists(abs_path)) {
-		boxmon_warning_printf("Path already exists: %s", abs_path.generic_string().c_str());
+		boxmon_warning_print("Path already exists: {}", abs_path.generic_string().c_str());
 	} else {
 		std::error_code ec;
 		if (std::filesystem::create_directory(abs_path, ec)) {
-			boxmon_console_printf("Created %s", abs_path.generic_string().c_str());
+			boxmon_console_print("Created {}", abs_path.generic_string().c_str());
 		} else {
-			boxmon_warning_printf("Create failed: %s", ec.message().c_str());
+			boxmon_warning_print("Create failed: {}", ec.message().c_str());
 		}
 	}
 
@@ -785,8 +785,8 @@ BOXMON_COMMAND(mkdir, "mkdir <directory>")
 BOXMON_COMMAND(rmdir, "rmdir <directory>")
 {
 	if (help) {
-		boxmon_console_printf("Remove a directory at the current filesystem location.");
-		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		boxmon_console_print("Remove a directory at the current filesystem location.");
+		boxmon_console_print("At present, this only works when in hostfs emulation mode.");
 		return true;
 	}
 
@@ -806,15 +806,15 @@ BOXMON_COMMAND(rmdir, "rmdir <directory>")
 		if (std::filesystem::is_directory(abs_path)) {
 			std::error_code ec;
 			if (std::filesystem::remove(abs_path, ec)) {
-				boxmon_console_printf("Removed %s", abs_path.generic_string().c_str());
+				boxmon_console_print("Removed {}", abs_path.generic_string().c_str());
 			} else {
-				boxmon_warning_printf("Remove failed: %s", ec.message().c_str());
+				boxmon_warning_print("Remove failed: {}", ec.message().c_str());
 			}
 		} else {
-			boxmon_warning_printf("Path is not a directory: %s", abs_path.generic_string().c_str());
+			boxmon_warning_print("Path is not a directory: {}", abs_path.generic_string().c_str());
 		}
 	} else {
-		boxmon_warning_printf("Path does not exist: %s", abs_path.generic_string().c_str());
+		boxmon_warning_print("Path does not exist: {}", abs_path.generic_string().c_str());
 	}
 
 	return true;
@@ -823,8 +823,8 @@ BOXMON_COMMAND(rmdir, "rmdir <directory>")
 BOXMON_COMMAND(rm, "rm <file_or_directory>")
 {
 	if (help) {
-		boxmon_console_printf("Remove a file or directory at the current filesystem location.");
-		boxmon_console_printf("At present, this only works when in hostfs emulation mode.");
+		boxmon_console_print("Remove a file or directory at the current filesystem location.");
+		boxmon_console_print("At present, this only works when in hostfs emulation mode.");
 		return true;
 	}
 
@@ -843,12 +843,12 @@ BOXMON_COMMAND(rm, "rm <file_or_directory>")
 	if (std::filesystem::exists(abs_path)) {
 		std::error_code ec;
 		if (std::filesystem::remove(abs_path, ec)) {
-			boxmon_console_printf("Removed %s", abs_path.generic_string().c_str());
+			boxmon_console_print("Removed {}", abs_path.generic_string().c_str());
 		} else {
-			boxmon_warning_printf("Remove failed: %s", ec.message().c_str());
+			boxmon_warning_print("Remove failed: {}", ec.message().c_str());
 		}
 	} else {
-		boxmon_warning_printf("Path does not exist: %s", abs_path.generic_string().c_str());
+		boxmon_warning_print("Path does not exist: {}", abs_path.generic_string().c_str());
 	}
 
 	return true;
@@ -869,19 +869,19 @@ static const char *radix_string(boxmon::radix_type r)
 BOXMON_COMMAND(radix, "radix [b|o|d|h]")
 {
 	if (help) {
-		boxmon_console_printf("Get or set the default radix for inputs to the command line.");
-		boxmon_console_printf("Radix types are a single character from the following set:");
-		boxmon_console_printf("\tb: Binary (base 2)");
-		boxmon_console_printf("\to: Octal (base 8)");
-		boxmon_console_printf("\td: Decimal (base 10)");
-		boxmon_console_printf("\th: Hexadecimal (base 16)");
-		boxmon_console_printf("If a number can't be parsed under the default radix, the parser will attempt to interpret it using the smallest possible radix option from the above list.");
-		boxmon_console_printf("The default radix is currently: %s", radix_string(parser.get_default_radix()));
+		boxmon_console_print("Get or set the default radix for inputs to the command line.");
+		boxmon_console_print("Radix types are a single character from the following set:");
+		boxmon_console_print("\tb: Binary (base 2)");
+		boxmon_console_print("\to: Octal (base 8)");
+		boxmon_console_print("\td: Decimal (base 10)");
+		boxmon_console_print("\th: Hexadecimal (base 16)");
+		boxmon_console_print("If a number can't be parsed under the default radix, the parser will attempt to interpret it using the smallest possible radix option from the above list.");
+		boxmon_console_print("The default radix is currently: {}", radix_string(parser.get_default_radix()));
 		return true;
 	}
 
 	if (*input == '\0') {
-		boxmon_console_printf("Default radix is: %s", radix_string(parser.get_default_radix()));
+		boxmon_console_print("Default radix is: {}", radix_string(parser.get_default_radix()));
 		return true;
 	}
 
@@ -891,7 +891,7 @@ BOXMON_COMMAND(radix, "radix [b|o|d|h]")
 	}
 
 	parser.set_default_radix(radix);
-	boxmon_console_printf("Default radix set to: %s", radix_string(parser.get_default_radix()));
+	boxmon_console_print("Default radix set to: {}", radix_string(parser.get_default_radix()));
 	return true;
 }
 

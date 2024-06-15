@@ -183,7 +183,7 @@ static void usage()
 
 	fmt::print("-save_ini\n");
 	fmt::print("\tSave current emulator settings to ini file. This includes the other command-line options specified with this run.\n");
-	fmt::print("\tIf -ini has not been specified, this uses the default ini location under %%APPDATA%%\\Box16\\Box16 or ~/.local/Box16.\n");
+	fmt::print("\tIf -ini has not been specified, this uses the default ini location under %APPDATA%\\Box16\\Box16 or ~/.local/Box16.\n");
 
 	fmt::print("-scale {{1|2|3|4}}\n");
 	fmt::print("\tScale output to an integer multiple of 640x480\n");

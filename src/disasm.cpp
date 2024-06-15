@@ -13,7 +13,7 @@ static std::string disasm_label(const uint16_t target, const uint8_t bank, const
 	if (symbol.empty()) {
 		return symbol;
 	} else {
-		return fmt::vformat(hex_format, fmt::make_format_args(target));
+		return fmt::format(fmt::runtime(hex_format), target);
 	}
 }
 
@@ -21,8 +21,8 @@ static std::string disasm_label_wrap(const uint16_t target, const uint8_t bank, 
 {
 	const std::string &symbol = disasm_get_label(target, bank);
 
-	const std::string inner = (symbol.empty() ? fmt::vformat(hex_format, fmt::make_format_args(target)) : symbol);
-	return fmt::vformat(wrapper_format, fmt::make_format_args(inner));
+	const std::string inner = (symbol.empty() ? fmt::format(fmt::runtime(hex_format), target) : symbol);
+	return fmt::format(fmt::runtime(wrapper_format), inner);
 }
 
 const std::string &disasm_get_label(const uint16_t address, const uint8_t bank)

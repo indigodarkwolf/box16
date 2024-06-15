@@ -701,9 +701,9 @@ static void command(char *cmd)
 	}
 	if (log_ieee) {
 		if (cmd[0] == 'P') {
-			printf("  COMMAND \"%c\" [binary parameters suppressed]\n", cmd[0]);
+			fmt::print("  COMMAND \"{:c}\" [binary parameters suppressed]\n", cmd[0]);
 		} else {
-			printf("  COMMAND \"%s\"\n", cmd);		
+			fmt::print("  COMMAND \"{}\"\n", cmd);		
 		}
 	}
 	switch (cmd[0]) {
@@ -785,7 +785,7 @@ static void command(char *cmd)
 			}
 		default:
 			if (log_ieee) {
-				printf("    (unsupported command ignored)\n");
+				fmt::print("    (unsupported command ignored)\n");
 			}
 	}
 	set_error(0x30, 0, 0);
@@ -1024,7 +1024,7 @@ static int copen(int channel)
 		channels[channel].read  = !channel;
 	}
 	if (log_ieee) {
-		printf("  OPEN \"%s\",%d (%s%s)\n", channels[channel].name, channel, channels[channel].read ? "R" : "", channels[channel].write ? "W" : "");
+		fmt::print("  OPEN \"{}\",{} ({}{})\n", channels[channel].name, channel, channels[channel].read ? "R" : "", channels[channel].write ? "W" : "");
 	}
 
 	if (!channels[channel].write && channels[channel].name[0] == '$') {
@@ -1070,7 +1070,7 @@ static int copen(int channel)
 
 		if (channels[channel].f == nullptr) {
 			if (log_ieee) {
-				printf("  FILE NOT FOUND\n");
+				fmt::print("  FILE NOT FOUND\n");
 			}
 			set_error(0x62, 0, 0);
 			ret = 2; // FNF
@@ -1089,7 +1089,7 @@ static int copen(int channel)
 static void cclose(int channel)
 {
 	if (log_ieee) {
-		printf("  CLOSE %d\n", channel);
+		fmt::print("  CLOSE {:d}\n", channel);
 	}
 	channels[channel].name[0] = 0;
 	if (channels[channel].f) {
@@ -1136,12 +1136,12 @@ void ieee_init()
 
 		// Quick error checks
 		if (Options.fsroot_path.empty()) {
-			fprintf(stderr, "Failed to resolve argument to -fsroot\n");
+			fmt::print(stderr, "Failed to resolve argument to -fsroot\n");
 			exit(1);
 		}
 
 		if (Options.startin_path.empty()) {
-			fprintf(stderr, "Failed to resolve argument to -startin\n");
+			fmt::print(stderr, "Failed to resolve argument to -startin\n");
 			exit(1);
 		}
 
@@ -1201,7 +1201,7 @@ void ieee_init()
 		return true;
 	}();
 	if (!located_cbdos_flags) {
-		printf("Unable to find KERNAL cbdos_flags\n");
+		fmt::print("Unable to find KERNAL cbdos_flags\n");
 		cbdos_flags = 0;
 	}
 
@@ -1212,7 +1212,7 @@ int SECOND(uint8_t a)
 {
 	int ret = -1;
 	if (log_ieee) {
-		printf("%s $%02x\n", __func__, a);
+		fmt::print("{} ${:02x}\n", __func__, a);
 	}
 	if (listening) {
 		channel = a & 0xf;
@@ -1223,7 +1223,7 @@ int SECOND(uint8_t a)
 		switch (a & 0xf0) {
 			case 0x60:
 				if (log_ieee) {
-					printf("  WRITE %d...\n", channel);
+					fmt::print("  WRITE {:d}...\n", channel);
 				}
 				break;
 			case 0xe0:
@@ -1231,7 +1231,7 @@ int SECOND(uint8_t a)
 				break;
 			case 0xf0:
 				if (log_ieee) {
-					printf("  OPEN %d...\n", channel);
+					fmt::print("  OPEN {:d}...\n", channel);
 				}
 				opening = true;
 				namelen = 0;
@@ -1246,7 +1246,7 @@ int SECOND(uint8_t a)
 int TKSA(uint8_t a)
 {
 	if (log_ieee) {
-		printf("%s $%02x\n", __func__, a);
+		fmt::print("{} ${:02x}\n", __func__, a);
 	}
 	if (talking) {
 		channel = a & 0xf;
@@ -1260,7 +1260,7 @@ int ACPTR(uint8_t *a)
 {
 	int ret = 0;
 	if (log_ieee) {
-		printf("%s-> $%02x\n", __func__, *a);
+		fmt::print("{}-> ${:02x}\n", __func__, *a);
 	}
 	if (talking) {
 		if (channel == 15) {
@@ -1316,7 +1316,7 @@ int CIOUT(uint8_t a)
 {
 	int ret = 0;
 	if (log_ieee) {
-		printf("%s $%02x\n", __func__, a);
+		fmt::print("{} ${:02x}\n", __func__, a);
 	}
 	if (listening) {
 		if (opening) {
@@ -1353,7 +1353,7 @@ int CIOUT(uint8_t a)
 int UNTLK()
 {
 	if (log_ieee) {
-		printf("%s\n", __func__);
+		fmt::print("{}\n", __func__);
 	}
 	if (talking) {
 		talking = false;
@@ -1367,7 +1367,7 @@ int UNTLK()
 int UNLSN()
 {
 	if (log_ieee) {
-		printf("%s\n", __func__);
+		fmt::print("{}\n", __func__);
 	}
 	if (listening) {
 		listening = false;
@@ -1390,7 +1390,7 @@ int UNLSN()
 int LISTEN(uint8_t a)
 {
 	if (log_ieee) {
-		printf("%s $%02x\n", __func__, a);
+		fmt::print("{} ${:02x}\n", __func__, a);
 	}
 	int ret = -1;
 	if ((a & 0x1f) == ieee_unit) {
@@ -1405,7 +1405,7 @@ int LISTEN(uint8_t a)
 int TALK(uint8_t a)
 {
 	if (log_ieee) {
-		printf("%s $%02x\n", __func__, a);
+		fmt::print("{} ${:02x}\n", __func__, a);
 	}
 	int ret = -1;
 	if ((a & 0x1f) == ieee_unit) {
@@ -1420,7 +1420,7 @@ int TALK(uint8_t a)
 int MACPTR(uint16_t addr, uint16_t *c, uint8_t stream_mode)
 {
 	if (log_ieee) {
-		printf("%s $%04x $%04x $%02x\n", __func__, addr, *c, stream_mode);
+		fmt::print("{} ${:04x} ${:04x} ${:02x}\n", __func__, addr, *c, stream_mode);
 	}
 
 	if (talking) {
@@ -1459,7 +1459,7 @@ int MACPTR(uint16_t addr, uint16_t *c, uint8_t stream_mode)
 int MCIOUT(uint16_t addr, uint16_t *c, uint8_t stream_mode)
 {
 	if (log_ieee) {
-		printf("%s $%04x $%04x $%02x\n", __func__, addr, *c, stream_mode);
+		fmt::print("{} ${:04x} ${:04x} ${:02x}\n", __func__, addr, *c, stream_mode);
 	}
 
 	if (listening) {

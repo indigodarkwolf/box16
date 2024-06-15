@@ -131,7 +131,7 @@ void imgui_debugger_disasm::draw()
 				sprintf(hex, "%04X", dump_start);
 			}
 			if (ImGui::InputHexLabel("Disasm Address", hex)) {
-				dump_start   = parse<16>(hex);
+				dump_start   = parse(hex);
 				reset_scroll = true;
 			}
 		}
@@ -143,7 +143,7 @@ void imgui_debugger_disasm::draw()
 				sprintf(ram_bank_hex, "%02X", ram_bank);
 			}
 			if (ImGui::InputHexLabel("  RAM Bank", ram_bank_hex)) {
-				ram_bank = parse<8>(ram_bank_hex);
+				ram_bank = parse(ram_bank_hex);
 			}
 		}
 		ImGui::SameLine();
@@ -154,7 +154,7 @@ void imgui_debugger_disasm::draw()
 				sprintf(rom_bank_hex, "%02X", rom_bank);
 			}
 			if (ImGui::InputHexLabel("  ROM Bank", rom_bank_hex)) {
-				rom_bank = parse<8>(rom_bank_hex);
+				rom_bank = parse(rom_bank_hex);
 			}
 		}
 

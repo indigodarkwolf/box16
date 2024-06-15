@@ -6,8 +6,7 @@
 
 #include "memory.h"
 
-template <uint32_t BITS>
-static uint32_t parse(char const *str)
+static uint32_t parse(const std::string &str)
 {
 	static constexpr uint8_t ascii_to_hex[256] = {
 		0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -29,49 +28,53 @@ static uint32_t parse(char const *str)
 	};
 
 	uint32_t result = 0;
-	uint32_t shift  = 0;
-	while ((shift < BITS) && (*str != '\0')) {
-		result = (result << 4) + ascii_to_hex[*str];
-		++str;
-		shift += 4;
+	for (char c : str) {
+		result = (result << 4) + ascii_to_hex[c];
 	}
+
 	return result;
+}
+consteval float hex_width(int nybbles)
+{
+	return 7.0f * (nybbles + 1) + 2.0f;
 }
 
 constexpr const ImGuiInputTextFlags hex_flags     = ImGuiInputTextFlags_CharsHexadecimal | ImGuiInputTextFlags_CtrlEnterForNewLine;
-constexpr const float               hex_widths[]  = { 2.0f, 9.0f, 16.0f, 23.0f, 30.0f, 37.0f, 44.0f, 51.0f, 58.0f, 65.0f };
-constexpr const char *              hex_formats[] = { "", "", "%01X", "%02X", "%03X", "%04X", "%05X", "%06X", "%07X", "%08X" };
 
 namespace ImGui
 {
 	template <typename T, size_t BITS = sizeof(T) * 8>
-	bool InputHexLabel(char const *name, T &value)
+	bool InputHexLabel(const std::string& name, T& value)
 	{
 		constexpr const size_t ARRAY_SIZE = BITS / 4 + 1;
+		char                   data[ARRAY_SIZE];
 
-		char str[ARRAY_SIZE];
-		sprintf(str, hex_formats[ARRAY_SIZE], (int)value);
-		Text("%s", name);
+		fmt::format_to_n(data, ARRAY_SIZE - 1, "{:0{}x}", value, ARRAY_SIZE - 1);
+		data[0] = '\0';
+
+		TextUnformatted(name.c_str());
 		SameLine();
-		PushID(name);
-		PushItemWidth(hex_widths[ARRAY_SIZE]);
-		bool result = InputText("", str, ARRAY_SIZE, hex_flags);
+
+		PushID(name.c_str());
+		PushItemWidth(hex_width(ARRAY_SIZE - 1));
+		bool result = InputText("##input", data, ARRAY_SIZE, hex_flags);
 		PopItemWidth();
 		PopID();
+
 		if (result) {
-			value = (T)parse<BITS>(str);
+			value = static_cast<T>(parse(data));
 		}
 		return result;
 	}
 
 	template <size_t ARRAY_SIZE>
-	bool InputHexLabel(char const *name, char (&str)[ARRAY_SIZE])
+	bool InputHexLabel(const std::string &name, char (&str)[ARRAY_SIZE])
 	{
-		Text("%s", name);
+		TextUnformatted(name.c_str());
 		SameLine();
-		PushID(name);
-		PushItemWidth(hex_widths[ARRAY_SIZE]);
-		bool result = InputText("", str, ARRAY_SIZE, hex_flags);
+		PushID(name.c_str());
+		PushItemWidth(hex_width(ARRAY_SIZE - 1));
+		bool result = InputText("##input", str, ARRAY_SIZE, hex_flags);
 		PopItemWidth();
 		PopID();
 		return result;
@@ -83,26 +86,18 @@ namespace ImGui
 		constexpr const size_t ARRAY_SIZE = BITS / 4 + 1;
 
 		char str[ARRAY_SIZE];
-		sprintf(str, hex_formats[ARRAY_SIZE], (int)(value & ((1ULL << BITS) - 1)));
-		PushID(id);
-		PushItemWidth(hex_widths[ARRAY_SIZE]);
-		bool result = InputText("", str, ARRAY_SIZE, hex_flags);
-		PopItemWidth();
-		PopID();
-		if (result) {
-			value = (T)parse<BITS>(str);
-		}
-		return result;
-	}
+		fmt::format_to_n(str, ARRAY_SIZE - 1, "{:0{}x}", (value & ((1ULL << BITS) - 1)), ARRAY_SIZE - 1);
+		str[ARRAY_SIZE - 1] = '\0';
 
-	template <size_t ARRAY_SIZE>
-	bool InputHex(int id, char (&str)[ARRAY_SIZE])
-	{
 		PushID(id);
-		PushItemWidth(hex_widths[ARRAY_SIZE]);
-		bool result = InputText("", str, ARRAY_SIZE, hex_flags);
+		PushItemWidth(hex_width(ARRAY_SIZE - 1));
+		bool result = InputText("##input", str, ARRAY_SIZE, hex_flags);
 		PopItemWidth();
 		PopID();
+
+		if (result) {
+			value = (T)parse(str);
+		}
 		return result;
 	}
 
@@ -110,9 +105,9 @@ namespace ImGui
 	bool InputCombo(int id, char const *(&elements)[ARRAY_SIZE], INDEX_TYPE &selected)
 	{
 		ImGui::PushID(id);
-		ImGui::PushItemWidth(hex_widths[7]);
+		ImGui::PushItemWidth(hex_width(7));
 		bool result = false;
-		if (ImGui::BeginCombo("", elements[selected])) {
+		if (ImGui::BeginCombo("##input", elements[selected])) {
 			for (INDEX_TYPE i = 0; i < ARRAY_SIZE; ++i) {
 				if (ImGui::Selectable(elements[i], (selected == i))) {
 					selected = i;
@@ -129,13 +124,13 @@ namespace ImGui
 	template <size_t ARRAY_SIZE, typename INDEX_TYPE>
 	bool InputCombo(char const *name, char const *(&elements)[ARRAY_SIZE], INDEX_TYPE &selected) 
 	{
-		ImGui::Text("%s", name);
+		ImGui::TextUnformatted(name);
 		ImGui::SameLine();
 
 		ImGui::PushID(name);
-		ImGui::PushItemWidth(hex_widths[7]);
+		ImGui::PushItemWidth(hex_width(7));
 		bool result = false;
-		if (ImGui::BeginCombo("", elements[selected])) {
+		if (ImGui::BeginCombo("##input", elements[selected])) {
 			for (INDEX_TYPE i = 0; i < ARRAY_SIZE; ++i) {
 				if (ImGui::Selectable(elements[i], (selected == i))) {
 					selected = i;

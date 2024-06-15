@@ -47,7 +47,7 @@ protected:
 				for (int y = clipper.DisplayStart; y < clipper.DisplayEnd; ++y) {
 					address_t      line_addr = start_addr;
 
-					ImGui::Text(hex_formats[(ADDRESS_BITS >> 2) + 1], start_addr);
+					ImGui::TextUnformatted(fmt::format("{:0{}X}", start_addr, ADDRESS_BITS >> 2).c_str());
 
 					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(3.0f, 0.0f));
 					ImGui::PushItemWidth(width_uint8);

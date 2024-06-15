@@ -11,9 +11,9 @@ boxmon::parser Console_parser;
 std::vector<boxmon::console_line_type> Console_history;
 std::vector<std::string>               Command_history;
 
-static bool Console_suppress_output   = false;
-static bool Console_suppress_warnings = false;
-static bool Console_suppress_errors   = false;
+bool Console_suppress_output   = false;
+bool Console_suppress_warnings = false;
+bool Console_suppress_errors   = false;
 
 enum class parse_command_result {
 	ok,
@@ -107,7 +107,7 @@ bool boxmon_do_console_command(const std::string &line)
 	return true;
 }
 
-void boxmon_console_printf(char const *format, ...)
+void boxmon_console_print(char const *format, ...)
 {
 	if (Console_suppress_output) {
 		return;
@@ -123,7 +123,7 @@ void boxmon_console_printf(char const *format, ...)
 	va_end(arglist);
 }
 
-void boxmon_warning_printf(char const *format, ...)
+void boxmon_warning_print(char const *format, ...)
 {
 	if (Console_suppress_warnings) {
 		return;
@@ -139,7 +139,7 @@ void boxmon_warning_printf(char const *format, ...)
 	va_end(arglist);
 }
 
-void boxmon_error_printf(char const *format, ...)
+void boxmon_error_print(char const *format, ...)
 {
 	if (Console_suppress_errors) {
 		return;
@@ -168,4 +168,13 @@ const std::vector<std::string> &boxmon_get_command_history()
 void boxmon_clear_console_history()
 {
 	Console_history.clear();
+}
+
+void boxmon_console_print(boxmon::message_severity severity, const std::string& message)
+{
+	if (Console_suppress_errors) {
+		return;
+	}
+
+	Console_history.push_back({ severity, message });
 }
