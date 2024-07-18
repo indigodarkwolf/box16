@@ -1328,6 +1328,7 @@ static void set_ini_main(mINI::INIMap<std::string> &ini_main, bool all)
 
 	auto vsync_mode_str = [](vsync_mode_t mode) -> const char * {
 		switch (mode) {
+			case vsync_mode_t::VSYNC_MODE_DISABLED: return "none";
 			case vsync_mode_t::VSYNC_MODE_NONE: return "none";
 			case vsync_mode_t::VSYNC_MODE_GET_SYNC: return "get";
 			case vsync_mode_t::VSYNC_MODE_WAIT_SYNC: return "wait";
