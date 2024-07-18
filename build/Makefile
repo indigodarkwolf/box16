@@ -152,7 +152,7 @@ package:
 #
 
 $(NFD_OBJDIR)/%.o: $(NFD_SRCDIR)/%.c | $(NFD_OBJDIR)
-	g++ $(NFD_CFLAGS) -c $< -o $@
+	$(CXX) $(NFD_CFLAGS) -c $< -o $@
 
 $(NFD_OBJDIR):
 	mkdir -p $@
@@ -162,7 +162,7 @@ $(NFD_OBJDIR):
 #
 
 $(LPNG_OBJDIR)/%.o: $(LPNG_SRCDIR)/%.cpp | $(LPNG_OBJDIR)
-	g++ $(LPNG_CFLAGS) -c $< -o $@
+	$(CXX) $(LPNG_CFLAGS) -c $< -o $@
 
 $(LPNG_OBJDIR):
 	mkdir -p $@
@@ -172,7 +172,7 @@ $(LPNG_OBJDIR):
 #
 
 $(RTMIDI_OBJDIR)/%.o: $(RTMIDI_SRCDIR)/%.cpp | $(RTMIDI_OBJDIR)
-	g++ $(RTMIDI_CFLAGS) -c $< -o $@
+	$(CXX) $(RTMIDI_CFLAGS) -c $< -o $@
 
 $(RTMIDI_OBJDIR):
 	mkdir -p $@
@@ -182,7 +182,7 @@ $(RTMIDI_OBJDIR):
 #
 
 $(YMFM_OBJDIR)/%.o: $(YMFM_SRCDIR)/%.cpp | $(YMFM_OBJDIR)
-	g++ $(YMFM_CFLAGS) -c $< -o $@
+	$(CXX) $(YMFM_CFLAGS) -c $< -o $@
 
 $(YMFM_OBJDIR):
 	mkdir -p $@
@@ -192,13 +192,13 @@ $(YMFM_OBJDIR):
 #
 
 $(BOX16_OBJDIR)/%.o: $(BOX16_SRCDIR)/%.cpp | $(BOX16_OBJDIRS)
-	g++ $(BOX16_CFLAGS) -c $< -o $@
+	$(CXX) $(BOX16_CFLAGS) -c $< -o $@
 
 $(BOX16_OBJDIRS):
 	mkdir -p $@
 
 $(OUTDIR)/box16: $(BOX16_OBJS) $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(YMFM_OBJS)
 	mkdir -p $(OUTDIR)
-	g++ $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS)
+	$(CXX) $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS)
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
 	cp -r $(REPODIR)/resources/r41/* $(OUTDIR)/
