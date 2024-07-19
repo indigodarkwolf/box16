@@ -75,23 +75,23 @@ namespace boxmon
 		expression_type m_type;
 	};
 
-	class value_expression : public expression_base
+	class value_expression final : public expression_base
 	{
 	public:
 		value_expression(const int &value);
-		virtual ~value_expression() override final;
-		virtual int evaluate() const override final;
+		virtual ~value_expression() override;
+		virtual int evaluate() const override;
 
 	private:
 		int m_value;
 	};
 
-	class symbol_expression : public expression_base
+	class symbol_expression final : public expression_base
 	{
 	public:
 		symbol_expression(const std::string &symbol);
-		virtual ~symbol_expression() override final;
-		virtual int evaluate() const override final;
+		virtual ~symbol_expression() override;
+		virtual int evaluate() const override;
 
 		bool is_valid() const;
 
@@ -99,23 +99,23 @@ namespace boxmon
 		std::string m_symbol;
 	};
 
-	class unary_expression : public expression_base
+	class unary_expression final : public expression_base
 	{
 	public:
 		unary_expression(expression_type type, const expression_base *param);
-		virtual ~unary_expression() override final;
-		virtual int evaluate() const override final;
+		virtual ~unary_expression() override;
+		virtual int evaluate() const override;
 
 	private:
 		const expression_base *m_param;
 	};
 
-	class binary_expression : public expression_base
+	class binary_expression final : public expression_base
 	{
 	public:
 		binary_expression(expression_type type, const expression_base *lhs, const expression_base *rhs);
-		virtual ~binary_expression() override final;
-		virtual int evaluate() const override final;
+		virtual ~binary_expression() override;
+		virtual int evaluate() const override;
 
 	private:
 		const expression_base *m_lhs;

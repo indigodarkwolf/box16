@@ -23,12 +23,12 @@ namespace boxmon
 			delete m_expression;
 		}
 
-		virtual const std::string &get_string() const
+		virtual const std::string &get_string() const override
 		{
 			return m_string;
 		}
 
-		virtual int evaluate() const
+		virtual int evaluate() const override
 		{
 			return m_expression->evaluate();
 		}
