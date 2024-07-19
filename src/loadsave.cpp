@@ -142,12 +142,9 @@ void LOAD()
 		RAM[STATUS] = 0;
 		state6502.a = 0;
 	} else {
-		char      filename[PATH_MAX];
-		const int len = MIN(RAM[FNLEN], PATH_MAX - 1);
-		memcpy(filename, kernal_filename, len);
-		filename[len] = 0;
-
-		std::filesystem::path filepath = Options.fsroot_path / filename;
+		const int len = RAM[FNLEN];
+		const std::filesystem::path filename = std::string_view(kernal_filename, len);
+		const std::filesystem::path filepath = Options.fsroot_path / filename;
 
 		x16file *f = x16open(filepath.generic_string().c_str(), "rb");
 		if (f == nullptr) {
@@ -227,13 +224,9 @@ void LOAD()
 void SAVE()
 {
 	char const *kernal_filename = (char *)&RAM[RAM[FNADR] | RAM[FNADR + 1] << 8];
-
-	char      filename[PATH_MAX];
-	const int len = MIN(RAM[FNLEN], PATH_MAX - 1);
-	memcpy(filename, kernal_filename, len);
-	filename[len] = '\0';
-
-	std::filesystem::path filepath = Options.fsroot_path / filename;
+	const int len = RAM[FNLEN];
+	const std::filesystem::path filename = std::string_view(kernal_filename, len);
+	const std::filesystem::path filepath = Options.fsroot_path / filename;
 
 	uint16_t start = RAM[state6502.a] | RAM[state6502.a + 1] << 8;
 	uint16_t end   = state6502.x | state6502.y << 8;
