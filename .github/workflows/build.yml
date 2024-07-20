@@ -31,13 +31,10 @@ jobs:
           version: "10.0"
       - name: Build Box16 (Ubuntu-Clang)
         run: |
+          export CC=clang
+          export CXX=clang++
           cd build
           make
-      - name: Archive Ubuntu-Clang build
-        uses: actions/upload-artifact@v3
-        with:
-          name: box16-nr42.xx-linux-clang
-          path: build/box16/
   build-ubuntu-trace:
     runs-on: ubuntu-latest
     steps:
