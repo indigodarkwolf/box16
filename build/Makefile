@@ -23,8 +23,10 @@ VENDOROBJ := $(OBJDIR)/vendor
 PKGCONFIG := pkg-config
 MKDIR := mkdir -p
 
-CFLAGS := --std=c++20 -Werror $(DFLAGS)
+CFLAGS := -Werror $(DFLAGS)
 CWARNS := -Wformat -Wformat-security -Wpedantic
+CXXFLAGS := --std=c++20 -Werror $(DFLAGS)
+CXXWARNS := -Wformat -Wformat-security -Wpedantic
 
 #
 # nativefiledialog
@@ -44,7 +46,7 @@ NFD_OBJS := $(NFD_OBJDIR)/nfd_gtk.o $(NFD_OBJDIR)/nfd_common.o
 LPNG_SRCDIR := $(VENDORSRC)/lodepng
 LPNG_OBJDIR := $(OBJDIR)/lodepng
 
-LPNG_CFLAGS := $(CFLAGS) $(CWARNS)
+LPNG_CXXFLAGS := $(CXXFLAGS) $(CXXWARNS)
 
 LPNG_SRCS := $(LPNG_SRCDIR)/lodepng.cpp
 LPNG_OBJS := $(LPNG_OBJDIR)/lodepng.o
@@ -55,7 +57,7 @@ LPNG_OBJS := $(LPNG_OBJDIR)/lodepng.o
 RTMIDI_SRCDIR := $(VENDORSRC)/rtmidi
 RTMIDI_OBJDIR := $(OBJDIR)/rtmidi
 
-RTMIDI_CFLAGS := $(CFLAGS) $(CWARNS)
+RTMIDI_CXXFLAGS := $(CXXFLAGS) $(CXXWARNS)
 
 RTMIDI_SRCS := $(RTMIDI_SRCDIR)/RtMidi.cpp
 RTMIDI_OBJS := $(RTMIDI_OBJDIR)/RtMidi.o
@@ -66,7 +68,7 @@ RTMIDI_OBJS := $(RTMIDI_OBJDIR)/RtMidi.o
 YMFM_SRCDIR := $(VENDORSRC)/ymfm/src
 YMFM_OBJDIR := $(OBJDIR)/ymfm
 
-YMFM_CFLAGS := $(CFLAGS) $(CWARNS)
+YMFM_CXXFLAGS := $(CXXFLAGS) $(CXXWARNS)
 
 YMFM_SRCS := $(YMFM_SRCDIR)/ymfm_opm.cpp
 YMFM_OBJS := $(patsubst $(YMFM_SRCDIR)/%.cpp,$(YMFM_OBJDIR)/%.o,$(YMFM_SRCS))
@@ -82,7 +84,7 @@ BOX16_INCDIRS := -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORSRC)/mINI/s
 
 BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(wildcard $(BOX16_SRCDIR)/boxmon/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/glad/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
-BOX16_CFLAGS := $(shell $(PKGCONFIG) --cflags alsa sdl2 gl zlib) $(CFLAGS) $(CWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h -DFMT_HEADER_ONLY $(MYFLAGS)
+BOX16_CXXFLAGS := $(shell $(PKGCONFIG) --cflags alsa sdl2 gl zlib) $(CXXFLAGS) $(CXXWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h -DFMT_HEADER_ONLY $(MYFLAGS)
 BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs alsa sdl2 gl zlib) -lstdc++fs -ldl
 
 #=========================
@@ -152,7 +154,7 @@ package:
 #
 
 $(NFD_OBJDIR)/%.o: $(NFD_SRCDIR)/%.c | $(NFD_OBJDIR)
-	$(CXX) $(NFD_CFLAGS) -c $< -o $@
+	$(CC) $(NFD_CFLAGS) -c $< -o $@
 
 $(NFD_OBJDIR):
 	mkdir -p $@
@@ -162,7 +164,7 @@ $(NFD_OBJDIR):
 #
 
 $(LPNG_OBJDIR)/%.o: $(LPNG_SRCDIR)/%.cpp | $(LPNG_OBJDIR)
-	$(CXX) $(LPNG_CFLAGS) -c $< -o $@
+	$(CXX) $(LPNG_CXXFLAGS) -c $< -o $@
 
 $(LPNG_OBJDIR):
 	mkdir -p $@
@@ -172,7 +174,7 @@ $(LPNG_OBJDIR):
 #
 
 $(RTMIDI_OBJDIR)/%.o: $(RTMIDI_SRCDIR)/%.cpp | $(RTMIDI_OBJDIR)
-	$(CXX) $(RTMIDI_CFLAGS) -c $< -o $@
+	$(CXX) $(RTMIDI_CXXFLAGS) -c $< -o $@
 
 $(RTMIDI_OBJDIR):
 	mkdir -p $@
@@ -182,7 +184,7 @@ $(RTMIDI_OBJDIR):
 #
 
 $(YMFM_OBJDIR)/%.o: $(YMFM_SRCDIR)/%.cpp | $(YMFM_OBJDIR)
-	$(CXX) $(YMFM_CFLAGS) -c $< -o $@
+	$(CXX) $(YMFM_CXXFLAGS) -c $< -o $@
 
 $(YMFM_OBJDIR):
 	mkdir -p $@
@@ -192,7 +194,7 @@ $(YMFM_OBJDIR):
 #
 
 $(BOX16_OBJDIR)/%.o: $(BOX16_SRCDIR)/%.cpp | $(BOX16_OBJDIRS)
-	$(CXX) $(BOX16_CFLAGS) -c $< -o $@
+	$(CXX) $(BOX16_CXXFLAGS) -c $< -o $@
 
 $(BOX16_OBJDIRS):
 	mkdir -p $@
