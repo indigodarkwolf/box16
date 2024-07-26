@@ -49,8 +49,8 @@ namespace ImGui
 		constexpr const size_t ARRAY_SIZE = BITS / 4 + 1;
 		char                   data[ARRAY_SIZE];
 
-		fmt::format_to_n(data, ARRAY_SIZE - 1, "{:0{}x}", value, ARRAY_SIZE - 1);
-		data[0] = '\0';
+		fmt::format_to_n(data, ARRAY_SIZE - 1, "{:0{}X}", value, ARRAY_SIZE - 1);
+		data[ARRAY_SIZE - 1] = '\0';
 
 		TextUnformatted(name.c_str());
 		SameLine();
