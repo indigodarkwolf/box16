@@ -67,22 +67,17 @@ gzFile prg_file       = nullptr;
 void machine_dump(const char *reason)
 {
 	fmt::print("Dumping system memory. Reason: {}\n", reason);
-	int  index = 0;
-	char filename[22];
-	for (;;) {
-		if (!index) {
-			strcpy(filename, "dump.txt");
-		} else {
-			sprintf(filename, "dump-%i.txt", index);
-		}
-		if (access(filename, F_OK) == -1) {
-			break;
-		}
+
+	int                   index    = 0;
+	std::filesystem::path filename = "dump.txt";
+	while (std::filesystem::exists(filename)) {
 		index++;
+		filename = fmt::format("dump-{:d}.txt", index);
 	}
+
 	x16file *f = x16open(filename, "w");
 	if (!f) {
-		fmt::print("Cannot write to {}!\n", filename);
+		fmt::print("Cannot write to {}!\n", filename.generic_string());
 		return;
 	}
 
@@ -107,12 +102,12 @@ void machine_dump(const char *reason)
 
 		x16write(f, ss.str());
 
-		//x16write(f, &state6502.a, sizeof(uint8_t), 1);
-		//x16write(f, &state6502.x, sizeof(uint8_t), 1);
-		//x16write(f, &state6502.y, sizeof(uint8_t), 1);
-		//x16write(f, &state6502.sp, sizeof(uint8_t), 1);
-		//x16write(f, &state6502.status, sizeof(uint8_t), 1);
-		//x16write(f, &state6502.pc, sizeof(uint16_t), 1);
+		// x16write(f, &state6502.a, sizeof(uint8_t), 1);
+		// x16write(f, &state6502.x, sizeof(uint8_t), 1);
+		// x16write(f, &state6502.y, sizeof(uint8_t), 1);
+		// x16write(f, &state6502.sp, sizeof(uint8_t), 1);
+		// x16write(f, &state6502.status, sizeof(uint8_t), 1);
+		// x16write(f, &state6502.pc, sizeof(uint16_t), 1);
 	}
 
 	memory_save(f, Options.dump_ram, Options.dump_bank);
@@ -122,7 +117,7 @@ void machine_dump(const char *reason)
 	}
 
 	x16close(f);
-	fmt::print("Dumped system to .\n", filename);
+	fmt::print("Dumped system to .\n", filename.generic_string());
 }
 
 void machine_reset()
@@ -155,8 +150,8 @@ static bool is_kernal()
 	return (read6502(0xfff6) == 'M' &&
 	        read6502(0xfff7) == 'I' &&
 	        read6502(0xfff8) == 'S' &&
-	        read6502(0xfff9) == 'T')
-	    || (read6502(0xc008) == 'M' &&
+	        read6502(0xfff9) == 'T') ||
+	       (read6502(0xc008) == 'M' &&
 	        read6502(0xc009) == 'I' &&
 	        read6502(0xc00a) == 'S' &&
 	        read6502(0xc00b) == 'T');
@@ -212,25 +207,13 @@ int main(int argc, char **argv)
 		return f;
 	};
 
-	auto error = [](const char *title, const char *format, ...) {
-		char    message_buffer[1024];
-		va_list list;
-		va_start(list, format);
-		vsprintf(message_buffer, format, list);
-		va_end(list);
-
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message_buffer, display_get_window());
+	auto error = [](const std::string &title, const std::string &format, auto... args) {
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title.c_str(), fmt::format(fmt::runtime(format), args...).c_str(), display_get_window());
 		exit(1);
 	};
 
-	auto warn = [](const char *title, const char *format, ...) {
-		char    message_buffer[1024];
-		va_list list;
-		va_start(list, format);
-		vsprintf(message_buffer, format, list);
-		va_end(list);
-
-		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, message_buffer, display_get_window());
+	auto warn = [](const std::string &title, const std::string &format, auto... args) {
+		SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title.c_str(), fmt::format(fmt::runtime(format), args...).c_str(), display_get_window());
 	};
 
 	// Load ROM
@@ -377,7 +360,8 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-void main_shutdown() {
+void main_shutdown()
+{
 	save_options_on_close(false);
 
 	if (nvram_dirty && !Options.nvram_path.empty()) {
@@ -389,7 +373,7 @@ void main_shutdown() {
 		nvram_dirty = false;
 	}
 
-	if(Options.dump_memstats) {
+	if (Options.dump_memstats) {
 		memory_dump_usage_counts();
 	}
 
@@ -442,8 +426,8 @@ void emulator_loop()
 				}
 
 				fmt::print(" ram=${:02x} rom=${:02x} ", ram, rom);
-				const std::string label = disasm_get_label(pc);
-				size_t      label_len   = label.length();
+				const std::string label     = disasm_get_label(pc);
+				size_t            label_len = label.length();
 				if (!label.empty()) {
 					fmt::print("{}", label);
 				}
@@ -470,8 +454,8 @@ void emulator_loop()
 			}
 		}
 		cpu_visualization_step();
-		uint8_t clocks       = (uint8_t)(clockticks6502 - old_clockticks6502);
-		bool    new_frame    = vera_video_step(MHZ, clocks);
+		uint8_t clocks    = (uint8_t)(clockticks6502 - old_clockticks6502);
+		bool    new_frame = vera_video_step(MHZ, clocks);
 		via1_step(clocks);
 		via2_step(clocks);
 		rtc_step(clocks);

@@ -107,54 +107,6 @@ bool boxmon_do_console_command(const std::string &line)
 	return true;
 }
 
-void boxmon_console_print(char const *format, ...)
-{
-	if (Console_suppress_output) {
-		return;
-	}
-
-	va_list arglist;
-	va_start(arglist, format);
-
-	char buffer[1024];
-	vsnprintf(buffer, sizeof(buffer), format, arglist);
-	Console_history.push_back({ boxmon::message_severity::output, buffer });
-
-	va_end(arglist);
-}
-
-void boxmon_warning_print(char const *format, ...)
-{
-	if (Console_suppress_warnings) {
-		return;
-	}
-
-	va_list arglist;
-	va_start(arglist, format);
-
-	char buffer[1024];
-	vsnprintf(buffer, sizeof(buffer), format, arglist);
-	Console_history.push_back({ boxmon::message_severity::warning, buffer });
-
-	va_end(arglist);
-}
-
-void boxmon_error_print(char const *format, ...)
-{
-	if (Console_suppress_errors) {
-		return;
-	}
-
-	va_list arglist;
-	va_start(arglist, format);
-
-	char buffer[1024];
-	vsnprintf(buffer, sizeof(buffer), format, arglist);
-	Console_history.push_back({ boxmon::message_severity::error, buffer });
-
-	va_end(arglist);
-}
-
 const std::vector<boxmon::console_line_type> &boxmon_get_console_history()
 {
 	return Console_history;
@@ -172,9 +124,5 @@ void boxmon_clear_console_history()
 
 void boxmon_console_print(boxmon::message_severity severity, const std::string& message)
 {
-	if (Console_suppress_errors) {
-		return;
-	}
-
 	Console_history.push_back({ severity, message });
 }

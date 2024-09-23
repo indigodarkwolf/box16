@@ -78,7 +78,7 @@ std::tuple<void *, size_t> files_load(const std::filesystem::path &path)
 }
 
 struct x16file {
-	char path[PATH_MAX];
+	std::filesystem::path path;
 
 	SDL_RWops *file;
 	size_t     size;
@@ -103,17 +103,15 @@ static bool get_tmp_name(char *path_buffer, const char *original_path, char cons
 	return true;
 }
 
-bool file_is_compressed_type(char const *path)
+bool file_is_compressed_type(const std::filesystem::path &path)
 {
-	int len = (int)strlen(path);
-
-	if (strcmp(path + len - 3, ".gz") == 0 || strcmp(path + len - 3, "-gz") == 0) {
-		return true;
-	} else if (strcmp(path + len - 2, ".z") == 0 || strcmp(path + len - 2, "-z") == 0 || strcmp(path + len - 2, "_z") == 0 || strcmp(path + len - 2, ".Z") == 0) {
-		return true;
-	}
-
-	return false;
+	const std::string path_string = path.generic_string();
+	return path_string.ends_with(".gz") 
+		|| path_string.ends_with("-gz")
+		|| path_string.ends_with(".z")
+		|| path_string.ends_with("-z")
+		|| path_string.ends_with("_z")
+		|| path_string.ends_with(".Z");
 }
 
 const char *file_find_extension(const char *path, const char *mark)
@@ -149,32 +147,28 @@ void files_shutdown()
 	}
 }
 
-x16file *x16open(const char *path, const char *attribs)
+x16file *x16open(const std::filesystem::path &path, const char *attribs)
 {
-	x16file *f = (x16file *)malloc(sizeof(x16file));
-	strcpy(f->path, path);
+	x16file *f = new x16file;
+	f->path = path;
 
 	if (file_is_compressed_type(path)) {
-		char tmp_path[PATH_MAX];
-		if (!get_tmp_name(tmp_path, path, ".tmp")) {
-			fmt::print("Path too long, cannot create temp file: {}\n", path);
-			goto error;
-		}
+		std::filesystem::path tmp_path = path / ".tmp";
 
-		gzFile zfile = gzopen(path, "rb");
+		gzFile zfile = gzopen(path.generic_string().c_str(), "rb");
 		if (zfile == Z_NULL) {
-			fmt::print("Could not open file for decompression: {}\n", path);
+			fmt::print("Could not open file for decompression: {}\n", path.generic_string());
 			goto error;
 		}
 
-		SDL_RWops *tfile = SDL_RWFromFile(tmp_path, "wb");
+		SDL_RWops *tfile = SDL_RWFromFile(tmp_path.generic_string().c_str(), "wb");
 		if (tfile == NULL) {
 			gzclose(zfile);
-			fmt::print("Could not open file for write: {}\n", tmp_path);
+			fmt::print("Could not open file for write: {}\n", tmp_path.generic_string());
 			goto error;
 		}
 
-		fmt::print("Decompressing {}\n", path);
+		fmt::print("Decompressing {}\n", path.generic_string());
 
 		const int buffer_size = 16 * 1024 * 1024;
 		char     *buffer      = (char *)malloc(buffer_size);
@@ -198,14 +192,14 @@ x16file *x16open(const char *path, const char *attribs)
 		gzclose(zfile);
 		free(buffer);
 
-		f->file = SDL_RWFromFile(tmp_path, attribs);
+		f->file = SDL_RWFromFile(tmp_path.generic_string().c_str(), attribs);
 		if (f->file == NULL) {
-			unlink(tmp_path);
+			std::filesystem::remove(tmp_path);
 			goto error;
 		}
 		f->size = total_read;
 	} else {
-		f->file = SDL_RWFromFile(path, attribs);
+		f->file = SDL_RWFromFile(path.generic_string().c_str(), attribs);
 		if (f->file == NULL) {
 			goto error;
 		}
@@ -232,26 +226,10 @@ void x16close(x16file *f)
 	SDL_RWclose(f->file);
 
 	if (file_is_compressed_type(f->path)) {
-		char tmp_path[PATH_MAX];
-		if (!get_tmp_name(tmp_path, f->path, ".tmp")) {
-			fmt::print("Path too long, cannot create temp file: {}\n", f->path);
-
-			if (f == open_files) {
-				open_files = f->next;
-			} else {
-				for (x16file *fi = open_files; fi != NULL; fi = fi->next) {
-					if (fi->next == f) {
-						fi->next = f->next;
-						break;
-					}
-				}
-			}
-			free(f);
-			return;
-		}
+		std::filesystem::path tmp_path = f->path / ".tmp";
 
 		if (f->modified == false) {
-			unlink(tmp_path);
+			std::filesystem::remove(tmp_path);
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
@@ -266,10 +244,10 @@ void x16close(x16file *f)
 			return;
 		}
 
-		gzFile zfile = gzopen(f->path, "wb6");
+		gzFile zfile = gzopen(f->path.generic_string().c_str(), "wb6");
 		if (zfile == Z_NULL) {
-			fmt::print("Could not open file for compression: {}\n", f->path);
-			unlink(tmp_path);
+			fmt::print("Could not open file for compression: {}\n", f->path.generic_string());
+			std::filesystem::remove(tmp_path);
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
@@ -284,15 +262,15 @@ void x16close(x16file *f)
 			return;
 		}
 
-		SDL_RWops *tfile = SDL_RWFromFile(tmp_path, "rb");
+		SDL_RWops *tfile = SDL_RWFromFile(tmp_path.generic_string().c_str(), "rb");
 		if (tfile == NULL) {
 			gzclose(zfile);
-			fmt::print("Could not open file for read: {}\n", tmp_path);
+			fmt::print("Could not open file for read: {}\n", tmp_path.generic_string());
 
 			if (zfile != Z_NULL) {
 				gzclose(zfile);
 			}
-			unlink(tmp_path);
+			std::filesystem::remove(tmp_path);
 			if (f == open_files) {
 				open_files = f->next;
 			} else {
@@ -307,7 +285,7 @@ void x16close(x16file *f)
 			return;
 		}
 
-		fmt::print("Recompressing {}\n", f->path);
+		fmt::print("Recompressing {}\n", f->path.generic_string());
 
 		const size_t buffer_size = 16 * 1024 * 1024;
 		char        *buffer      = (char *)malloc(buffer_size);
@@ -336,7 +314,7 @@ void x16close(x16file *f)
 			gzclose(zfile);
 		}
 
-		unlink(tmp_path);
+		std::filesystem::remove(tmp_path);
 	}
 
 	if (f == open_files) {

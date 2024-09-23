@@ -150,6 +150,17 @@ namespace ImGui
 	bool VERAColorPicker4(const char *label, float col[4], ImGuiColorEditFlags flags = 0, const float *ref_col = NULL);
 	bool VERAColorEdit3(const char *label, float col[3], ImGuiColorEditFlags flags = 0);
 	bool VERAColorEdit4(const char *label, float col[4], ImGuiColorEditFlags flags = 0);
+
+	template<typename ...T>
+	void TextFormat(const std::string& format, T... args)
+	{
+		ImGui::TextUnformatted(fmt::format(fmt::runtime(format), args...).c_str());
+	}
+
+	bool BeginComboFormat(const std::string &label, const std::string &preview_value, ImGuiComboFlags flags = 0);
+
+	bool SelectableFormat(const std::string &label, bool selected, ImGuiSelectableFlags flags = 0, const ImVec2 &size_arg = ImVec2(0, 0));
+	bool FitSelectable(const std::string &label, bool selected, ImGuiSelectableFlags flags = 0);
 } // namespace ImGui
 
 static uint16_t get_mem16(uint16_t address, uint8_t bank)

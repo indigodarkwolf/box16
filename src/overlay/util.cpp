@@ -721,4 +721,18 @@ namespace ImGui
 		return value_changed;
 	}
 
+	bool BeginComboFormat(const std::string &label, const std::string &preview_value, ImGuiComboFlags flags)
+	{
+		return ImGui::BeginCombo(label.c_str(), preview_value.c_str(), flags);
+	}
+
+	bool SelectableFormat(const std::string &label, bool selected, ImGuiSelectableFlags flags, const ImVec2 &size_arg)
+	{
+		return ImGui::Selectable(label.c_str(), selected, flags, size_arg);
+	}
+
+	bool FitSelectable(const std::string &label, bool selected, ImGuiSelectableFlags flags)
+	{
+		return ImGui::Selectable(label.c_str(), selected, flags, ImGui::CalcTextSize(label.c_str()));
+	}
 } // namespace ImGui

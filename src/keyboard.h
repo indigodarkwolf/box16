@@ -7,12 +7,13 @@
 // All rights reserved. License: 2-clause BSD
 
 #	include <SDL_keycode.h>
+#include<filesystem>
 
 void keyboard_process();
 
 void keyboard_add_event(const bool down, const SDL_Scancode scancode);
-void keyboard_add_text(char const *const text);
-void keyboard_add_file(char const *const path);
+void keyboard_add_text(const std::string &text);
+void keyboard_add_file(const std::filesystem::path &path);
 
 uint8_t keyboard_get_next_byte();
 

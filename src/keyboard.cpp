@@ -169,12 +169,12 @@ void keyboard_add_event(const bool down, const SDL_Scancode scancode)
 	}
 }
 
-void keyboard_add_text(char const *const text)
+void keyboard_add_text(const std::string &text)
 {
-	size_t text_len  = strlen(text);
+	const size_t text_len  = text.length();
 	char * text_copy = new char[text_len + 1];
 
-	strcpy(text_copy, text);
+	strcpy(text_copy, text.c_str());
 
 	keyboard_event evt;
 	evt.data.text_input.file_chars     = text_copy;
@@ -184,11 +184,11 @@ void keyboard_add_text(char const *const text)
 	Keyboard_event_list.push_back(evt);
 }
 
-void keyboard_add_file(char const *const path)
+void keyboard_add_file(const std::filesystem::path &path)
 {
 	x16file *file = x16open(path, "r");
 	if (file == nullptr) {
-		fmt::print("Cannot open text file {}!\n", path);
+		fmt::print("Cannot open text file {}!\n", path.generic_string());
 		return;
 	}
 
@@ -199,7 +199,7 @@ void keyboard_add_file(char const *const path)
 
 	const size_t read_size = x16read(file, file_text, sizeof(uint8_t), static_cast<unsigned int>(file_size));
 	if (read_size != file_size) {
-		fmt::print("File read error on {}\n", path);
+		fmt::print("File read error on {}\n", path.generic_string());
 		delete[] file_text;
 	} else {
 		file_text[read_size] = 0;

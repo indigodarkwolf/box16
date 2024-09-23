@@ -1,7 +1,7 @@
 #pragma once
 
 #include "zlib.h"
-#include <string>
+#include <filesystem>
 
 struct x16file;
 
@@ -9,12 +9,12 @@ struct x16file;
 #define XSEEK_END 1
 #define XSEEK_CUR 2
 
-bool        file_is_compressed_type(char const *path);
+bool        file_is_compressed_type(const std::filesystem::path &path);
 const char *file_find_extension(const char *path, const char *mark);
 
 void files_shutdown();
 
-x16file *x16open(const char *path, const char *attribs);
+x16file *x16open(const std::filesystem::path &path, const char *attribs);
 void     x16close(x16file *f);
 
 size_t x16size(x16file *f);

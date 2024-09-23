@@ -396,8 +396,7 @@ static void draw_debugger_cpu_status()
 
 				char label[4] = "r0";
 				for (int i = start; i <= end; ++i) {
-					sprintf(label, i < 10 ? " r%d" : "r%d", i);
-					ImGui::Text("%s", label);
+					ImGui::TextUnformatted((i < 10) ? fmt::format(" r{}", i).c_str() : fmt::format("r{}", i).c_str());
 					ImGui::SameLine();
 					uint16_t value = (int)get_mem16(2 + (i << 1), 0);
 					if (ImGui::InputHex(i, value)) {
@@ -1261,10 +1260,9 @@ static void draw_debugger_vera_sprite()
 					ImGui::Image(tex, size, uv[0], uv[1]);
 					// #
 					ImGui::TableNextColumn();
-					char idx_txt[4];
-					sprintf(idx_txt, "%d", id);
+					const std::string idx_txt = fmt::format("{}", id);
 					// SpanAllColumns flag currently makes selectable has more precedence than all edit widgets
-					if (ImGui::Selectable(idx_txt, sprite_id == id /*, ImGuiSelectableFlags_SpanAllColumns */)) {
+					if (ImGui::SelectableFormat(idx_txt, sprite_id == id /*, ImGuiSelectableFlags_SpanAllColumns */)) {
 						sprite_id = id;
 					}
 					// X
