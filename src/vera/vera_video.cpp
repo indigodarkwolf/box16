@@ -514,7 +514,7 @@ static void render_sprite_line(const uint16_t y)
 
 		const uint8_t *bitmap_data = video_ram + props->sprite_address + (eff_sy << (props->sprite_width_log2 - (1 - props->color_mode)));
 
-		const uint16_t width = std::min((uint32_t)props->sprite_width, (uint32_t)64);
+		const uint16_t width = (uint16_t)std::min((uint32_t)props->sprite_width, (uint32_t)64);
 		uint8_t        unpacked_sprite_line[64];
 		if (props->color_mode == 0) {
 			// 4bpp
@@ -1213,7 +1213,7 @@ void fx_affine_prefetch(void)
 	if (affine_x_tile >= fx_affine_map_size || affine_y_tile >= fx_affine_map_size) {
 		// We clipped, return value for tile 0
 		address = fx_affine_tile_base + (affine_y_sub_tile << (3 - fx_4bit_mode)) + (affine_x_sub_tile >> (uint8_t)fx_4bit_mode);
-		if (fx_4bit_mode) fx_nibble_bit[1] = 0;
+		fx_nibble_bit[1] = (affine_x_sub_tile & 1) >> (1 - fx_4bit_mode);
 	} else {
 		// Get the address within the tile map
 		address = fx_affine_map_base + (affine_y_tile * fx_affine_map_size) + affine_x_tile;
@@ -1222,7 +1222,7 @@ void fx_affine_prefetch(void)
 		address = fx_affine_tile_base + (affine_tile_idx << (6 - fx_4bit_mode));
 		// Now add the sub-tile address
 		address += (affine_y_sub_tile << (3 - fx_4bit_mode)) + (affine_x_sub_tile >> (uint8_t)fx_4bit_mode);
-		if (fx_4bit_mode) fx_nibble_bit[1] = affine_x_sub_tile & 1;
+		fx_nibble_bit[1] = (affine_x_sub_tile & 1) >> (1 - fx_4bit_mode);
 	}
 	io_addr[1] = address;
 	io_rddata[1] = vera_video_space_read(address);
@@ -1419,6 +1419,7 @@ uint8_t vera_video_read(uint8_t reg)
 
 		case 0x03:
 		case 0x04: {
+			bool addr_nibble = fx_nibble_bit[reg - 3];
 			uint32_t address = get_and_inc_address(reg - 3, false);
 
 			uint8_t value      = io_rddata[reg - 3];
@@ -1430,12 +1431,13 @@ uint8_t vera_video_read(uint8_t reg)
 
 			if (fx_cache_fill) {
 				if (fx_4bit_mode) {
+					uint8_t nibble_read = (addr_nibble ? ((value & 0x0f) << 4) : (value & 0xf0));
 					if (fx_cache_nibble_index) {
-						fx_cache[fx_cache_byte_index] = (fx_cache[fx_cache_byte_index] & 0xf0) | (value & 0x0f);
+						fx_cache[fx_cache_byte_index] = (fx_cache[fx_cache_byte_index] & 0xf0) | (nibble_read >> 4);
 						fx_cache_nibble_index = 0;
 						fx_cache_byte_index = ((fx_cache_byte_index + 1) & 0x3);
 					} else {
-						fx_cache[fx_cache_byte_index] = (fx_cache[fx_cache_byte_index] & 0x0f) | (value & 0xf0);
+						fx_cache[fx_cache_byte_index] = (fx_cache[fx_cache_byte_index] & 0x0f) | (nibble_read);
 						fx_cache_nibble_index = 1;
 					}
 				} else {
@@ -1608,41 +1610,71 @@ void vera_video_write(uint8_t reg, uint8_t value)
 				fmt::print("WRITE video_space[${:X}] = ${:02X}\n", address, value);
 			}
 
+			uint8_t wrdata_to_use;
+			uint8_t ram_wrdata[4];
+			uint8_t nibble_mask[4];
+			uint8_t cache_to_use[4];
+
+			if (fx_multiplier) {
+				int32_t m_result = (int16_t)((fx_cache[1] << 8) | fx_cache[0]) * (int16_t)((fx_cache[3] << 8) | fx_cache[2]);
+				if (fx_subtract)
+					m_result = fx_mult_accumulator - m_result;
+				else
+					m_result = fx_mult_accumulator + m_result;
+				cache_to_use[0] = (m_result) & 0xff;
+				cache_to_use[1] = (m_result >> 8) & 0xff;
+				cache_to_use[2] = (m_result >> 16) & 0xff;
+				cache_to_use[3] = (m_result >> 24) & 0xff;
+			} else {
+				memcpy(cache_to_use, fx_cache, sizeof(fx_cache));
+			}
+
+			if (fx_cache_byte_cycling) {
+				wrdata_to_use = fx_cache[fx_cache_byte_index];
+			} else {
+				wrdata_to_use = value;
+			}
+
+			if (fx_cache_write && !fx_cache_byte_cycling) {
+				ram_wrdata[0] = cache_to_use[0];
+				ram_wrdata[1] = cache_to_use[1];
+				ram_wrdata[2] = cache_to_use[2];
+				ram_wrdata[3] = cache_to_use[3];
+			} else {
+				ram_wrdata[0] = wrdata_to_use;
+				ram_wrdata[1] = wrdata_to_use;
+				ram_wrdata[2] = wrdata_to_use;
+				ram_wrdata[3] = wrdata_to_use;
+			}
+
 			if (fx_cache_write) {
 				address &= 0x1fffc;
-				if (fx_cache_byte_cycling) {
-					fx_vram_cache_write(address+0, fx_cache[fx_cache_byte_index], value & 0x03);
-					fx_vram_cache_write(address+1, fx_cache[fx_cache_byte_index], (value >> 2) & 0x03);
-					fx_vram_cache_write(address+2, fx_cache[fx_cache_byte_index], (value >> 4) & 0x03);
-					fx_vram_cache_write(address+3, fx_cache[fx_cache_byte_index], value >> 6);
-				} else {
-					if (fx_multiplier) {
-						int32_t m_result = (int16_t)((fx_cache[1] << 8) | fx_cache[0]) * (int16_t)((fx_cache[3] << 8) | fx_cache[2]);
-						if (fx_subtract)
-							m_result = fx_mult_accumulator - m_result;
-						else
-							m_result = fx_mult_accumulator + m_result;
-						fx_vram_cache_write(address+0, (m_result) & 0xff, value & 0x03);
-						fx_vram_cache_write(address+1, (m_result >> 8) & 0xff, (value >> 2) & 0x03);
-						fx_vram_cache_write(address+2, (m_result >> 16) & 0xff, (value >> 4) & 0x03);
-						fx_vram_cache_write(address+3, (m_result >> 24) & 0xff, value >> 6);
-					} else {
-						fx_vram_cache_write(address+0, fx_cache[0], value & 0x03);
-						fx_vram_cache_write(address+1, fx_cache[1], (value >> 2) & 0x03);
-						fx_vram_cache_write(address+2, fx_cache[2], (value >> 4) & 0x03);
-						fx_vram_cache_write(address+3, fx_cache[3], value >> 6);
-					}
-				}
-			} else {
-				if (fx_cache_byte_cycling) {
+
+				if (fx_trans_writes) {
 					if (fx_4bit_mode) {
-						fx_vram_cache_write(address, fx_cache[fx_cache_byte_index], nibble+1);
+						nibble_mask[0] = (((ram_wrdata[0] & 0xf0) == 0) << 1) | ((ram_wrdata[0] & 0x0f) == 0);
+						nibble_mask[1] = (((ram_wrdata[1] & 0xf0) == 0) << 1) | ((ram_wrdata[1] & 0x0f) == 0);
+						nibble_mask[2] = (((ram_wrdata[2] & 0xf0) == 0) << 1) | ((ram_wrdata[2] & 0x0f) == 0);
+						nibble_mask[3] = (((ram_wrdata[3] & 0xf0) == 0) << 1) | ((ram_wrdata[3] & 0x0f) == 0);
 					} else {
-						fx_vram_cache_write(address, fx_cache[fx_cache_byte_index], 0);
+						nibble_mask[0] = (ram_wrdata[0] != 0) ? 0 : 3;
+						nibble_mask[1] = (ram_wrdata[1] != 0) ? 0 : 3;
+						nibble_mask[2] = (ram_wrdata[2] != 0) ? 0 : 3;
+						nibble_mask[3] = (ram_wrdata[3] != 0) ? 0 : 3;
 					}
 				} else {
-					fx_vera_video_space_write(address, nibble, value); // Normal write
+					nibble_mask[0] = value & 0x3;
+					nibble_mask[1] = (value >> 2) & 0x3;
+					nibble_mask[2] = (value >> 4) & 0x3;
+					nibble_mask[3] = (value >> 6) & 0x3;
 				}
+
+				fx_vram_cache_write(address+0, ram_wrdata[0], nibble_mask[0]);
+				fx_vram_cache_write(address+1, ram_wrdata[1], nibble_mask[1]);
+				fx_vram_cache_write(address+2, ram_wrdata[2], nibble_mask[2]);
+				fx_vram_cache_write(address+3, ram_wrdata[3], nibble_mask[3]);
+			} else {
+				fx_vera_video_space_write(address, nibble, wrdata_to_use); // Normal write
 			}
 
 			io_rddata[reg - 3] = vera_video_space_read(io_addr[reg - 3]);
@@ -1723,8 +1755,10 @@ void vera_video_write(uint8_t reg, uint8_t value)
 					fx_x_pixel_increment = ((((reg_composer[0x0d] & 0x7f) << 15) + (reg_composer[0x0c] << 7)) // base value
 						| ((reg_composer[0x0d] & 0x40) ? 0xffc00000 : 0)) // sign extend if negative
 						<< 5*(!!(reg_composer[0x0d] & 0x80)); // multiply by 32 if flag set
-					// Reset subpixel to 0.5
-					fx_x_pixel_position = (fx_x_pixel_position & 0x07ff0000) | 0x00008000;
+					if (fx_addr1_mode == 1 || fx_addr1_mode == 2) {
+						// Reset subpixel to 0.5
+						fx_x_pixel_position = (fx_x_pixel_position & 0x07ff0000) | 0x00008000;
+					}
 					break;
 				case 0x0e: // DCSEL=3, $9F2B
 					fx_y_pixel_increment = ((((reg_composer[0x0f] & 0x7f) << 15) + (reg_composer[0x0e] << 7)) // base value
@@ -1735,8 +1769,10 @@ void vera_video_write(uint8_t reg, uint8_t value)
 					fx_y_pixel_increment = ((((reg_composer[0x0f] & 0x7f) << 15) + (reg_composer[0x0e] << 7)) // base value
 						| ((reg_composer[0x0f] & 0x40) ? 0xffc00000 : 0)) // sign extend if negative
 						<< 5*(!!(reg_composer[0x0f] & 0x80)); // multiply by 32 if flag set
-					// Reset subpixel to 0.5
-					fx_y_pixel_position = (fx_y_pixel_position & 0x07ff0000) | 0x00008000;
+					if (fx_addr1_mode == 1 || fx_addr1_mode == 2) {
+						// Reset subpixel to 0.5
+						fx_y_pixel_position = (fx_y_pixel_position & 0x07ff0000) | 0x00008000;
+					}
 					break;
 				case 0x10: // DCSEL=4, $9F29
 					fx_x_pixel_position = (fx_x_pixel_position & 0x0700ff80) | (value << 16);
