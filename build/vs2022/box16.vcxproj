@@ -158,7 +158,7 @@
       <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
 
 
-xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+xcopy $(ResourceDir)\r48\*.* "$(OutDir)" /E /I /F /Y
 
 
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
@@ -202,7 +202,7 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
       <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
 
 
-xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+xcopy $(ResourceDir)\r48\*.* "$(OutDir)" /E /I /F /Y
 
 
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
@@ -246,7 +246,7 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
       <Command>xcopy $(ResourceDir)\*.png "$(OutDir)" /E /I /F /Y
 
 
-xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+xcopy $(ResourceDir)\r48\*.* "$(OutDir)" /E /I /F /Y
 
 
 xcopy $(VendorDir)\SDL2-2.0.10\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
@@ -283,7 +283,7 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x86\*.dll "$(OutDir)" /E /I /F /Y
 
 
 
-xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+xcopy $(ResourceDir)\r48\*.* "$(OutDir)" /E /I /F /Y
 
 
 
@@ -318,7 +318,7 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
 
 
 
-xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+xcopy $(ResourceDir)\r48\*.* "$(OutDir)" /E /I /F /Y
 
 
 
@@ -353,7 +353,7 @@ xcopy $(VendorDir)\zlib-1.2.13\lib\x64\*.dll "$(OutDir)" /E /I /F /Y
 
 
 
-xcopy $(ResourceDir)\r41\*.* "$(OutDir)" /E /I /F /Y
+xcopy $(ResourceDir)\r48\*.* "$(OutDir)" /E /I /F /Y
 
 
 

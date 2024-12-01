@@ -33,6 +33,14 @@ resources/r42/*.exe
 resources/r42/*.sym
 resources/r42/*.zip
 
+resources/r48/docs
+resources/r48/x16emu
+resources/r48/*.bin
+resources/r48/*.dll
+resources/r48/*.exe
+resources/r48/*.sym
+resources/r48/*.zip
+
 bugs
 
 build/box16

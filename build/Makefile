@@ -5,7 +5,7 @@
 #-------------------------
 
 PROJECT := box16
-RELEASE := nr41.1
+RELEASE := nr48.1
 
 REPODIR := ..
 OBJDIR := obj
@@ -130,10 +130,10 @@ release:
 
 zips: package
 	cd $(RELDIR) && tar -cvf $(RELNAME).tar $(RELNAME)/*
-	cd $(RELDIR) && 7z a -t7z $(RELNAME).7z $(RELNAME)/*
-	cd $(RELDIR) && 7z a -tzip $(RELNAME).zip $(RELNAME)/*
-	cd $(RELDIR) && 7z a -tgzip $(RELNAME).tar.gz $(RELNAME).tar
-	cd $(RELDIR) && 7z a -tbzip2 $(RELNAME).tar.bz2 $(RELNAME).tar
+	cd $(RELDIR) && 7zz a -t7z $(RELNAME).7z $(RELNAME)/*
+	cd $(RELDIR) && 7zz a -tzip $(RELNAME).zip $(RELNAME)/*
+	cd $(RELDIR) && 7zz a -tgzip $(RELNAME).tar.gz $(RELNAME).tar
+	cd $(RELDIR) && 7zz a -tbzip2 $(RELNAME).tar.bz2 $(RELNAME).tar
 
 package:
 	if [ ! -d $(ZIPSDIR) ]; then $(MKDIR) $(ZIPSDIR); fi
@@ -203,4 +203,4 @@ $(OUTDIR)/box16: $(BOX16_OBJS) $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(YMFM_OB
 	mkdir -p $(OUTDIR)
 	$(CXX) $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS)
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
-	cp -r $(REPODIR)/resources/r41/* $(OUTDIR)/
+	cp -r $(REPODIR)/resources/r48/* $(OUTDIR)/

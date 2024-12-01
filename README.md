@@ -22,11 +22,13 @@ Features
 		* two layers
 		* sprites
 		* VSYNC, raster, sprite IRQ
+		* FX extensions
 * Sound
     * PCM
     * PSG
     * YM2151
 * SD card: reading and writing (image file)
+* Cartridge file support
 * VIA
 	* ROM/RAM banking
 	* keyboard
@@ -38,7 +40,6 @@ Missing Features
 ----------------
 
 * VERA
-	* Does not support the "CURRENT_FIELD" bit
 	* Interlaced modes (NTSC/RGB) don't render at the full horizontal fidelity
 
 Binaries & Compiling
@@ -53,7 +54,7 @@ You can build a ROM image yourself using the [build instructions](https://github
 
 ### Linux Build
 
-Read `resources/r41/README.box16` and build or acquire the necessary files.
+Read `resources/r48/README.box16` and build or acquire the necessary files.
 
 The needed development packages are available as a distribution package with most major versions of Linux:
 - Debian: `sudo apt-get install libgtk-3-dev libsdl2-dev`
@@ -65,7 +66,7 @@ Type `make` to build the source. The output will be `box16` in the output direct
 
 ### Windows Build
 
-Read `resources/r41/README.box16` and build or acquire the necessary files.
+Read `resources/r48/README.box16` and build or acquire the necessary files.
 
 Install Microsoft Visual Studio Community 2022, make sure to include the following modules:
 - `Desktop development with C++`
@@ -372,7 +373,7 @@ Release Notes
 * Improved hypercall performance
 * -ignore_patch is now saved to ini file.
 * Saving which panels are open.
-* Keymappings now match r41 kernal.
+* Keymappings now match r48 kernal.
 * Optimized VIA timer implementation.
 * Moved imgui.ini location to match box16.ini
 * Added -nohypercalls to disable all hypercalls.
