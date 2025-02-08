@@ -8,7 +8,7 @@
 #include <unistd.h> // Added to resolve Microsoft c++ warnings around POSIX and other depreciated errors.
 #include <zlib.h>
 
-#include <sstream.h>
+#include <sstream>
 
 #include "options.h"
 #include "zlib.h"
