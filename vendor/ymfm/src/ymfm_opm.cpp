@@ -479,7 +479,7 @@ void ym2151::write_address(uint8_t data)
 //  interface
 //-------------------------------------------------
 
-void ym2151::write_data(uint8_t data)
+void ym2151::write_data(uint8_t data, bool debug)
 {
 	// write the FM register
 	m_fm.write(m_address, data);
@@ -492,7 +492,7 @@ void ym2151::write_data(uint8_t data)
 	}
 
 	// mark busy for a bit
-	m_fm.intf().ymfm_set_busy_end(32 * m_fm.clock_prescale());
+	if (!debug) m_fm.intf().ymfm_set_busy_end(32 * m_fm.clock_prescale());
 }
 
 
@@ -534,6 +534,19 @@ void ym2151::generate(output_data *output, uint32_t numsamples)
 		// convert to 10.3 floating point value and back to simulate truncation
 		output->roundtrip_fp();
 	}
+}
+
+//-------------------------------------------------
+//  get_registers - get internal registers for debug purposes
+//-------------------------------------------------
+opm_registers &ym2151::get_registers()
+{
+	return m_fm.regs();
+}
+
+fm_operator<opm_registers> *ym2151::get_debug_op(uint32_t index) const
+{
+	return m_fm.debug_operator(index);
 }
 
 }

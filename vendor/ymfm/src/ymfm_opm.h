@@ -153,6 +153,9 @@ public:
 	// handle writes to the register array
 	bool write(uint16_t index, uint8_t data, uint32_t &chan, uint32_t &opmask);
 
+	// debug read
+	uint8_t get_register_data(uint8_t addr) const { return m_regdata[addr]; };
+
 	// clock the noise and LFO, if present, returning LFO PM value
 	int32_t clock_noise_and_lfo();
 
@@ -216,6 +219,9 @@ public:
 	uint32_t op_sustain_level(uint32_t opoffs) const { return byte(0xe0, 4, 4, opoffs); }
 	uint32_t op_release_rate(uint32_t opoffs) const  { return byte(0xe0, 0, 4, opoffs); }
 
+	// debug registers
+	uint32_t lfo_phase() const                       { return m_lfo_counter; }
+
 protected:
 	// return a bitfield extracted from a byte
 	uint32_t byte(uint32_t offset, uint32_t start, uint32_t count, uint32_t extra_offset = 0) const
@@ -275,12 +281,16 @@ public:
 
 	// write access
 	void write_address(uint8_t data);
-	void write_data(uint8_t data);
+	void write_data(uint8_t data, bool debug = false);
 	void write(uint32_t offset, uint8_t data);
 
 	// generate one sample of sound
 	void generate(output_data *output, uint32_t numsamples = 1);
 
+
+	// debug
+	opm_registers& get_registers();
+	fm_operator<opm_registers>* ym2151::get_debug_op(uint32_t opnum) const;
 protected:
 	// variants
 	enum opm_variant
