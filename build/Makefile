@@ -87,8 +87,12 @@ BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(wildcard $(BOX16_SRCDIR)/boxmo
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
 BOX16_CXXFLAGS := $(shell $(PKGCONFIG) --cflags alsa gl zlib) $(shell $(SDL2CONFIG) --cflags) $(CXXFLAGS) $(CXXWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h -DFMT_HEADER_ONLY $(MYFLAGS)
 BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs alsa gl zlib) $(shell $(SDL2CONFIG) --libs) -ldl
-ifneq ($(CXX),clang)
-	BOX16_LDFLAGS += -lstdc++fs
+
+# Detect if CXX is g++ or clang++, in this order.
+ifeq '' '$(findstring clang++,$(CXX))'
+  LDLIBS = -lstdc++fs
+else
+  LDLIBS = -lc++experimental
 endif
 
 #=========================
