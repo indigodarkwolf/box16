@@ -1,6 +1,7 @@
 #include "timing.h"
 
 #include <SDL.h>
+#include <unistd.h>
 #include <sstream>
 
 #include "glue.h"

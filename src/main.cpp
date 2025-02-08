@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <sstream>
+
 #ifdef __MINGW32__
 #	include <ctype.h>
 #endif
