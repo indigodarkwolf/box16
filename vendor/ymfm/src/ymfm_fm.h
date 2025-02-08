@@ -33,6 +33,8 @@
 
 #pragma once
 
+#define YMFM_DEBUG_LOG_WAVFILES (0)
+
 namespace ymfm
 {
 
@@ -162,8 +164,8 @@ template<class RegisterType> class fm_engine_base;
 template<class RegisterType>
 class fm_operator
 {
-	// "quiet" value, used to optimize when we can skip doing working
-	static constexpr uint32_t EG_QUIET = 0x200;
+	// "quiet" value, used to optimize when we can skip doing work
+	static constexpr uint32_t EG_QUIET = 0x380;
 
 public:
 	// constructor
@@ -191,9 +193,6 @@ public:
 	// return the current phase value
 	uint32_t phase() const { return m_phase >> 10; }
 
-	// return the current phase step
-	uint32_t phase_step() const { return m_phase_step; }
-
 	// compute operator volume
 	int32_t compute_volume(uint32_t phase, uint32_t am_offset) const;
 
@@ -209,10 +208,8 @@ public:
 	// simple getters for debugging
 	envelope_state debug_eg_state() const { return m_env_state; }
 	uint16_t debug_eg_attenuation() const { return m_env_attenuation; }
+	uint8_t debug_ssg_inverted() const { return m_ssg_inverted; }
 	opdata_cache &debug_cache() { return m_cache; }
-
-	// return effective attenuation of the envelope
-	uint32_t envelope_attenuation(uint32_t am_offset) const;
 
 private:
 	// start the attack phase
@@ -227,11 +224,13 @@ private:
 	void clock_envelope(uint32_t env_counter);
 	void clock_phase(int32_t lfo_raw_pm);
 
+	// return effective attenuation of the envelope
+	uint32_t envelope_attenuation(uint32_t am_offset) const;
+
 	// internal state
 	uint32_t m_choffs;                     // channel offset in registers
 	uint32_t m_opoffs;                     // operator offset in registers
 	uint32_t m_phase;                      // current phase value (10.10 format)
-	uint32_t m_phase_step;                 // current phase step
 	uint16_t m_env_attenuation;            // computed envelope attenuation (4.6 format)
 	envelope_state m_env_state;            // current envelope state
 	uint8_t m_ssg_inverted;                // non-zero if the output should be inverted (bit 0)
@@ -268,7 +267,7 @@ public:
 	// assign operators
 	void assign(uint32_t index, fm_operator<RegisterType> *op)
 	{
-		assert(index < array_size(m_op));
+		assert(index < m_op.size());
 		m_op[index] = op;
 		if (op != nullptr)
 			op->set_choffs(m_choffs);
@@ -331,7 +330,7 @@ private:
 	uint32_t m_choffs;                     // channel offset in registers
 	int16_t m_feedback[2];                 // feedback memory for operator 1
 	mutable int16_t m_feedback_in;         // next input value for op 1 feedback (set in output)
-	fm_operator<RegisterType> *m_op[4];    // up to 4 operators
+	std::array<fm_operator<RegisterType> *, 4> m_op; // up to 4 operators
 	RegisterType &m_regs;                  // direct reference to registers
 	fm_engine_base<RegisterType> &m_owner; // reference to the owning engine
 };
@@ -387,7 +386,7 @@ public:
 	{
 		m_status = (m_status | set) & ~(reset | STATUS_BUSY);
 		m_intf.ymfm_sync_check_interrupts();
-		return m_status;
+		return m_status & ~m_regs.status_mask();
 	}
 
 	// set the IRQ mask
@@ -400,7 +399,14 @@ public:
 	void set_clock_prescale(uint32_t prescale) { m_clock_prescale = prescale; }
 
 	// compute sample rate
-	uint32_t sample_rate(uint32_t baseclock) const { return baseclock / (m_clock_prescale * OPERATORS); }
+	uint32_t sample_rate(uint32_t baseclock) const
+	{
+#if (YMFM_DEBUG_LOG_WAVFILES)
+		for (uint32_t chnum = 0; chnum < CHANNELS; chnum++)
+			m_wavfile[chnum].set_samplerate(baseclock / (m_clock_prescale * OPERATORS));
+#endif
+		return baseclock / (m_clock_prescale * OPERATORS);
+	}
 
 	// return the owning device
 	ymfm_interface &intf() const { return m_intf; }
@@ -430,7 +436,7 @@ protected:
 	void assign_operators();
 
 	// update the state of the given timer
-	void update_timer(uint32_t which, uint32_t enable);
+	void update_timer(uint32_t which, uint32_t enable, int32_t delta_clocks);
 
 	// internal state
 	ymfm_interface &m_intf;          // reference to the system interface
@@ -440,12 +446,16 @@ protected:
 	uint8_t m_irq_mask;              // mask of which bits signal IRQs
 	uint8_t m_irq_state;             // current IRQ state
 	uint8_t m_timer_running[2];      // current timer running state
+	uint8_t m_total_clocks;          // low 8 bits of the total number of clocks processed
 	uint32_t m_active_channels;      // mask of active channels (computed by prepare)
 	uint32_t m_modified_channels;    // mask of channels that have been modified
 	uint32_t m_prepare_count;        // counter to do periodic prepare sweeps
 	RegisterType m_regs;             // register accessor
 	std::unique_ptr<fm_channel<RegisterType>> m_channel[CHANNELS]; // channel pointers
 	std::unique_ptr<fm_operator<RegisterType>> m_operator[OPERATORS]; // operator pointers
+#if (YMFM_DEBUG_LOG_WAVFILES)
+	mutable ymfm_wavfile<1> m_wavfile[CHANNELS]; // for debugging
+#endif
 };
 
 }

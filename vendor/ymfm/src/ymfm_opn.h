@@ -763,7 +763,7 @@ public:
 
 protected:
 	// simulate the DAC discontinuity
-	constexpr int32_t dac_discontinuity(int32_t value) const { return (value < 0) ? (value - 2) : (value + 3); }
+	constexpr int32_t dac_discontinuity(int32_t value) const { return (value < 0) ? (value - 3) : (value + 4); }
 
 	// internal state
 	uint16_t m_address;              // address register
@@ -793,7 +793,7 @@ public:
 	ymf276(ymfm_interface &intf) : ym2612(intf) { }
 
 	// generate one sample of sound
-	void generate(output_data *output, uint32_t numsamples);
+	void generate(output_data *output, uint32_t numsamples = 1);
 };
 
 }

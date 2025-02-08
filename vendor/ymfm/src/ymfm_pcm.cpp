@@ -46,7 +46,6 @@ namespace ymfm
 void pcm_registers::reset()
 {
 	std::fill_n(&m_regdata[0], REGISTERS, 0);
-	m_regdata[0x02] = 0x20;
 	m_regdata[0xf8] = 0x1b;
 }
 
@@ -433,6 +432,9 @@ void pcm_channel::load_wavetable()
 	m_owner.write(0xb0 + m_choffs, read_pcm(wavheader + 9));
 	m_owner.write(0xc8 + m_choffs, read_pcm(wavheader + 10));
 	m_owner.write(0xe0 + m_choffs, read_pcm(wavheader + 11));
+
+	// reset the envelope so we don't continue playing mid-sample from previous key ons
+	m_env_attenuation = 0x3ff;
 }
 
 
