@@ -193,6 +193,9 @@ public:
 	// return the current phase value
 	uint32_t phase() const { return m_phase >> 10; }
 
+	// return the current phase step
+	uint32_t phase_step() const { return m_phase_step; }
+
 	// compute operator volume
 	int32_t compute_volume(uint32_t phase, uint32_t am_offset) const;
 
@@ -211,6 +214,8 @@ public:
 	uint8_t debug_ssg_inverted() const { return m_ssg_inverted; }
 	opdata_cache &debug_cache() { return m_cache; }
 
+	// return effective attenuation of the envelope
+	uint32_t envelope_attenuation(uint32_t am_offset) const;
 private:
 	// start the attack phase
 	void start_attack(bool is_restart = false);
@@ -224,13 +229,11 @@ private:
 	void clock_envelope(uint32_t env_counter);
 	void clock_phase(int32_t lfo_raw_pm);
 
-	// return effective attenuation of the envelope
-	uint32_t envelope_attenuation(uint32_t am_offset) const;
-
 	// internal state
 	uint32_t m_choffs;                     // channel offset in registers
 	uint32_t m_opoffs;                     // operator offset in registers
 	uint32_t m_phase;                      // current phase value (10.10 format)
+	uint32_t m_phase_step;                 // current phase step
 	uint16_t m_env_attenuation;            // computed envelope attenuation (4.6 format)
 	envelope_state m_env_state;            // current envelope state
 	uint8_t m_ssg_inverted;                // non-zero if the output should be inverted (bit 0)

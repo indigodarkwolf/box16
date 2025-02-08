@@ -463,6 +463,19 @@ uint8_t ym2151::read(uint32_t offset)
 
 
 //-------------------------------------------------
+//  get_registers - get internal registers for debug purposes
+//-------------------------------------------------
+opm_registers &ym2151::get_registers()
+{
+	return m_fm.regs();
+}
+
+fm_operator<opm_registers> *ym2151::get_debug_op(uint32_t index) const
+{
+	return m_fm.debug_operator(index);
+}
+
+//-------------------------------------------------
 //  write_address - handle a write to the address
 //  register
 //-------------------------------------------------
@@ -534,19 +547,6 @@ void ym2151::generate(output_data *output, uint32_t numsamples)
 		// convert to 10.3 floating point value and back to simulate truncation
 		output->roundtrip_fp();
 	}
-}
-
-//-------------------------------------------------
-//  get_registers - get internal registers for debug purposes
-//-------------------------------------------------
-opm_registers &ym2151::get_registers()
-{
-	return m_fm.regs();
-}
-
-fm_operator<opm_registers> *ym2151::get_debug_op(uint32_t index) const
-{
-	return m_fm.debug_operator(index);
 }
 
 }

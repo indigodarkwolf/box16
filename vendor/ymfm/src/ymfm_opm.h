@@ -290,7 +290,8 @@ public:
 
 	// debug
 	opm_registers& get_registers();
-	fm_operator<opm_registers>* ym2151::get_debug_op(uint32_t opnum) const;
+	fm_operator<opm_registers>* get_debug_op(uint32_t opnum) const;
+
 protected:
 	// variants
 	enum opm_variant
