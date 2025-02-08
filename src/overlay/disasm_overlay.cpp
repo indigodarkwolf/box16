@@ -138,7 +138,7 @@ void imgui_debugger_disasm::draw()
 
 		{
 			if (reset_input) {
-				fmt::format_to_n(input_fields.ram_bank, std::size(input_fields.ram_bank), "{:04X}", ram_bank);
+				fmt::format_to_n(input_fields.ram_bank, std::size(input_fields.ram_bank), "{:02X}", ram_bank);
 			}
 			if (ImGui::InputHexLabel("  RAM Bank", input_fields.ram_bank)) {
 				ram_bank = parse(input_fields.ram_bank);
@@ -148,7 +148,7 @@ void imgui_debugger_disasm::draw()
 
 		{
 			if (reset_input) {
-				fmt::format_to_n(input_fields.rom_bank, std::size(input_fields.rom_bank), "{:04X}", rom_bank);
+				fmt::format_to_n(input_fields.rom_bank, std::size(input_fields.rom_bank), "{:02X}", rom_bank);
 			}
 			if (ImGui::InputHexLabel("  ROM Bank", input_fields.rom_bank)) {
 				rom_bank = parse(input_fields.rom_bank);
