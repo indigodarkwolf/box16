@@ -3,7 +3,7 @@ on: [push, pull_request]
 
 jobs:
   build-ubuntu:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - name: Install Dependencies
@@ -19,12 +19,12 @@ jobs:
           name: box16-nr42.xx-linux
           path: build/box16/
   build-ubuntu-clang:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - name: Install Dependencies
         run: |
-          sudo apt-get update && sudo apt-get install -y make build-essential libgtk-3-dev libsdl2-dev libtinfo6
+          sudo apt-get update && sudo apt-get install -y make build-essential libgtk-3-dev libsdl2-dev libtinfo5
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v2
         with:
@@ -36,7 +36,7 @@ jobs:
           cd build
           make
   build-ubuntu-trace:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - name: Install Dependencies
@@ -52,7 +52,7 @@ jobs:
           name: box16-nr42.xx-linux-trace
           path: build/box16/
   build-ubuntu-debug:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - name: Install Dependencies
