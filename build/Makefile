@@ -71,7 +71,7 @@ YMFM_OBJDIR := $(OBJDIR)/ymfm
 
 YMFM_CXXFLAGS := $(CXXFLAGS) $(CXXWARNS)
 
-YMFM_SRCS := $(YMFM_SRCDIR)/ymfm_opm.cpp	
+YMFM_SRCS := $(YMFM_SRCDIR)/ymfm_opm.cpp
 YMFM_OBJS := $(patsubst $(YMFM_SRCDIR)/%.cpp,$(YMFM_OBJDIR)/%.o,$(YMFM_SRCS))
 
 #
