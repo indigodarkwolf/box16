@@ -32,6 +32,8 @@ static ring_allocator<audio_buffer, BACKBUFFER_COUNT> Audio_backbuffer;
 static constexpr size_t Low_buffer_threshold = 2;
 static int              Clocks_rendered      = 0;
 
+static uint32_t limiter_amp = 0;
+
 static volatile audio_render_callback Render_callback = nullptr;
 
 audio_lock_scope::audio_lock_scope()
@@ -55,9 +57,19 @@ static void audio_render_buffer()
 	pcm_render(Pcm_buffer, SAMPLES_PER_BUFFER);
 
 	int16_t buffer[2 * SAMPLES_PER_BUFFER];
-	memcpy(buffer, Ym_buffer, sizeof(Ym_buffer));
-	SDL_MixAudioFormat(reinterpret_cast<uint8_t *>(buffer), reinterpret_cast<uint8_t *>(Psg_buffer), AUDIO_S16, sizeof(Psg_buffer), SDL_MIX_MAXVOLUME);
-	SDL_MixAudioFormat(reinterpret_cast<uint8_t *>(buffer), reinterpret_cast<uint8_t *>(Pcm_buffer), AUDIO_S16, sizeof(Pcm_buffer), SDL_MIX_MAXVOLUME);
+
+	for (int i = 0; i < (2 * SAMPLES_PER_BUFFER); i += 2) {
+		int32_t mix_l = (Ym_buffer[i]) + (Psg_buffer[i] << 1) + (Pcm_buffer[i] << 1);
+		int32_t mix_r = (Ym_buffer[i+1]) + (Psg_buffer[i+1] << 1) + (Pcm_buffer[i+1] << 1);
+		uint32_t amp = SDL_max(SDL_abs(mix_l), SDL_abs(mix_r));
+		if (amp > 32767) {
+			uint32_t limiter_amp_new = (32767 << 16) / amp;
+			limiter_amp = SDL_min(limiter_amp_new, limiter_amp);
+		}
+		buffer[i] = (int16_t)((mix_l * limiter_amp) >> 16);
+		buffer[i+1] = (int16_t)((mix_r * limiter_amp) >> 16);
+		if (limiter_amp < (1 << 16)) limiter_amp++;
+	}
 
 	// Commit to the backbuffer
 	{
@@ -114,6 +126,7 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 
 	Obtained_sample_rate = obtained.freq;
 	Clocks_per_sample    = 8000000 / Obtained_sample_rate;
+	limiter_amp = (1 << 16);
 
 	fmt::print("INFO: Audio buffer is {} bytes\n", obtained.size);
 

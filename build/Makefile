@@ -90,7 +90,7 @@ BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs alsa gl zlib) 
 
 # Detect if CXX is g++ or clang++, in this order.
 ifeq '' '$(findstring clang++,$(CXX))'
-  BOX16_LDFLAGS += -lstdc++fs
+	BOX16_LDFLAGS += -lstdc++fs
 endif
 
 #=========================
