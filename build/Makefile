@@ -71,7 +71,7 @@ YMFM_OBJDIR := $(OBJDIR)/ymfm
 
 YMFM_CXXFLAGS := $(CXXFLAGS) $(CXXWARNS)
 
-YMFM_SRCS := $(YMFM_SRCDIR)/ymfm_opm.cpp
+YMFM_SRCS := $(YMFM_SRCDIR)/ymfm_opm.cpp	
 YMFM_OBJS := $(patsubst $(YMFM_SRCDIR)/%.cpp,$(YMFM_OBJDIR)/%.o,$(YMFM_SRCS))
 
 #
@@ -90,7 +90,7 @@ BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs alsa gl zlib) 
 
 # Detect if CXX is g++ or clang++, in this order.
 ifeq '' '$(findstring clang++,$(CXX))'
-  BOX16_LDFLAGS += -lstdc++fs
+	BOX16_LDFLAGS += -lstdc++fs
 endif
 
 #=========================
