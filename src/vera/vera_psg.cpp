@@ -12,12 +12,22 @@
 
 static psg_channel Channels[PSG_NUM_CHANNELS];
 
-static uint8_t volume_lut[64] = { 0, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 6, 6, 7, 7, 7, 8, 8, 9, 9, 10, 11, 11, 12, 13, 14, 14, 15, 16, 17, 18, 19, 21, 22, 23, 25, 26, 28, 29, 31, 33, 35, 37, 39, 42, 44, 47, 50, 52, 56, 59, 63 };
+static uint16_t noise_state;
+
+static uint16_t volume_lut[64] = {
+	  0,                                           4,   8,  12,
+	 16,  17,  18,  20,  21,  22,  23,  25,  26,  28,  30,  31,
+	 33,  35,  37,  40,  42,  45,  47,  50,  53,  56,  60,  63,
+	 67,  71,  75,  80,  85,  90,  95, 101, 107, 113, 120, 127,
+	135, 143, 151, 160, 170, 180, 191, 202, 214, 227, 241, 255,
+	270, 286, 303, 321, 341, 361, 382, 405, 429, 455, 482, 511
+};
 
 void psg_reset(void)
 {
 	audio_lock_scope lock;
 	memset(Channels, 0, sizeof(Channels));
+	noise_state = 1;
 }
 
 void psg_writereg(uint8_t reg, uint8_t val)
@@ -34,7 +44,7 @@ void psg_writereg(uint8_t reg, uint8_t val)
 		case 2: {
 			Channels[ch].right  = (val & 0x80) != 0;
 			Channels[ch].left   = (val & 0x40) != 0;
-			Channels[ch].volume = volume_lut[val & 0x3F];
+			Channels[ch].volume = (val & 0x3F);
 			break;
 		}
 		case 3: {
@@ -51,33 +61,34 @@ static void render(int16_t *left, int16_t *right)
 	int r = 0;
 
 	for (int i = 0; i < PSG_NUM_CHANNELS; i++) {
+		noise_state = (noise_state << 1) | (((noise_state >> 1) ^ (noise_state >> 2) ^ (noise_state >> 4) ^ (noise_state >> 15)) & 1);
 		struct psg_channel *ch = &Channels[i];
 
-		unsigned new_phase = (ch->phase + ch->freq) & 0x1FFFF;
+		uint32_t new_phase = (ch->left || ch->right) ? ((ch->phase + ch->freq) & 0x1FFFF) : 0;
 		if ((ch->phase & 0x10000) != (new_phase & 0x10000)) {
-			ch->noiseval = rand() & 63;
+			ch->noiseval = (noise_state >> 1) & 0x3F;
 		}
 		ch->phase = new_phase;
 
 		uint8_t v = 0;
 		switch (ch->waveform) {
 			case WF_PULSE: v = (ch->phase >> 10) > ch->pw ? 0 : 63; break;
-			case WF_SAWTOOTH: v = ch->phase >> 11; break;
-			case WF_TRIANGLE: v = (ch->phase & 0x10000) ? (~(ch->phase >> 10) & 0x3F) : ((ch->phase >> 10) & 0x3F); break;
+			case WF_SAWTOOTH: v = (ch->phase >> 11) ^ ((ch->pw ^ 0x3f) & 0x3f); break;
+			case WF_TRIANGLE: v = ((ch->phase & 0x10000) ? (~(ch->phase >> 10) & 0x3F) : ((ch->phase >> 10) & 0x3F)) ^ ((ch->pw ^ 0x3f) & 0x3f); break;
 			case WF_NOISE: v = ch->noiseval; break;
 		}
-		int8_t sv = (v ^ 0x20);
+		int16_t sv = (v ^ 0x20);
 		if (sv & 0x20) {
-			sv |= 0xC0;
+			sv |= 0xFFC0;
 		}
 
-		int val = (int)sv * (int)ch->volume;
+		int16_t val = sv * volume_lut[ch->volume];
 
 		if (ch->left) {
-			l += val;
+			l += val >> 3;
 		}
 		if (ch->right) {
-			r += val;
+			r += val >> 3;
 		}
 	}
 
