@@ -106,11 +106,18 @@ const uint8_t *vera_video_get_framebuffer();
 
 void vera_video_get_increment_values(const int **in, int *length);
 
-const int vera_video_get_data_auto_increment(int channel);
-void      vera_video_set_data_auto_increment(int channel, uint8_t value);
+const int  vera_video_get_data_auto_increment(int channel);
+void       vera_video_set_data_auto_increment(int channel, uint8_t value);
+const bool vera_video_get_fx_nibble_increment(int channel);
+void       vera_video_set_fx_nibble_increment(int channel, bool value);
 
 const uint32_t vera_video_get_data_addr(int channel);
 void           vera_video_set_data_addr(int channel, uint32_t value);
+const bool     vera_video_get_fx_nibble_addr(int channel);
+void           vera_video_set_fx_nibble_addr(int channel, bool value);
+
+const uint8_t  vera_video_get_rddata_value(int channel);
+void           vera_video_set_rddata_value(int channel, uint8_t value);
 
 const uint8_t vera_video_get_dc_video();
 const uint8_t vera_video_get_dc_hscale();

@@ -753,138 +753,238 @@ static void draw_debugger_cpu_visualizer()
 
 static void draw_debugger_vera_status()
 {
-	ImGui::BeginGroup();
-	{
-		ImGui::TextDisabled("VERA Settings");
+	uint32_t value;
+
+	if (ImGui::TreeNodeEx("VRAM", ImGuiTreeNodeFlags_Framed)) {
+		vram_dump.draw();
+		ImGui::TreePop();
+	}
+
+	if (ImGui::TreeNodeEx("Data Ports", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		const int *incrs;
+		int incrs_len;
+
+		// Get the list of possible increment values
+		// Unfortunately, there's no distinction between 0 and negative 0
+		// in the integer input, so we'll have to split it out into a
+		// negative checkbox
+		vera_video_get_increment_values(&incrs, &incrs_len);
+
+		value = vera_video_get_data_addr(0);
+		if (ImGui::InputHexLabel<uint32_t, 20>("Data0 Address", value)) {
+			vera_video_set_data_addr(0, value);
+		}
 		ImGui::SameLine();
-		ImGui::Dummy(ImVec2(0.0f, 19.0f));
-		ImGui::Separator();
+		ImGui::Text(" Nibble Addr");
+		ImGui::SameLine();
+		bool selected = vera_video_get_fx_nibble_addr(0);
+		if (ImGui::Checkbox("##na0", &selected)) {
+			vera_video_set_fx_nibble_addr(0, selected);
+		}
 
-		// ImGuiInputTextFlags_ReadOnly
+		ImGui::SameLine();
+		ImGui::Text(" Increment");
+		ImGui::SameLine();
 
-		char hex[7];
+		int incr = incrs[vera_video_get_data_auto_increment(0) & ~1];
+		ImGui::PushItemWidth(40);
+		if (ImGui::InputInt("##ai0", &incr, 0, 0)) {
+			for (int i = 0; i < incrs_len; i++) {
+				if (incr == incrs[i]) {
+					vera_video_set_data_auto_increment(0, i);
+					break;
+				}
+			}
+		}
+		ImGui::PopItemWidth();
+		ImGui::SameLine();
+		ImGui::Text(" Neg");
+		ImGui::SameLine();
+		selected = vera_video_get_data_auto_increment(0) & 1;
+		if (ImGui::Checkbox("##neg0", &selected)) {
+			vera_video_set_data_auto_increment(0, (vera_video_get_data_auto_increment(0) & ~1) | selected);
+		}
 
+		ImGui::SameLine();
+		ImGui::Text(" Nibble Incr");
+		ImGui::SameLine();
+		selected = vera_video_get_fx_nibble_increment(0);
+		if (ImGui::Checkbox("##ni0", &selected)) {
+			vera_video_set_fx_nibble_increment(0, selected);
+		}
+
+		ImGui::SameLine();
+		value = vera_video_get_rddata_value(0);
+		ImGui::PushID("data0val");
+		if (ImGui::InputHexLabel<uint32_t, 8>(" Value", value)) {
+			vera_video_set_rddata_value(0, value);
+		}
+		ImGui::PopID();
+
+		value = vera_video_get_data_addr(1);
+		if (ImGui::InputHexLabel<uint32_t, 20>("Data1 Address", value)) {
+			vera_video_set_data_addr(1, value);
+		}
+		ImGui::SameLine();
+		ImGui::Text(" Nibble Addr");
+		ImGui::SameLine();
+		selected = vera_video_get_fx_nibble_addr(1);
+		if (ImGui::Checkbox("##na1", &selected)) {
+			vera_video_set_fx_nibble_addr(1, selected);
+		}
+
+		ImGui::SameLine();
+		ImGui::Text(" Increment");
+		ImGui::SameLine();
+
+		incr = incrs[vera_video_get_data_auto_increment(1) & ~1];
+		ImGui::PushItemWidth(40);
+		if (ImGui::InputInt("##ai1", &incr, 0, 0)) {
+			for (int i = 0; i < incrs_len; i++) {
+				if (incr == incrs[i]) {
+					vera_video_set_data_auto_increment(1, i);
+					break;
+				}
+			}
+		}
+		ImGui::PopItemWidth();
+		ImGui::SameLine();
+		ImGui::Text(" Neg");
+		ImGui::SameLine();
+		selected = vera_video_get_data_auto_increment(1) & 1;
+		if (ImGui::Checkbox("##neg1", &selected)) {
+			vera_video_set_data_auto_increment(1, (vera_video_get_data_auto_increment(1) & ~1) | selected);
+		}
+
+		ImGui::SameLine();
+		ImGui::Text(" Nibble Incr");
+		ImGui::SameLine();
+		selected = vera_video_get_fx_nibble_increment(1);
+		if (ImGui::Checkbox("##ni1", &selected)) {
+			vera_video_set_fx_nibble_increment(1, selected);
+		}
+
+		ImGui::SameLine();
+		value = vera_video_get_rddata_value(1);
+		ImGui::PushID("data1val");
+		if (ImGui::InputHexLabel<uint32_t, 8>(" Value", value)) {
+			vera_video_set_rddata_value(1, value);
+		}
+		ImGui::PopID();
+
+		ImGui::TreePop();
+	}
+
+	if (ImGui::TreeNodeEx("Composer", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+
+		ImGui::BeginGroup();
 		{
-			uint32_t value;
+			ImGui::TextDisabled("VERA Settings");
+			ImGui::SameLine();
+			ImGui::Dummy(ImVec2(0.0f, 19.0f));
+			ImGui::Separator();
 
-			value = vera_video_get_data_addr(0);
-			if (ImGui::InputHexLabel<uint32_t, 24>("Data0 Address", value)) {
-				vera_video_set_data_addr(0, value);
-			}
+			// ImGuiInputTextFlags_ReadOnly
 
-			value = vera_video_get_data_addr(1);
-			if (ImGui::InputHexLabel<uint32_t, 24>("Data1 Address", value)) {
-				vera_video_set_data_addr(1, value);
-			}
+			char hex[7];
 
 			ImGui::NewLine();
 
-			value = vera_debug_video_read(3);
-			if (ImGui::InputHexLabel<uint32_t, 24>("Data0", value)) {
-				vera_video_space_write(vera_video_get_data_addr(0), value);
-			}
-
-			value = vera_debug_video_read(4);
-			if (ImGui::InputHexLabel<uint32_t, 24>("Data1", value)) {
-				vera_video_space_write(vera_video_get_data_addr(1), value);
-			}
-		}
-
-		ImGui::NewLine();
-
-		ImGui::PushItemWidth(width_uint8);
-		{
-			uint8_t dc_video       = vera_video_get_dc_video();
-			uint8_t dc_video_start = dc_video;
-
-			static constexpr const char *modes[] = { "Disabled", "VGA", "NTSC", "RGB interlaced, composite, via VGA connector" };
-
-			ImGui::Text("Output Mode");
-			ImGui::SameLine();
-
-			if (ImGui::BeginCombo(modes[dc_video & 3], modes[dc_video & 3])) {
-				for (uint8_t i = 0; i < 4; ++i) {
-					const bool selected = ((dc_video & 3) == i);
-					if (ImGui::Selectable(modes[i], selected)) {
-						dc_video = (dc_video & ~3) | i;
-					}
-				}
-				ImGui::EndCombo();
-			}
-
-			// Other dc_video flags
+			ImGui::PushItemWidth(width_uint8);
 			{
-				static constexpr struct {
-					const char *name;
-					uint8_t     flag;
-				} video_options[] = { { "No Chroma", 0x04 }, { "Layer 0", 0x10 }, { "Layer 1", 0x20 }, { "Sprites", 0x40 } };
+				uint8_t dc_video       = vera_video_get_dc_video();
+				uint8_t dc_video_start = dc_video;
 
-				for (auto &option : video_options) {
-					bool selected = dc_video & option.flag;
-					if (ImGui::Checkbox(option.name, &selected)) {
-						dc_video ^= option.flag;
+				static constexpr const char *modes[] = { "Disabled", "VGA", "NTSC", "RGB interlaced, composite, via VGA connector" };
+
+				ImGui::Text("Output Mode");
+				ImGui::SameLine();
+
+				if (ImGui::BeginCombo(modes[dc_video & 3], modes[dc_video & 3])) {
+					for (uint8_t i = 0; i < 4; ++i) {
+						const bool selected = ((dc_video & 3) == i);
+						if (ImGui::Selectable(modes[i], selected)) {
+							dc_video = (dc_video & ~3) | i;
+						}
 					}
+					ImGui::EndCombo();
+				}
+
+				// Other dc_video flags
+				{
+					static constexpr struct {
+						const char *name;
+						uint8_t     flag;
+					} video_options[] = { { "No Chroma", 0x04 }, { "Layer 0", 0x10 }, { "Layer 1", 0x20 }, { "Sprites", 0x40 } };
+
+					for (auto &option : video_options) {
+						bool selected = dc_video & option.flag;
+						if (ImGui::Checkbox(option.name, &selected)) {
+							dc_video ^= option.flag;
+						}
+					}
+				}
+
+				if (dc_video_start != dc_video) {
+					vera_video_set_dc_video(dc_video);
+				}
+			}
+			ImGui::NewLine();
+			{
+				ImGui::Text("Scale");
+				ImGui::SameLine();
+
+				snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hscale());
+				if (ImGui::InputText("H", hex, 5, hex_flags)) {
+					vera_video_set_dc_hscale(parse(hex));
+				}
+
+				ImGui::SameLine();
+
+				snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vscale());
+				if (ImGui::InputText("V", hex, 3, hex_flags)) {
+					vera_video_set_dc_vscale(parse(hex));
 				}
 			}
 
-			if (dc_video_start != dc_video) {
-				vera_video_set_dc_video(dc_video);
-			}
-		}
-		ImGui::NewLine();
-		{
-			ImGui::Text("Scale");
+			ImGui::Text("DC Borders");
+			ImGui::Dummy(ImVec2(width_uint8, 0));
 			ImGui::SameLine();
-
-			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hscale());
-			if (ImGui::InputText("H", hex, 5, hex_flags)) {
-				vera_video_set_dc_hscale(parse(hex));
+			ImGui::PushID("vstart");
+			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstart());
+			if (ImGui::InputText("", hex, 3, hex_flags)) {
+				vera_video_set_dc_vstart(parse(hex));
 			}
-
+			ImGui::PopID();
+			ImGui::PushID("hstart");
+			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstart());
+			if (ImGui::InputText("", hex, 3, hex_flags)) {
+				vera_video_set_dc_hstart(parse(hex));
+			}
+			ImGui::PopID();
 			ImGui::SameLine();
-
-			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vscale());
-			if (ImGui::InputText("V", hex, 3, hex_flags)) {
-				vera_video_set_dc_vscale(parse(hex));
+			ImGui::Dummy(ImVec2(width_uint8, 0));
+			ImGui::SameLine();
+			ImGui::PushID("hstop");
+			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstop());
+			if (ImGui::InputText("", hex, 3, hex_flags)) {
+				vera_video_set_dc_hstop(parse(hex));
 			}
-		}
+			ImGui::PopID();
+			ImGui::Dummy(ImVec2(width_uint8, 0));
+			ImGui::SameLine();
+			ImGui::PushID("vstop");
+			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstop());
+			if (ImGui::InputText("", hex, 3, hex_flags)) {
+				vera_video_set_dc_vstop(parse(hex));
+			}
+			ImGui::PopID();
 
-		ImGui::Text("DC Borders");
-		ImGui::Dummy(ImVec2(width_uint8, 0));
-		ImGui::SameLine();
-		ImGui::PushID("vstart");
-		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstart());
-		if (ImGui::InputText("", hex, 3, hex_flags)) {
-			vera_video_set_dc_vstart(parse(hex));
+			ImGui::PopItemWidth();
 		}
-		ImGui::PopID();
-		ImGui::PushID("hstart");
-		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstart());
-		if (ImGui::InputText("", hex, 3, hex_flags)) {
-			vera_video_set_dc_hstart(parse(hex));
-		}
-		ImGui::PopID();
-		ImGui::SameLine();
-		ImGui::Dummy(ImVec2(width_uint8, 0));
-		ImGui::SameLine();
-		ImGui::PushID("hstop");
-		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstop());
-		if (ImGui::InputText("", hex, 3, hex_flags)) {
-			vera_video_set_dc_hstop(parse(hex));
-		}
-		ImGui::PopID();
-		ImGui::Dummy(ImVec2(width_uint8, 0));
-		ImGui::SameLine();
-		ImGui::PushID("vstop");
-		snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstop());
-		if (ImGui::InputText("", hex, 3, hex_flags)) {
-			vera_video_set_dc_vstop(parse(hex));
-		}
-		ImGui::PopID();
-
-		ImGui::PopItemWidth();
+		ImGui::EndGroup();
+		ImGui::TreePop();
 	}
-	ImGui::EndGroup();
 }
 
 static void draw_debugger_vera_palette()
@@ -3184,8 +3284,6 @@ void overlay_draw()
 
 	if (Show_VERA_monitor) {
 		if (ImGui::Begin("VERA Monitor", &Show_VERA_monitor)) {
-			vram_dump.draw();
-			ImGui::SameLine();
 			draw_debugger_vera_status();
 		}
 		ImGui::End();

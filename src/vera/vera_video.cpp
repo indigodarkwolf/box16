@@ -1897,12 +1897,24 @@ void vera_video_get_increment_values(const int **in, int *length)
 
 const int vera_video_get_data_auto_increment(int channel)
 {
-	return increments[io_inc[channel & 1]];
+	return io_inc[channel & 1];
 }
 
 void vera_video_set_data_auto_increment(int channel, uint8_t value)
 {
 	io_inc[channel & 1] = value;
+	io_rddata[channel & 1] = vera_video_space_read(io_addr[channel & 1]);
+}
+
+const bool vera_video_get_fx_nibble_increment(int channel)
+{
+	return fx_nibble_incr[channel & 1];
+}
+
+void vera_video_set_fx_nibble_increment(int channel, bool value)
+{
+	fx_nibble_incr[channel & 1] = value;
+	io_rddata[channel & 1] = vera_video_space_read(io_addr[channel & 1]);
 }
 
 const uint32_t vera_video_get_data_addr(int channel)
@@ -1912,7 +1924,31 @@ const uint32_t vera_video_get_data_addr(int channel)
 
 void vera_video_set_data_addr(int channel, uint32_t value)
 {
-	io_addr[channel & 1] = value;
+	io_addr[channel & 1] = value & 0x1FFFF;
+	io_rddata[channel & 1] = vera_video_space_read(io_addr[channel & 1]);
+}
+
+const bool vera_video_get_fx_nibble_addr(int channel)
+{
+	return fx_nibble_bit[channel & 1];
+}
+
+void vera_video_set_fx_nibble_addr(int channel, bool value)
+{
+	fx_nibble_bit[channel & 1] = value;
+	io_rddata[channel & 1] = vera_video_space_read(io_addr[channel & 1]);
+}
+
+const uint8_t vera_video_get_rddata_value(int channel)
+{
+	return io_rddata[channel & 1];
+}
+
+void vera_video_set_rddata_value(int channel, uint8_t value)
+{
+	// Also sets VRAM to the forced value
+	io_rddata[channel & 1] = value;
+	vera_video_space_write(io_addr[channel & 1], value);
 }
 
 const uint8_t vera_video_get_dc_video()
