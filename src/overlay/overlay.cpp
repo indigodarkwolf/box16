@@ -770,219 +770,288 @@ static void draw_debugger_vera_status()
 		// negative checkbox
 		vera_video_get_increment_values(&incrs, &incrs_len);
 
-		value = vera_video_get_data_addr(0);
-		if (ImGui::InputHexLabel<uint32_t, 20>("Data0 Address", value)) {
-			vera_video_set_data_addr(0, value);
-		}
-		ImGui::SameLine();
-		ImGui::Text(" Nibble Addr");
-		ImGui::SameLine();
-		bool selected = vera_video_get_fx_nibble_addr(0);
-		if (ImGui::Checkbox("##na0", &selected)) {
-			vera_video_set_fx_nibble_addr(0, selected);
-		}
+		for (int dp = 0; dp < 2; dp++) {
+			ImGui::PushID(dp);
+			value = vera_video_get_data_addr(dp);
+			std::string id = fmt::format("Data{} Address", dp);
+			if (ImGui::InputHexLabel<uint32_t, 20>(id.c_str(), value)) {
+				vera_video_set_data_addr(dp, value);
+			}
+			ImGui::SameLine();
+			ImGui::Text(" Nibble Addr");
+			ImGui::SameLine();
+			bool selected = vera_video_get_fx_nibble_addr(dp);
+			if (ImGui::Checkbox("##na", &selected)) {
+				vera_video_set_fx_nibble_addr(dp, selected);
+			}
 
-		ImGui::SameLine();
-		ImGui::Text(" Increment");
-		ImGui::SameLine();
+			ImGui::SameLine();
+			ImGui::Text(" Increment");
+			ImGui::SameLine();
 
-		int incr = incrs[vera_video_get_data_auto_increment(0) & ~1];
-		ImGui::PushItemWidth(40);
-		if (ImGui::InputInt("##ai0", &incr, 0, 0)) {
-			for (int i = 0; i < incrs_len; i++) {
-				if (incr == incrs[i]) {
-					vera_video_set_data_auto_increment(0, i);
-					break;
+			int incr = incrs[vera_video_get_data_auto_increment(dp) & ~1];
+			ImGui::PushItemWidth(40);
+			if (ImGui::InputInt("##ai", &incr, 0, 0)) {
+				for (int i = 0; i < incrs_len; i++) {
+					if (incr == incrs[i]) {
+						vera_video_set_data_auto_increment(dp, i);
+						break;
+					}
 				}
+			}
+			ImGui::PopItemWidth();
+			ImGui::SameLine();
+			ImGui::Text(" Neg");
+			ImGui::SameLine();
+			selected = vera_video_get_data_auto_increment(dp) & 1;
+			if (ImGui::Checkbox("##neg", &selected)) {
+				vera_video_set_data_auto_increment(dp, (vera_video_get_data_auto_increment(dp) & ~1) | (uint8_t)selected);
+			}
+
+			ImGui::SameLine();
+			ImGui::Text(" Nibble Incr");
+			ImGui::SameLine();
+			selected = vera_video_get_fx_nibble_increment(dp);
+			if (ImGui::Checkbox("##ni", &selected)) {
+				vera_video_set_fx_nibble_increment(dp, selected);
+			}
+
+			ImGui::SameLine();
+			value = vera_video_get_rddata_value(dp);
+			if (ImGui::InputHexLabel<uint32_t, 8>(" Value", value)) {
+				vera_video_set_rddata_value(dp, value);
+			}
+			ImGui::PopID();
+		}
+		ImGui::TreePop();
+	}
+
+	if (ImGui::TreeNodeEx("Raster/Interrupts", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		ImGui::TextDisabled("Current Scanline");
+		ImGui::PushItemWidth(30);
+		ImGui::SameLine();
+		int v = vera_video_get_scan_pos_y();
+		ImGui::InputInt("##scanline", &v, 0, 0, ImGuiInputTextFlags_ReadOnly);
+		ImGui::SameLine();
+		ImGui::TextDisabled("Dot");
+		ImGui::PushItemWidth(30);
+		ImGui::SameLine();
+		v = (int)vera_video_get_scan_pos_x();
+		ImGui::InputInt("##rasterdot", &v, 0, 0, ImGuiInputTextFlags_ReadOnly);
+		ImGui::PopItemWidth();
+
+		ImGui::Text("IRQ Line        ");
+		ImGui::SameLine();
+		ImGui::PushItemWidth(80);
+		v = vera_video_get_irqline();
+		if (ImGui::InputInt("##irqline", &v)) {
+			if (v >= 0 && v < 512) {
+				vera_video_set_irqline(v);
 			}
 		}
 		ImGui::PopItemWidth();
-		ImGui::SameLine();
-		ImGui::Text(" Neg");
-		ImGui::SameLine();
-		selected = vera_video_get_data_auto_increment(0) & 1;
-		if (ImGui::Checkbox("##neg0", &selected)) {
-			vera_video_set_data_auto_increment(0, (vera_video_get_data_auto_increment(0) & ~1) | selected);
-		}
 
-		ImGui::SameLine();
-		ImGui::Text(" Nibble Incr");
-		ImGui::SameLine();
-		selected = vera_video_get_fx_nibble_increment(0);
-		if (ImGui::Checkbox("##ni0", &selected)) {
-			vera_video_set_fx_nibble_increment(0, selected);
-		}
+		{
+			static constexpr struct {
+				const char *name;
+				uint8_t     flag;
+			} vera_ien_flags[] = { { "AFLOW  ", 0x08 }, { "SPRCOL  ", 0x04 }, { "LINE  ", 0x02 }, { "VSYNC  ", 0x01 } };
 
-		ImGui::SameLine();
-		value = vera_video_get_rddata_value(0);
-		ImGui::PushID("data0val");
-		if (ImGui::InputHexLabel<uint32_t, 8>(" Value", value)) {
-			vera_video_set_rddata_value(0, value);
-		}
-		ImGui::PopID();
+			ImGui::Text("IEN             ");
 
-		value = vera_video_get_data_addr(1);
-		if (ImGui::InputHexLabel<uint32_t, 20>("Data1 Address", value)) {
-			vera_video_set_data_addr(1, value);
-		}
-		ImGui::SameLine();
-		ImGui::Text(" Nibble Addr");
-		ImGui::SameLine();
-		selected = vera_video_get_fx_nibble_addr(1);
-		if (ImGui::Checkbox("##na1", &selected)) {
-			vera_video_set_fx_nibble_addr(1, selected);
-		}
+			uint8_t ien = vera_video_get_ien();
 
-		ImGui::SameLine();
-		ImGui::Text(" Increment");
-		ImGui::SameLine();
-
-		incr = incrs[vera_video_get_data_auto_increment(1) & ~1];
-		ImGui::PushItemWidth(40);
-		if (ImGui::InputInt("##ai1", &incr, 0, 0)) {
-			for (int i = 0; i < incrs_len; i++) {
-				if (incr == incrs[i]) {
-					vera_video_set_data_auto_increment(1, i);
-					break;
+			ImGui::PushID("IEN");
+			for (auto &option : vera_ien_flags) {
+				bool selected = ien & option.flag;
+				ImGui::SameLine();
+				if (ImGui::Checkbox(option.name, &selected)) {
+					ien ^= option.flag;
 				}
 			}
+			ImGui::PopID();
+
+			vera_video_set_ien(ien);
+
+			ImGui::Text("ISR             ");
+
+			uint8_t isr = vera_video_get_isr();
+
+			ImGui::PushID("ISR");
+			for (auto &option : vera_ien_flags) {
+				bool selected = isr & option.flag;
+				ImGui::SameLine();
+				if (ImGui::Checkbox(option.name, &selected)) {
+					isr ^= option.flag;
+				}
+			}
+			ImGui::PopID();
+
+			vera_video_set_isr(isr);
+
+		}
+		ImGui::TreePop();
+	}
+
+	if (ImGui::TreeNodeEx("Register Select", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		ImGui::Text("ADDRSEL  ");
+		ImGui::SameLine();
+		int addrsel = vera_video_get_addrsel();
+		if (ImGui::RadioButton("0", &addrsel, 0)) {
+			vera_video_set_addrsel(addrsel);
+		}
+		ImGui::SameLine();
+		if (ImGui::RadioButton("1", &addrsel, 1)) {
+			vera_video_set_addrsel(addrsel);
+		}
+		ImGui::Text("DCSEL    ");
+		ImGui::SameLine();
+		int dcsel = vera_video_get_dcsel();
+		ImGui::PushItemWidth(500);
+		if (ImGui::SliderInt("##dcsel", &dcsel, 0, 63)){
+			vera_video_set_dcsel(dcsel);
 		}
 		ImGui::PopItemWidth();
-		ImGui::SameLine();
-		ImGui::Text(" Neg");
-		ImGui::SameLine();
-		selected = vera_video_get_data_auto_increment(1) & 1;
-		if (ImGui::Checkbox("##neg1", &selected)) {
-			vera_video_set_data_auto_increment(1, (vera_video_get_data_auto_increment(1) & ~1) | selected);
-		}
-
-		ImGui::SameLine();
-		ImGui::Text(" Nibble Incr");
-		ImGui::SameLine();
-		selected = vera_video_get_fx_nibble_increment(1);
-		if (ImGui::Checkbox("##ni1", &selected)) {
-			vera_video_set_fx_nibble_increment(1, selected);
-		}
-
-		ImGui::SameLine();
-		value = vera_video_get_rddata_value(1);
-		ImGui::PushID("data1val");
-		if (ImGui::InputHexLabel<uint32_t, 8>(" Value", value)) {
-			vera_video_set_rddata_value(1, value);
-		}
-		ImGui::PopID();
-
 		ImGui::TreePop();
 	}
 
 	if (ImGui::TreeNodeEx("Composer", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
 
-		ImGui::BeginGroup();
+		char hex[7];
+
+		ImGui::PushItemWidth(width_uint8);
 		{
-			ImGui::TextDisabled("VERA Settings");
-			ImGui::SameLine();
-			ImGui::Dummy(ImVec2(0.0f, 19.0f));
-			ImGui::Separator();
+			uint8_t dc_video       = vera_video_get_dc_video();
+			uint8_t dc_video_start = dc_video;
 
-			// ImGuiInputTextFlags_ReadOnly
+			static constexpr const char *modes[] = { "Output Disabled", "VGA Out", "NTSC Out", "RGB Out" };
 
-			char hex[7];
-
-			ImGui::NewLine();
-
-			ImGui::PushItemWidth(width_uint8);
+			// Other dc_video flags
 			{
-				uint8_t dc_video       = vera_video_get_dc_video();
-				uint8_t dc_video_start = dc_video;
+				static constexpr struct {
+					const char *name;
+					uint8_t     flag;
+					int8_t      when;
+				} video_options[] = {
+					{ "Sprites   ", 0x40, -1 },
+					{ "Layer 1   ", 0x20, -1 },
+					{ "Layer 0   ", 0x10, -1 },
+					{ "(No Eff.) ", 0x08,  0 },
+					{ "(No Eff.) ", 0x08,  1 },
+					{ "240P      ", 0x08,  2 },
+					{ "240P      ", 0x08,  3 },
+					{ "(No Eff.) ", 0x04,  0 },
+					{ "(No Eff.) ", 0x04,  1 },
+					{ "No Chroma ", 0x04,  2 },
+					{ "H/V Sync  ", 0x04,  3 },
+				};
 
-				static constexpr const char *modes[] = { "Disabled", "VGA", "NTSC", "RGB interlaced, composite, via VGA connector" };
-
-				ImGui::Text("Output Mode");
-				ImGui::SameLine();
-
-				if (ImGui::BeginCombo(modes[dc_video & 3], modes[dc_video & 3])) {
-					for (uint8_t i = 0; i < 4; ++i) {
-						const bool selected = ((dc_video & 3) == i);
-						if (ImGui::Selectable(modes[i], selected)) {
-							dc_video = (dc_video & ~3) | i;
-						}
-					}
-					ImGui::EndCombo();
-				}
-
-				// Other dc_video flags
-				{
-					static constexpr struct {
-						const char *name;
-						uint8_t     flag;
-					} video_options[] = { { "No Chroma", 0x04 }, { "Layer 0", 0x10 }, { "Layer 1", 0x20 }, { "Sprites", 0x40 } };
-
-					for (auto &option : video_options) {
-						bool selected = dc_video & option.flag;
+				for (auto &option : video_options) {
+					bool selected = dc_video & option.flag;
+					if (option.when < 0 || option.when == (dc_video & 3)) {
+						ImGui::PushID(option.flag);
 						if (ImGui::Checkbox(option.name, &selected)) {
 							dc_video ^= option.flag;
 						}
+						ImGui::PopID();
+						ImGui::SameLine();
 					}
 				}
+			}
 
-				if (dc_video_start != dc_video) {
-					vera_video_set_dc_video(dc_video);
+			if (ImGui::BeginCombo(modes[dc_video & 3], modes[dc_video & 3])) {
+				for (uint8_t i = 0; i < 4; ++i) {
+					const bool selected = ((dc_video & 3) == i);
+					if (ImGui::Selectable(modes[i], selected)) {
+						dc_video = (dc_video & ~3) | i;
+					}
 				}
-			}
-			ImGui::NewLine();
-			{
-				ImGui::Text("Scale");
-				ImGui::SameLine();
-
-				snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hscale());
-				if (ImGui::InputText("H", hex, 5, hex_flags)) {
-					vera_video_set_dc_hscale(parse(hex));
-				}
-
-				ImGui::SameLine();
-
-				snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vscale());
-				if (ImGui::InputText("V", hex, 3, hex_flags)) {
-					vera_video_set_dc_vscale(parse(hex));
-				}
+				ImGui::EndCombo();
 			}
 
-			ImGui::Text("DC Borders");
-			ImGui::Dummy(ImVec2(width_uint8, 0));
-			ImGui::SameLine();
-			ImGui::PushID("vstart");
-			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstart());
-			if (ImGui::InputText("", hex, 3, hex_flags)) {
-				vera_video_set_dc_vstart(parse(hex));
+			if (dc_video_start != dc_video) {
+				vera_video_set_dc_video(dc_video);
 			}
-			ImGui::PopID();
-			ImGui::PushID("hstart");
-			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstart());
-			if (ImGui::InputText("", hex, 3, hex_flags)) {
-				vera_video_set_dc_hstart(parse(hex));
-			}
-			ImGui::PopID();
-			ImGui::SameLine();
-			ImGui::Dummy(ImVec2(width_uint8, 0));
-			ImGui::SameLine();
-			ImGui::PushID("hstop");
-			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_hstop());
-			if (ImGui::InputText("", hex, 3, hex_flags)) {
-				vera_video_set_dc_hstop(parse(hex));
-			}
-			ImGui::PopID();
-			ImGui::Dummy(ImVec2(width_uint8, 0));
-			ImGui::SameLine();
-			ImGui::PushID("vstop");
-			snprintf(hex, 7, "%02X", (int)vera_video_get_dc_vstop());
-			if (ImGui::InputText("", hex, 3, hex_flags)) {
-				vera_video_set_dc_vstop(parse(hex));
-			}
-			ImGui::PopID();
-
-			ImGui::PopItemWidth();
 		}
-		ImGui::EndGroup();
+		ImGui::NewLine();
+
+		value = vera_video_get_dc_border();
+		if (ImGui::InputHexLabel<uint32_t, 8>("Border Color", value)) {
+			vera_video_set_dc_border(value);
+		}
+
+		ImGui::NewLine();
+
+		constexpr uint8_t u8zero = 0;
+		constexpr uint8_t u8160 = 160;
+		constexpr uint8_t u8240 = 240;
+		constexpr uint8_t u8255 = 255;
+
+		ImGui::Text("DC HScale   ");
+		ImGui::SameLine();
+
+		value = vera_video_get_dc_hscale();
+		ImGui::PushItemWidth(500);
+		if (ImGui::SliderScalar("##dchscale", ImGuiDataType_U8, &value, &u8zero, &u8255, "%02X")) {
+			vera_video_set_dc_hscale(value);
+		}
+		ImGui::PopItemWidth();
+
+		ImGui::Text("DC VScale   ");
+		ImGui::SameLine();
+
+		value = vera_video_get_dc_vscale();
+		ImGui::PushItemWidth(500);
+		if (ImGui::SliderScalar("##dcvscale", ImGuiDataType_U8, &value, &u8zero, &u8255, "%02X")) {
+			vera_video_set_dc_vscale(value);
+		}
+		ImGui::PopItemWidth();
+
+		ImGui::NewLine();
+
+		ImGui::Text("DC HStart   ");
+		ImGui::SameLine();
+
+		value = vera_video_get_dc_hstart();
+		ImGui::PushItemWidth(500);
+		if (ImGui::SliderScalar("##dchstart", ImGuiDataType_U8, &value, &u8zero, &u8160, "%02X")) {
+			vera_video_set_dc_hstart(value);
+		}
+		ImGui::PopItemWidth();
+
+		ImGui::Text("DC HStop    ");
+		ImGui::SameLine();
+
+		value = vera_video_get_dc_hstop();
+		ImGui::PushItemWidth(500);
+		if (ImGui::SliderScalar("##dchstop", ImGuiDataType_U8, &value, &u8zero, &u8160, "%02X")) {
+			vera_video_set_dc_hstop(value);
+		}
+		ImGui::PopItemWidth();
+
+		ImGui::NewLine();
+
+		ImGui::Text("DC VStart   ");
+		ImGui::SameLine();
+
+		value = vera_video_get_dc_vstart();
+		ImGui::PushItemWidth(500);
+		if (ImGui::SliderScalar("##dcvstart", ImGuiDataType_U8, &value, &u8zero, &u8240, "%02X")) {
+			vera_video_set_dc_vstart(value);
+		}
+		ImGui::PopItemWidth();
+
+		ImGui::Text("DC VStop    ");
+		ImGui::SameLine();
+
+		value = vera_video_get_dc_vstop();
+		ImGui::PushItemWidth(500);
+		if (ImGui::SliderScalar("##dcvstop", ImGuiDataType_U8, &value, &u8zero, &u8240, "%02X")) {
+			vera_video_set_dc_vstop(value);
+		}
+		ImGui::PopItemWidth();
+
+		ImGui::PopItemWidth();
 		ImGui::TreePop();
 	}
 }

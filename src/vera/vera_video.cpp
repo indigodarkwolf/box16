@@ -1951,6 +1951,56 @@ void vera_video_set_rddata_value(int channel, uint8_t value)
 	vera_video_space_write(io_addr[channel & 1], value);
 }
 
+const uint16_t vera_video_get_irqline()
+{
+	return irq_line;
+}
+
+void vera_video_set_irqline(uint16_t value)
+{
+	irq_line = value;
+}
+
+const uint8_t vera_video_get_ien()
+{
+	return ien;
+}
+
+void vera_video_set_ien(uint8_t value)
+{
+	ien = (ien & 0xF0) | (value & 0x0F);
+}
+
+const uint8_t vera_video_get_isr()
+{
+	return isr | (pcm_is_fifo_almost_empty() ? 8 : 0);
+}
+
+void vera_video_set_isr(uint8_t value)
+{
+	isr = (isr & 0xF0) | (value & 0x07);
+}
+
+const uint8_t vera_video_get_addrsel()
+{
+	return io_addrsel;
+}
+
+void vera_video_set_addrsel(uint8_t value)
+{
+	io_addrsel = value & 1;
+}
+
+const uint8_t vera_video_get_dcsel()
+{
+	return io_dcsel;
+}
+
+void vera_video_set_dcsel(uint8_t value)
+{
+	io_dcsel = value & 63;
+}
+
 const uint8_t vera_video_get_dc_video()
 {
 	return reg_composer[0];

@@ -119,6 +119,19 @@ void           vera_video_set_fx_nibble_addr(int channel, bool value);
 const uint8_t  vera_video_get_rddata_value(int channel);
 void           vera_video_set_rddata_value(int channel, uint8_t value);
 
+const uint16_t vera_video_get_irqline();
+void           vera_video_set_irqline(uint16_t value);
+
+const uint8_t  vera_video_get_ien();
+void           vera_video_set_ien(uint8_t value);
+const uint8_t  vera_video_get_isr();
+void           vera_video_set_isr(uint8_t value);
+
+const uint8_t  vera_video_get_addrsel();
+void           vera_video_set_addrsel(uint8_t value);
+const uint8_t  vera_video_get_dcsel();
+void           vera_video_set_dcsel(uint8_t value);
+
 const uint8_t vera_video_get_dc_video();
 const uint8_t vera_video_get_dc_hscale();
 const uint8_t vera_video_get_dc_vscale();
