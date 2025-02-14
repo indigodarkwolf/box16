@@ -2085,6 +2085,95 @@ void vera_video_set_dc_vstop(uint8_t value)
 	reg_composer[7] = value;
 }
 
+const uint8_t vera_video_get_fx_ctrl()
+{
+	return reg_composer[8];
+}
+
+void vera_video_set_fx_ctrl(uint8_t value)
+{
+	reg_composer[8] = value;
+	fx_addr1_mode = value & 0x03;
+	fx_4bit_mode = (value & 0x04) >> 2;
+	fx_16bit_hop = (value & 0x08) >> 3;
+	fx_cache_byte_cycling = (value & 0x10) >> 4;
+	fx_cache_fill = (value & 0x20) >> 5;
+	fx_cache_write = (value & 0x40) >> 6;
+	fx_trans_writes = (value & 0x80) >> 7;
+}
+
+const uint32_t vera_video_get_fx_tilebase()
+{
+	return fx_affine_tile_base;
+}
+
+void vera_video_set_fx_tilebase(uint32_t value)
+{
+	fx_affine_tile_base = value & 0x1F800;
+}
+
+const bool vera_video_get_fx_affine_clip()
+{
+	return fx_affine_clip;
+}
+
+void vera_video_set_fx_affine_clip(bool value)
+{
+	fx_affine_clip = value;
+}
+
+const bool vera_video_get_fx_2bit_poly()
+{
+	return fx_2bit_poly;
+}
+
+void vera_video_set_fx_2bit_poly(bool value)
+{
+	fx_2bit_poly = value;
+}
+
+const uint32_t vera_video_get_fx_mapbase()
+{
+	return fx_affine_map_base;
+}
+
+void vera_video_set_fx_mapbase(uint32_t value)
+{
+	fx_affine_map_base = value & 0x1F800;
+}
+
+const uint8_t vera_video_get_fx_map_size()
+{
+	return fx_affine_map_size;
+}
+
+void vera_video_set_fx_map_size(uint8_t value)
+{
+	if (value == 2 || value == 8 || value == 32 || value == 128) {
+		fx_affine_map_size = value;
+	}
+}
+
+const uint8_t vera_video_get_fx_mult()
+{
+	uint8_t v;
+	v = (uint8_t)fx_cache_increment_mode;
+	v |= (uint8_t)fx_cache_nibble_index << 1;
+	v |= (fx_cache_byte_index & 0x03) << 2;
+	v |= (uint8_t)fx_multiplier << 4;
+	v |= (uint8_t)fx_subtract << 5;
+	return v;
+}
+
+void vera_video_set_fx_mult(uint8_t value)
+{
+	fx_cache_increment_mode = value & 0x01;
+	fx_cache_nibble_index = (value & 0x02) >> 1;
+	fx_cache_byte_index = (value & 0x0c) >> 2;
+	fx_multiplier = (value & 0x10) >> 4;
+	fx_subtract = (value & 0x20) >> 5;
+}
+
 void vera_video_set_cheat_mask(int mask)
 {
 	cheat_mask = mask;

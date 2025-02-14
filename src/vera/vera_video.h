@@ -152,6 +152,21 @@ void vera_video_set_dc_hstop(uint8_t value);
 void vera_video_set_dc_vstart(uint8_t value);
 void vera_video_set_dc_vstop(uint8_t value);
 
+const uint8_t  vera_video_get_fx_ctrl();
+void           vera_video_set_fx_ctrl(uint8_t value);
+const uint32_t vera_video_get_fx_tilebase();
+void           vera_video_set_fx_tilebase(uint32_t value);
+const bool     vera_video_get_fx_affine_clip();
+void           vera_video_set_fx_affine_clip(bool value);
+const bool     vera_video_get_fx_2bit_poly();
+void           vera_video_set_fx_2bit_poly(bool value);
+const uint32_t vera_video_get_fx_mapbase();
+void           vera_video_set_fx_mapbase(uint32_t value);
+const uint8_t  vera_video_get_fx_map_size();
+void           vera_video_set_fx_map_size(uint8_t value);
+const uint8_t  vera_video_get_fx_mult();
+void           vera_video_set_fx_mult(uint8_t value);
+
 void vera_video_set_cheat_mask(int mask);
 int  vera_video_get_cheat_mask();
 bool vera_video_is_cheat_frame();

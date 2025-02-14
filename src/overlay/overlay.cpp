@@ -54,6 +54,7 @@ bool Show_symbols_list     = false;
 bool Show_symbols_files    = false;
 bool Show_cpu_visualizer   = false;
 bool Show_VRAM_visualizer  = false;
+bool Show_VERA_vram_dump   = false;
 bool Show_VERA_monitor     = false;
 bool Show_VERA_palette     = false;
 bool Show_VERA_layers      = false;
@@ -751,14 +752,14 @@ static void draw_debugger_cpu_visualizer()
 	ImGui::Image((void *)(intptr_t)vis.get_texture_id(), ImGui::GetContentRegionAvail(), vis.get_top_left(0), vis.get_bottom_right(0));
 }
 
+static void draw_debugger_vera_vram_dump()
+{
+	vram_dump.draw();
+}
+
 static void draw_debugger_vera_status()
 {
 	uint32_t value;
-
-	if (ImGui::TreeNodeEx("VRAM", ImGuiTreeNodeFlags_Framed)) {
-		vram_dump.draw();
-		ImGui::TreePop();
-	}
 
 	if (ImGui::TreeNodeEx("Data Ports", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
 		const int *incrs;
@@ -917,8 +918,6 @@ static void draw_debugger_vera_status()
 
 	if (ImGui::TreeNodeEx("Composer", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
 
-		char hex[7];
-
 		ImGui::PushItemWidth(width_uint8);
 		{
 			uint8_t dc_video       = vera_video_get_dc_video();
@@ -1054,6 +1053,87 @@ static void draw_debugger_vera_status()
 		ImGui::PopItemWidth();
 		ImGui::TreePop();
 	}
+
+	if (ImGui::TreeNodeEx("FX", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+		ImGui::PushItemWidth(width_uint8);
+		{
+			static constexpr struct {
+				const char *name;
+				uint8_t     flag;
+				bool    sameline;
+			} fx_ctrl_options[] = {
+				{ "Transparent Writes  ", 0x80, true },
+				{ "Cache Writes        ", 0x40, true },
+				{ "Cache Fill          ", 0x20, true },
+				{ "1 Byte Cycling      ", 0x10, false },
+				{ "16-bit Hop          ", 0x08, true },
+				{ "4-bit Mode          ", 0x04, true }
+			};
+
+			static constexpr const char *modes[] = { "Normal Incrementer", "Line Drawing Helper", "Polygon Helper", "Affine Helper" };
+
+			uint8_t fx_ctrl = vera_video_get_fx_ctrl();
+
+			for (auto &option : fx_ctrl_options) {
+				bool selected = fx_ctrl & option.flag;
+				ImGui::PushID(option.flag);
+				if (ImGui::Checkbox(option.name, &selected)) {
+					fx_ctrl ^= option.flag;
+				}
+				ImGui::PopID();
+				if (option.sameline) {
+					ImGui::SameLine();
+				}
+			}
+
+			if (ImGui::BeginCombo(modes[fx_ctrl & 3], modes[fx_ctrl & 3])) {
+				for (uint8_t i = 0; i < 4; ++i) {
+					const bool selected = ((fx_ctrl & 3) == i);
+					if (ImGui::Selectable(modes[i], selected)) {
+						fx_ctrl = (fx_ctrl & ~3) | i;
+					}
+				}
+				ImGui::EndCombo();
+			}
+
+			vera_video_set_fx_ctrl(fx_ctrl);
+
+			ImGui::NewLine();
+
+			static constexpr struct {
+				const char *name;
+				uint8_t     flag;
+				bool    sameline;
+			} fx_mult_options[] = {
+				{ "Subtract Enable     ", 0x20, true },
+				{ "Multiplier Enable   ", 0x10, true },
+				{ "Cache Nibble Index  ", 0x02, true },
+				{ "Two-Byte Cache Incr ", 0x01, false }
+			};
+
+			uint8_t fx_mult = vera_video_get_fx_mult();
+
+			for (auto &option : fx_mult_options) {
+				bool selected = fx_mult & option.flag;
+				ImGui::PushID(option.flag);
+				if (ImGui::Checkbox(option.name, &selected)) {
+					fx_mult ^= option.flag;
+				}
+				ImGui::PopID();
+				if (option.sameline) {
+					ImGui::SameLine();
+				}
+			}
+
+			vera_video_set_fx_mult(fx_mult);
+
+
+		}
+
+		ImGui::PopItemWidth();
+		ImGui::TreePop();
+	}
+
 }
 
 static void draw_debugger_vera_palette()
@@ -3135,6 +3215,7 @@ static void draw_menu_bar()
 				ImGui::EndMenu();
 			}
 			if (ImGui::BeginMenu("VERA Debugging")) {
+				ImGui::Checkbox("VRAM Dump", &Show_VERA_vram_dump);
 				ImGui::Checkbox("Tile Visualizer", &Show_VRAM_visualizer);
 				ImGui::Checkbox("VERA Monitor", &Show_VERA_monitor);
 				ImGui::Checkbox("Palette", &Show_VERA_palette);
@@ -3347,6 +3428,13 @@ void overlay_draw()
 	if (Show_VRAM_visualizer) {
 		if (ImGui::Begin("Tile Visualizer", &Show_VRAM_visualizer)) {
 			draw_debugger_vram_visualizer();
+		}
+		ImGui::End();
+	}
+
+	if (Show_VERA_vram_dump) {
+		if (ImGui::Begin("VERA VRAM", &Show_VERA_vram_dump)) {
+			draw_debugger_vera_vram_dump();
 		}
 		ImGui::End();
 	}
