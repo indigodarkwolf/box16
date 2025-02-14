@@ -917,7 +917,7 @@ static void render_line(uint16_t y)
 	// If video output is enabled, calculate color indices for line.
 	if (out_mode != 0) {
 		// Add border after if required.
-		if (y < vstart || y > vstop) {
+		if (y < vstart || y >= vstop) {
 			uint32_t border_fill = border_color;
 			border_fill          = border_fill | (border_fill << 8);
 			border_fill          = border_fill | (border_fill << 16);
@@ -978,7 +978,7 @@ static void update_isr_and_coll(uint16_t y, uint16_t compare)
 		sprite_line_collisions = 0;
 		isr |= 1;
 	}
-	if ((y < SCREEN_HEIGHT) && (y == compare)) { // LINE IRQ
+	if (y == compare) { // LINE IRQ
 		isr |= 2;
 	}
 }
