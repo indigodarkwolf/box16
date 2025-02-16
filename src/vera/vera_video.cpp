@@ -2174,6 +2174,16 @@ void vera_video_set_fx_mult(uint8_t value)
 	fx_subtract = (value & 0x20) >> 5;
 }
 
+const uint8_t vera_video_get_fx_cache_byte_index()
+{
+	return fx_cache_byte_index;
+}
+
+void vera_video_set_fx_cache_byte_index(uint8_t value)
+{
+	fx_cache_byte_index = value & 3;
+}
+
 void vera_video_set_cheat_mask(int mask)
 {
 	cheat_mask = mask;

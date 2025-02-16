@@ -17,6 +17,7 @@ extern bool Show_cpu_visualizer;
 extern bool Show_VRAM_visualizer;
 extern bool Show_VERA_vram_dump;
 extern bool Show_VERA_monitor;
+extern bool Show_VERA_fx;
 extern bool Show_VERA_palette;
 extern bool Show_VERA_layers;
 extern bool Show_VERA_sprites;

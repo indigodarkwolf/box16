@@ -56,6 +56,7 @@ bool Show_cpu_visualizer   = false;
 bool Show_VRAM_visualizer  = false;
 bool Show_VERA_vram_dump   = false;
 bool Show_VERA_monitor     = false;
+bool Show_VERA_fx          = false;
 bool Show_VERA_palette     = false;
 bool Show_VERA_layers      = false;
 bool Show_VERA_sprites     = false;
@@ -1053,8 +1054,11 @@ static void draw_debugger_vera_status()
 		ImGui::PopItemWidth();
 		ImGui::TreePop();
 	}
+}
 
-	if (ImGui::TreeNodeEx("FX", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
+static void draw_debugger_vera_fx()
+{
+	if (ImGui::TreeNodeEx("Control", ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_DefaultOpen)) {
 		ImGui::PushItemWidth(width_uint8);
 		{
 			static constexpr struct {
@@ -1127,11 +1131,26 @@ static void draw_debugger_vera_status()
 
 			vera_video_set_fx_mult(fx_mult);
 
+			ImGui::NewLine();
+
+			ImGui::Text("Cache Index   ");
+			ImGui::SameLine();
+
+			int value = vera_video_get_fx_cache_byte_index();
+			ImGui::PushItemWidth(200);
+			if (ImGui::SliderInt("##fx_cache_idx", &value, 0, 3)){
+				vera_video_set_fx_cache_byte_index(value);
+			}
+			ImGui::PopItemWidth();
+
+			ImGui::NewLine();
+
+
+			ImGui::PopItemWidth();
+			ImGui::TreePop();
 
 		}
 
-		ImGui::PopItemWidth();
-		ImGui::TreePop();
 	}
 
 }
@@ -3218,6 +3237,7 @@ static void draw_menu_bar()
 				ImGui::Checkbox("VRAM Dump", &Show_VERA_vram_dump);
 				ImGui::Checkbox("Tile Visualizer", &Show_VRAM_visualizer);
 				ImGui::Checkbox("VERA Monitor", &Show_VERA_monitor);
+				ImGui::Checkbox("VERA FX", &Show_VERA_fx);
 				ImGui::Checkbox("Palette", &Show_VERA_palette);
 				ImGui::Checkbox("Layer Settings", &Show_VERA_layers);
 				ImGui::Checkbox("Sprite Settings", &Show_VERA_sprites);
@@ -3442,6 +3462,13 @@ void overlay_draw()
 	if (Show_VERA_monitor) {
 		if (ImGui::Begin("VERA Monitor", &Show_VERA_monitor)) {
 			draw_debugger_vera_status();
+		}
+		ImGui::End();
+	}
+
+	if (Show_VERA_fx) {
+		if (ImGui::Begin("VERA FX", &Show_VERA_fx)) {
+			draw_debugger_vera_fx();
 		}
 		ImGui::End();
 	}

@@ -166,6 +166,8 @@ const uint8_t  vera_video_get_fx_map_size();
 void           vera_video_set_fx_map_size(uint8_t value);
 const uint8_t  vera_video_get_fx_mult();
 void           vera_video_set_fx_mult(uint8_t value);
+const uint8_t  vera_video_get_fx_cache_byte_index();
+void           vera_video_set_fx_cache_byte_index(uint8_t value);
 
 void vera_video_set_cheat_mask(int mask);
 int  vera_video_get_cheat_mask();
