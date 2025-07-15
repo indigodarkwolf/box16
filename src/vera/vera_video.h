@@ -106,11 +106,31 @@ const uint8_t *vera_video_get_framebuffer();
 
 void vera_video_get_increment_values(const int **in, int *length);
 
-const int vera_video_get_data_auto_increment(int channel);
-void      vera_video_set_data_auto_increment(int channel, uint8_t value);
+const int  vera_video_get_data_auto_increment(int channel);
+void       vera_video_set_data_auto_increment(int channel, uint8_t value);
+const bool vera_video_get_fx_nibble_increment(int channel);
+void       vera_video_set_fx_nibble_increment(int channel, bool value);
 
 const uint32_t vera_video_get_data_addr(int channel);
 void           vera_video_set_data_addr(int channel, uint32_t value);
+const bool     vera_video_get_fx_nibble_addr(int channel);
+void           vera_video_set_fx_nibble_addr(int channel, bool value);
+
+const uint8_t  vera_video_get_rddata_value(int channel);
+void           vera_video_set_rddata_value(int channel, uint8_t value);
+
+const uint16_t vera_video_get_irqline();
+void           vera_video_set_irqline(uint16_t value);
+
+const uint8_t  vera_video_get_ien();
+void           vera_video_set_ien(uint8_t value);
+const uint8_t  vera_video_get_isr();
+void           vera_video_set_isr(uint8_t value);
+
+const uint8_t  vera_video_get_addrsel();
+void           vera_video_set_addrsel(uint8_t value);
+const uint8_t  vera_video_get_dcsel();
+void           vera_video_set_dcsel(uint8_t value);
 
 const uint8_t vera_video_get_dc_video();
 const uint8_t vera_video_get_dc_hscale();
@@ -131,6 +151,23 @@ void vera_video_set_dc_hstart(uint8_t value);
 void vera_video_set_dc_hstop(uint8_t value);
 void vera_video_set_dc_vstart(uint8_t value);
 void vera_video_set_dc_vstop(uint8_t value);
+
+const uint8_t  vera_video_get_fx_ctrl();
+void           vera_video_set_fx_ctrl(uint8_t value);
+const uint32_t vera_video_get_fx_tilebase();
+void           vera_video_set_fx_tilebase(uint32_t value);
+const bool     vera_video_get_fx_affine_clip();
+void           vera_video_set_fx_affine_clip(bool value);
+const bool     vera_video_get_fx_2bit_poly();
+void           vera_video_set_fx_2bit_poly(bool value);
+const uint32_t vera_video_get_fx_mapbase();
+void           vera_video_set_fx_mapbase(uint32_t value);
+const uint8_t  vera_video_get_fx_map_size();
+void           vera_video_set_fx_map_size(uint8_t value);
+const uint8_t  vera_video_get_fx_mult();
+void           vera_video_set_fx_mult(uint8_t value);
+const uint8_t  vera_video_get_fx_cache_byte_index();
+void           vera_video_set_fx_cache_byte_index(uint8_t value);
 
 void vera_video_set_cheat_mask(int mask);
 int  vera_video_get_cheat_mask();

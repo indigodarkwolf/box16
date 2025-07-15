@@ -15,7 +15,7 @@ void draw_options_menu()
 	if (ImGui::Button("Save to box16.ini")) {
 		if (last_failure != nullptr) {
 			char message[PATH_MAX];
-			sprintf(message, "There is an error in the options set,\nplease correct \"%s\" before saving.", last_failure);
+			snprintf(message, PATH_MAX, "There is an error in the options set,\nplease correct \"%s\" before saving.", last_failure);
 			SDL_ShowSimpleMessageBox(SDL_MessageBoxFlags::SDL_MESSAGEBOX_WARNING, "Errors in options", message, display_get_window());
 		} else {
 			save_options(true);

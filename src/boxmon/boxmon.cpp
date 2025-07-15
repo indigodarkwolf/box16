@@ -2,6 +2,7 @@
 
 #include <cstdarg>
 #include <fstream>
+#include <sstream>
 
 #include "command.h"
 #include "parser.h"
