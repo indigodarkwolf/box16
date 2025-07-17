@@ -103,13 +103,13 @@ namespace boxmon
 		".pcl", // Program Counter Low byte
 		".pch", // Program Counter High byte
 		".k",   // PC bank
-		".n",   // Negative flag
-		".c",   // Carry flag
-		".z",   // Zero flag
-		".i",   // Interrupt flag
-		".b",   // Break flag
-		".v",   // Overflow flag
-		".d",   // Decimal flag
+		"_n",   // Negative flag
+		"_c",   // Carry flag
+		"_z",   // Zero flag
+		"_i",   // Interrupt flag
+		"_b",   // Break flag
+		"_v",   // Overflow flag
+		"_d",   // Decimal flag
 	};
 
 	symbol_expression::symbol_expression(const std::string &symbol)
@@ -125,56 +125,63 @@ namespace boxmon
 	int symbol_expression::evaluate() const
 	{
 		if (const auto &cpu_symbol = s_cpu_symbols.find(m_symbol); cpu_symbol != s_cpu_symbols.end()) {
-			switch (m_symbol[1]) {
-				case 'a': // .a
-					return state6502.a;
-				case 'x': // .x
-					return state6502.x;
-				case 'y': // .y
-					return state6502.y;
-				case 'p': // .p, .pc, .pcl, or .pch
-					if (m_symbol.length() > 2) {
-						switch (m_symbol[2]) {
-							case 'c': // .pc
-								if (m_symbol.length() > 3) {
-									switch (m_symbol[3]) {
-										case 'l': // .pcl
-											return state6502.pc & 0xff;
-										case 'h': // .pch
-											return (state6502.pc >> 8) & 0xff;
-										default:
-											break;
+			if (m_symbol[0] == '.') {
+				switch (m_symbol[1]) {
+					case 'a': // .a
+						return state6502.a;
+					case 'x': // .x
+						return state6502.x;
+					case 'y': // .y
+						return state6502.y;
+					case 'p': // .p, .pc, .pcl, or .pch
+						if (m_symbol.length() > 2) {
+							switch (m_symbol[2]) {
+								case 'c': // .pc
+									if (m_symbol.length() > 3) {
+										switch (m_symbol[3]) {
+											case 'l': // .pcl
+												return state6502.pc & 0xff;
+											case 'h': // .pch
+												return (state6502.pc >> 8) & 0xff;
+											default:
+												break;
+										}
+									} else {
+										return state6502.pc;
 									}
-								} else {
-									return state6502.pc;								
-								}
-							default:
-								break;
+								default:
+									break;
+							}
+						} else {
+							return state6502.status;
 						}
-					} else {
-						return state6502.status;			
-					}
-					break;
-				case 's': // .sp
-					return state6502.sp;
-				case 'k': // .k
-					return bank6502(state6502.pc);
-				case 'n': // .n
-					return (state6502.status & FLAG_SIGN) ? 1 : 0;
-				case 'c': // .c
-					return (state6502.status & FLAG_CARRY) ? 1 : 0;
-				case 'z': // .z
-					return (state6502.status & FLAG_ZERO) ? 1 : 0;
-				case 'i': // .i
-					return (state6502.status & FLAG_INTERRUPT) ? 1 : 0;
-				case 'b': // .b
-					return (state6502.status & FLAG_BREAK) ? 1 : 0;
-				case 'v': // .v
-					return (state6502.status & FLAG_OVERFLOW) ? 1 : 0;
-				case 'd': // .d
-					return (state6502.status & FLAG_DECIMAL) ? 1 : 0;
-				default:
-					break;
+						break;
+					case 's': // .sp
+						return state6502.sp;
+					case 'k': // .k
+						return bank6502(state6502.pc);
+					default:
+						break;
+				}
+			} else if (m_symbol[0] == '_') {
+				switch (m_symbol[1]) {
+					case 'n': // .n
+						return (state6502.status & FLAG_SIGN) ? 1 : 0;
+					case 'c': // .c
+						return (state6502.status & FLAG_CARRY) ? 1 : 0;
+					case 'z': // .z
+						return (state6502.status & FLAG_ZERO) ? 1 : 0;
+					case 'i': // .i
+						return (state6502.status & FLAG_INTERRUPT) ? 1 : 0;
+					case 'b': // .b
+						return (state6502.status & FLAG_BREAK) ? 1 : 0;
+					case 'v': // .v
+						return (state6502.status & FLAG_OVERFLOW) ? 1 : 0;
+					case 'd': // .d
+						return (state6502.status & FLAG_DECIMAL) ? 1 : 0;
+					default:
+						break;
+				}
 			}
 		}
 
