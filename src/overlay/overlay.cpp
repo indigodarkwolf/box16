@@ -2037,7 +2037,7 @@ public:
 			draw_list->PushClipRect(wintopleft, winbotright, true);
 
 			if (bitmap_mode) {
-				if (view_mode == ViewMode::ShowFullVRAM && show_display_bounds) {
+				if (bitmap_view == view_mode::show_full_vram && show_display_bounds) {
 					draw_bitmap_display_overlay(draw_list, topleft);
 				}
 			} else {
@@ -2094,15 +2094,15 @@ public:
 			// View mode selection
 			ImGui::Text("View Mode:");
 			ImGui::SameLine();
-			if (ImGui::RadioButton("Follow Display", view_mode == ViewMode::FollowDisplay)) {
-				view_mode = ViewMode::FollowDisplay;
+			if (ImGui::RadioButton("Follow Display", bitmap_view == view_mode::follow_display)) {
+				bitmap_view = view_mode::follow_display;
 			}
 			ImGui::SameLine();
-			if (ImGui::RadioButton("Show Full VRAM", view_mode == ViewMode::ShowFullVRAM)) {
-				view_mode = ViewMode::ShowFullVRAM;
+			if (ImGui::RadioButton("Show Full VRAM", bitmap_view == view_mode::show_full_vram)) {
+				bitmap_view = view_mode::show_full_vram;
 			}
 
-			if (view_mode == ViewMode::ShowFullVRAM) {
+			if (bitmap_view == view_mode::show_full_vram) {
 				ImGui::Checkbox("Show Display Bounds", &show_display_bounds);
 			}
 		} else {
@@ -2132,7 +2132,7 @@ public:
 		if (bitmap_mode) {
 			uint32_t vram_start_addr, vram_size, actual_height;
 
-			if (view_mode == ViewMode::FollowDisplay) {
+			if (bitmap_view == view_mode::follow_display) {
 				// "Follow Display" mode
 				const uint32_t max_vram_size            = 0x20000; // 128KB VRAM
 				const uint32_t bytes_per_line           = tile_width * bpp / 8;
@@ -2260,15 +2260,15 @@ public:
 			const uint32_t max_vram_size  = 0x20000; // 128KB VRAM
 			const uint32_t bytes_per_line = tile_width * bpp / 8;
 
-			if (view_mode == ViewMode::FollowDisplay) {
+			if (bitmap_view == view_mode::follow_display) {
 				// "Follow Display" mode: Height based on remaining VRAM from tile_base
 				const uint32_t available_vram_from_base = max_vram_size - tile_base;
 				const uint32_t max_possible_height      = available_vram_from_base / bytes_per_line;
-				total_height                            = std::min(max_possible_height, 2048u);
+				total_height                            = static_cast<uint16_t>(std::min(max_possible_height, 2048u));
 			} else {
 				// "Show Full VRAM" mode: Height based on full VRAM
 				const uint32_t total_bitmap_height = max_vram_size / bytes_per_line;
-				total_height                       = std::min(total_bitmap_height, 2048u);
+				total_height                       = static_cast<uint16_t>(std::min(total_bitmap_height, 2048u));
 			}
 
 			total_width = tile_width;
@@ -2354,9 +2354,9 @@ private:
 		}
 	}
 
-	enum class ViewMode {
-		FollowDisplay,
-		ShowFullVRAM
+	enum class view_mode {
+		follow_display,
+		show_full_vram
 	};
 
 private:
@@ -2384,7 +2384,7 @@ private:
 	bool     show_grid = false;
 	bool     show_scroll = false;
 
-	ViewMode view_mode           = ViewMode::ShowFullVRAM; 
+	view_mode bitmap_view = view_mode::show_full_vram; 
 	bool     show_display_bounds = true;
 };
 
