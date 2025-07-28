@@ -1195,7 +1195,9 @@ static void set_panels(mINI::INIMap<std::string> &ini)
 	get_option("symbols_files", Show_symbols_files);
 	get_option("cpu_visualizer", Show_cpu_visualizer);
 	get_option("vram_visualizer", Show_VRAM_visualizer);
+	get_option("vera_vram_dump", Show_VERA_vram_dump);
 	get_option("vera_monitor", Show_VERA_monitor);
+	get_option("vera_fx", Show_VERA_fx);
 	get_option("vera_palette", Show_VERA_palette);
 	get_option("vera_layers", Show_VERA_layers);
 	get_option("vera_sprites", Show_VERA_sprites);
@@ -1478,7 +1480,9 @@ void set_ini_panels(mINI::INIMap<std::string> &ini, bool all)
 	set_option("symbols_files", Show_symbols_files, false);
 	set_option("cpu_visualizer", Show_cpu_visualizer, false);
 	set_option("vram_visualizer", Show_VRAM_visualizer, false);
+	set_option("vera_vram_dump", Show_VERA_vram_dump, false);
 	set_option("vera_monitor", Show_VERA_monitor, false);
+	set_option("vera_fx", Show_VERA_fx, false);
 	set_option("vera_palette", Show_VERA_palette, false);
 	set_option("vera_layers", Show_VERA_layers, false);
 	set_option("vera_sprites", Show_VERA_sprites, false);

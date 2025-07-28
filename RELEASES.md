@@ -1,5 +1,50 @@
 Release Notes
 -------------
+## Non-Release 48.XX ("Mercury")
+* (Yes, I skipped nr42 through nr47. I've been away.)
+* VERA
+	* Set ISR bits upon VSYNC or LINE IRQs irrespective of what is in IEN (mooinglemur)
+	* Safety frame mask should only show by default on certain video modes.
+	* Ported VERA FX support (mooinglemur)
+* Debugging features
+	* Fixed incorrect display of CPU registers. (cosmicr)
+	* Added R/W data breakpoints.
+	* Added descriptive reason when dumping system memory file. (irmen)
+	* Added "Smart Stack", which should show improved stack context information and follow manual changes to SP.
+	* .sym files will auto-load if located in the same directory as a .prg file that loads.
+	* CPU visualization can now support resizing the visualization picture.
+	* Added debug registers to write character to console (irmen)
+	* "-sym" now supports a comma-delimited bank number.
+	* Added Boxmon console, supporting a number of Monitor console commands from the VICE emulator.
+	* Added -memorystats to show memory access counts by address.
+	* Fixes to disassembler display.
+	* Added Ca, Cl, Cm, and Co options for -trace builds. (FlightControl-User)
+* Hardware features
+	* Fix to reading PRA register on VIA chips.
+	* "-ram" now supports intervals of 8KB, not powers of 2.
+	* Cartridge support.
+	* Banked ROM support.
+	* RAM is now randomized by default, specify -zeroram to zero memory instead. (irmen)
+	* Added vector pull support on interrupts. (mooinglemur)
+* Display
+	* Palette color pickers now result in VERA-compatible colors, but the gradient still renders full 24-bit color.
+	* Moved main display to a subwindow (akumanatt)
+* Command-line options
+	* Fix to "-wav filename,auto" option
+	* Removed "-patch" option.
+	* Added "-fullscreen" option (irmen)
+* Internals
+	* Changes mouse movement processing. (akumanatt)
+	* Speed improvements in "-warp" mode.
+	* Improved pause/unpause support in wav recording.
+	* Removed GEOS option and references (Frosty-J)
+	* Changed OpenGL launcher from glew to glad, should support more OpenGL contexts on Linux.
+	* Updated ImGui to v1.89.6 (akumanatt)
+	* Support for automatically unpacking zlib-compressed files when loading a file, recompressing and overwriting the archive when saving the file.
+	* Improvements to file handling.
+	* Converted most string-parsing code from printf to fmtlib.
+	* Upgrade to C++23.
+	* Makefile now uses $(CXX) instead of g++ (irmen)
 
 ## Non-Release 41.0 ("Koutoubia Mosque")
 * Added dockable ImGui windows

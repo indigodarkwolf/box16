@@ -126,35 +126,32 @@ void imgui_debugger_disasm::draw()
 		ImGui::SameLine();
 
 		{
-			static char hex[5] = { "0000" };
 			if (reset_input) {
-				sprintf(hex, "%04X", dump_start);
+				fmt::format_to_n(input_fields.disasm_address, std::size(input_fields.disasm_address), "{:04X}", dump_start);
 			}
-			if (ImGui::InputHexLabel("Disasm Address", hex)) {
-				dump_start   = parse(hex);
+			if (ImGui::InputHexLabel("Disasm Address", input_fields.disasm_address)) {
+				dump_start   = parse(input_fields.disasm_address);
 				reset_scroll = true;
 			}
 		}
 		ImGui::SameLine();
 
 		{
-			static char ram_bank_hex[3] = "00";
 			if (reset_input) {
-				sprintf(ram_bank_hex, "%02X", ram_bank);
+				fmt::format_to_n(input_fields.ram_bank, std::size(input_fields.ram_bank), "{:02X}", ram_bank);
 			}
-			if (ImGui::InputHexLabel("  RAM Bank", ram_bank_hex)) {
-				ram_bank = parse(ram_bank_hex);
+			if (ImGui::InputHexLabel("  RAM Bank", input_fields.ram_bank)) {
+				ram_bank = parse(input_fields.ram_bank);
 			}
 		}
 		ImGui::SameLine();
 
 		{
-			static char rom_bank_hex[3] = "00";
 			if (reset_input) {
-				sprintf(rom_bank_hex, "%02X", rom_bank);
+				fmt::format_to_n(input_fields.rom_bank, std::size(input_fields.rom_bank), "{:02X}", rom_bank);
 			}
-			if (ImGui::InputHexLabel("  ROM Bank", rom_bank_hex)) {
-				rom_bank = parse(rom_bank_hex);
+			if (ImGui::InputHexLabel("  ROM Bank", input_fields.rom_bank)) {
+				rom_bank = parse(input_fields.rom_bank);
 			}
 		}
 
@@ -208,16 +205,14 @@ void imgui_debugger_disasm::draw()
 						const symbol_list_type &symbols = symbols_find(i, get_current_bank(i));
 						for (auto &sym : symbols) {
 							ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 0));
-							char addr_text[5];
-							sprintf(addr_text, "%04X", static_cast<uint16_t>(i));
-							if (ImGui::Selectable(addr_text, false, 0, ImGui::CalcTextSize(addr_text))) {
+							if (ImGui::FitSelectable(fmt::format("{:04X}", i), false, 0)) {
 								set_dump_start(i);
 							}
 							ImGui::SameLine();
 							ImGui::Text(" ");
 							ImGui::SameLine();
 
-							if (ImGui::Selectable(sym.c_str(), false, 0, ImVec2(0, line_height))) {
+							if (ImGui::SelectableFormat(sym, false, 0, ImVec2(0, line_height))) {
 								set_dump_start(i);
 							}
 							ImGui::PopStyleVar();
@@ -239,9 +234,7 @@ void imgui_debugger_disasm::draw()
 					}
 
 					if (!found_symbols) {
-						char addr_text[5];
-						sprintf(addr_text, "%04X", addr);
-						if (ImGui::Selectable(addr_text, false, 0, ImGui::CalcTextSize(addr_text))) {
+						if (ImGui::FitSelectable(fmt::format("{:04X}", addr), false, 0)) {
 							set_dump_start(addr);
 						}
 						ImGui::SameLine();
@@ -322,145 +315,145 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, uint8_t bank)
 			uint8_t  zp     = debug_read6502(pc + 1, bank);
 			uint16_t target = pc + 3 + (int8_t)debug_read6502(pc + 2, bank);
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label(zp, bank, false, "$%02X");
+			ImGui::disasm_line(8, zp, bank, false);
 
 			ImGui::SameLine();
-			ImGui::Text(", ");
+			ImGui::TextUnformatted(", ");
 			ImGui::SameLine();
 
-			ImGui::disasm_label(target, bank, is_branch, "$%04X");
+			ImGui::disasm_line(16, target, bank, is_branch);
 		} break;
 
 		case op_mode::MODE_IMP:
-			ImGui::Text("%s", mnemonic);
+			ImGui::TextUnformatted(mnemonic);
 			break;
 
 		case op_mode::MODE_IMM: {
 			uint16_t value = debug_read6502(pc + 1, bank);
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
 			if (show_hex) {
-				ImGui::Text("#$%02X", value);
+				ImGui::TextFormat("#${:02X}", value);
 			} else {
-				ImGui::Text("#%d", (int)value);
+				ImGui::TextFormat("#{:d}", value);
 			}
 		} break;
 
 		case op_mode::MODE_ZP: {
 			uint8_t value = debug_read6502(pc + 1, bank);
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label(value, bank, is_branch, "$%02X");
+			ImGui::disasm_line(16, value, bank, is_branch);
 		} break;
 
 		case op_mode::MODE_REL: {
 			uint16_t target = pc + 2 + (int8_t)debug_read6502(pc + 1, bank);
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label(target, bank, is_branch, "$%04X");
+			ImGui::disasm_line(16, target, bank, is_branch);
 		} break;
 
 		case op_mode::MODE_ZPX: {
 			uint8_t value = debug_read6502(pc + 1, bank);
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(value, bank, is_branch, "$%02X", "%s,x");
+			ImGui::disasm_line_wrap(8, value, bank, is_branch, "{},x");
 		} break;
 
 		case op_mode::MODE_ZPY: {
 			uint8_t value = debug_read6502(pc + 1, bank);
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("%{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(value, bank, is_branch, "$%02X", "%s,y");
+			ImGui::disasm_line_wrap(8, value, bank, is_branch, "{},y");
 		} break;
 
 		case op_mode::MODE_ABSO: {
 			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label(target, bank, is_branch, "$%04X");
+			ImGui::disasm_line(16, target, bank, is_branch);
 		} break;
 
 		case op_mode::MODE_ABSX: {
 			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, bank, is_branch, "$%04X", "%s,x");
+			ImGui::disasm_line_wrap(16, target, bank, is_branch, "{},x");
 		} break;
 
 		case op_mode::MODE_ABSY: {
 			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, bank, is_branch, "$%04X", "%s,y");
+			ImGui::disasm_line_wrap(16, target, bank, is_branch, "{},y");
 		} break;
 
 		case op_mode::MODE_AINX: {
 			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, bank, is_branch, "$%04X", "(%s,x)");
+			ImGui::disasm_line_wrap(16, target, bank, is_branch, "({},x)");
 		} break;
 
 		case op_mode::MODE_INDY: {
 			uint8_t target = debug_read6502(pc + 1, bank);
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, bank, is_branch, "$%02X", "(%s),y");
+			ImGui::disasm_line_wrap(8, target, bank, is_branch, "({}),y");
 		} break;
 
 		case op_mode::MODE_INDX: {
 			uint8_t target = debug_read6502(pc + 1, bank);
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, bank, is_branch, "$%02X", "(%s,x)");
+			ImGui::disasm_line_wrap(8, target, bank, is_branch, "({},x)");
 		} break;
 
 		case op_mode::MODE_IND: {
 			uint16_t target = debug_read6502(pc + 1, bank) | debug_read6502(pc + 2, bank) << 8;
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, bank, is_branch, "$%04X", "(%s)");
+			ImGui::disasm_line_wrap(16, target, bank, is_branch, "({})");
 		} break;
 
 		case op_mode::MODE_IND0: {
 			uint8_t target = debug_read6502(pc + 1, bank);
 
-			ImGui::Text("%s ", mnemonic);
+			ImGui::TextFormat("{} ", mnemonic);
 			ImGui::SameLine();
 
-			ImGui::disasm_label_wrap(target, bank, is_branch, "$%02X", "(%s)");
+			ImGui::disasm_line_wrap(8, target, bank, is_branch, "({})");
 		} break;
 
 		case op_mode::MODE_A:
-			ImGui::Text("%s a", mnemonic);
+			ImGui::TextFormat("{} a", mnemonic);
 			break;
 	}
 
@@ -469,21 +462,20 @@ void imgui_debugger_disasm::imgui_disasm_line(uint16_t pc, uint8_t bank)
 
 namespace ImGui
 {
-	void disasm_label(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format)
+	void disasm_line(size_t bits, uint16_t target, uint8_t bank, bool branch_target)
 	{
-		const std::string &symbol = disasm_get_label(target, bank);
+		auto inner = [=]() -> const std::string {
+			if (const std::string &symbol = disasm_get_label(target, bank); !symbol.empty()) {
+				return symbol;
+			} else if (disasm.get_hex_flag()) {
+				const size_t nybbles = (bits + 0b11) >> 2;
+				return fmt::format("${:0{}x}", target, nybbles);
+			} else {
+				return fmt::format("{:d}", target);
+			}
+		};
 
-		char inner[256];
-		if (!symbol.empty()) {
-			snprintf(inner, 256, "%s", symbol.c_str());
-		} else if (disasm.get_hex_flag()) {
-			snprintf(inner, 256, hex_format, target);
-		} else {
-			snprintf(inner, 256, "%d", (int)target);
-		}
-		inner[255] = '\0';
-
-		if (ImGui::Selectable(inner, false, 0, ImGui::CalcTextSize(inner))) {
+		if (ImGui::FitSelectable(inner(), false, 0)) {
 			if (branch_target) {
 				disasm.set_dump_start(target);
 			} else if (disasm.get_memory_window() == 1) {
@@ -496,25 +488,22 @@ namespace ImGui
 		}
 	}
 
-	void disasm_label_wrap(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format, const char *wrapper_format)
+	void disasm_line_wrap(size_t bits, uint16_t target, uint8_t bank, bool branch_target, const std::string &wrapper_format)
 	{
-		const std::string &symbol = disasm_get_label(target, bank);
+		auto inner = [=]() -> const std::string {
+			if (const std::string &symbol = disasm_get_label(target, bank); !symbol.empty()) {
+				return symbol;
+			} else if (disasm.get_hex_flag()) {
+				const size_t nybbles = (bits + 0b11) >> 2;
+				return fmt::format("${:0{}x}", target, nybbles);
+			} else {
+				return fmt::format("{:d}", target);
+			}
+		};
 
-		char inner[256];
-		if (!symbol.empty()) {
-			snprintf(inner, 256, "%s", symbol.c_str());
-		} else if (disasm.get_hex_flag()) {
-			snprintf(inner, 256, hex_format, target);
-		} else {
-			snprintf(inner, 256, "%d", (int)target);
-		}
-		inner[255] = '\0';
+		std::string wrapped = fmt::format(fmt::runtime(wrapper_format), inner());
 
-		char wrapped[256];
-		snprintf(wrapped, 256, wrapper_format, inner);
-		wrapped[255] = '\0';
-
-		if (ImGui::Selectable(wrapped, false, 0, ImGui::CalcTextSize(wrapped))) {
+		if (ImGui::FitSelectable(wrapped, false, 0)) {
 			if (branch_target) {
 				disasm.set_dump_start(target);
 			} else if (disasm.get_memory_window() == 1) {

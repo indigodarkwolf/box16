@@ -18,6 +18,12 @@ private:
 	bool show_hex      = true;
 	int  memory_window = 1;
 
+	struct {
+		char disasm_address[5] = { "0000" };
+		char ram_bank[3]       = { "00" };
+		char rom_bank[3]       = { "00" };
+	} input_fields;
+
 	uint8_t get_current_bank(uint16_t address);
 
 public:
@@ -39,8 +45,8 @@ extern imgui_debugger_disasm disasm;
 
 namespace ImGui
 {
-	void disasm_label(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format);
-	void disasm_label_wrap(uint16_t target, uint8_t bank, bool branch_target, const char *hex_format, const char *wrapper_format);
+	void disasm_line(size_t bits, uint16_t target, uint8_t bank, bool branch_target);
+	void disasm_line_wrap(size_t bits, uint16_t target, uint8_t bank, bool branch_target, const std::string &wrapper_format);
 } // namespace ImGui
 
 #endif // DISASM_OVERLAY_H

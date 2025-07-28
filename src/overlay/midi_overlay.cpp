@@ -2,6 +2,7 @@
 
 #include "imgui/imgui.h"
 #include "midi.h"
+#include "util.h"
 
 #include "vera/vera_psg.h"
 #include "ym2151/ym2151.h"
@@ -36,7 +37,7 @@ void draw_midi_overlay()
 				}
 
 				ImGui::PushID(i);
-				ImGui::Text("Channel %d", i);
+				ImGui::TextFormat("Channel {:d}", i);
 				ImGui::TreePush("Device settings");
 
 				if (ImGui::BeginCombo("Playback Device", midi_playback_device_name(settings->playback_device))) {
@@ -91,7 +92,7 @@ void draw_midi_overlay()
 			}
 
 			if (num_unused_channels > 0) {
-				ImGui::Text("%s", "Add Channel");
+				ImGui::TextUnformatted("Add Channel");
 				ImGui::Columns(2);
 				ImGui::SetColumnWidth(0, 128.0f);
 				ImGui::SetColumnWidth(1, 256.0f);
@@ -101,13 +102,9 @@ void draw_midi_overlay()
 				if (channel_idx > num_unused_channels) {
 					channel_idx = num_unused_channels - 1;
 				}
-				char channel_label[4];
-				sprintf(channel_label, "%d", unused_channels[channel_idx]);
-				if (ImGui::BeginCombo("Channel", channel_label)) {
+				if (ImGui::BeginComboFormat("Channel", fmt::format("{:d}", unused_channels[channel_idx]))) {
 					for (uint8_t c = 0; c < num_unused_channels; ++c) {
-						char channel_label[4];
-						sprintf(channel_label, "%d", unused_channels[c]);
-						if (ImGui::Selectable(channel_label, c == channel_idx)) {
+						if (ImGui::SelectableFormat(fmt::format("{:d}", unused_channels[c]), c == channel_idx)) {
 							channel_idx = c;
 						}
 					}

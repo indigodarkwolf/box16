@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <set>
 
 namespace boxmon
 {
@@ -97,6 +98,8 @@ namespace boxmon
 
 	private:
 		std::string m_symbol;
+
+		static std::set<std::string> s_cpu_symbols;
 	};
 
 	class unary_expression final : public expression_base

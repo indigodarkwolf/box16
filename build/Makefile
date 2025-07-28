@@ -5,7 +5,7 @@
 #-------------------------
 
 PROJECT := box16
-RELEASE := nr41.1
+RELEASE := nr48.1
 
 REPODIR := ..
 OBJDIR := obj
@@ -21,6 +21,7 @@ VENDORSRC := $(REPODIR)/vendor
 VENDOROBJ := $(OBJDIR)/vendor
 
 PKGCONFIG := pkg-config
+SDL2CONFIG := sdl2-config
 MKDIR := mkdir -p
 
 CFLAGS := -Werror $(DFLAGS)
@@ -84,8 +85,13 @@ BOX16_INCDIRS := -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORSRC)/mINI/s
 
 BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(wildcard $(BOX16_SRCDIR)/boxmon/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/glad/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
-BOX16_CXXFLAGS := $(shell $(PKGCONFIG) --cflags alsa sdl2 gl zlib) $(CXXFLAGS) $(CXXWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h -DFMT_HEADER_ONLY $(MYFLAGS)
-BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs alsa sdl2 gl zlib) -lstdc++fs -ldl
+BOX16_CXXFLAGS := $(shell $(PKGCONFIG) --cflags alsa gl zlib) $(shell $(SDL2CONFIG) --cflags) $(CXXFLAGS) $(CXXWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h -DFMT_HEADER_ONLY $(MYFLAGS)
+BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs alsa gl zlib) $(shell $(SDL2CONFIG) --libs) -ldl
+
+# Detect if CXX is g++ or clang++, in this order.
+ifeq '' '$(findstring clang++,$(CXX))'
+	BOX16_LDFLAGS += -lstdc++fs
+endif
 
 #=========================
 #
@@ -130,10 +136,10 @@ release:
 
 zips: package
 	cd $(RELDIR) && tar -cvf $(RELNAME).tar $(RELNAME)/*
-	cd $(RELDIR) && 7z a -t7z $(RELNAME).7z $(RELNAME)/*
-	cd $(RELDIR) && 7z a -tzip $(RELNAME).zip $(RELNAME)/*
-	cd $(RELDIR) && 7z a -tgzip $(RELNAME).tar.gz $(RELNAME).tar
-	cd $(RELDIR) && 7z a -tbzip2 $(RELNAME).tar.bz2 $(RELNAME).tar
+	cd $(RELDIR) && 7zz a -t7z $(RELNAME).7z $(RELNAME)/*
+	cd $(RELDIR) && 7zz a -tzip $(RELNAME).zip $(RELNAME)/*
+	cd $(RELDIR) && 7zz a -tgzip $(RELNAME).tar.gz $(RELNAME).tar
+	cd $(RELDIR) && 7zz a -tbzip2 $(RELNAME).tar.bz2 $(RELNAME).tar
 
 package:
 	if [ ! -d $(ZIPSDIR) ]; then $(MKDIR) $(ZIPSDIR); fi
@@ -203,4 +209,4 @@ $(OUTDIR)/box16: $(BOX16_OBJS) $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(YMFM_OB
 	mkdir -p $(OUTDIR)
 	$(CXX) $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS)
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
-	cp -r $(REPODIR)/resources/r41/* $(OUTDIR)/
+	cp -r $(REPODIR)/resources/r48/* $(OUTDIR)/

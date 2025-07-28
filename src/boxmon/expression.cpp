@@ -1,5 +1,6 @@
 #include "expression.h"
 
+#include "glue.h"
 #include "memory.h"
 #include "symbols.h"
 
@@ -80,6 +81,37 @@ namespace boxmon
 		return m_value;
 	}
 
+// TODO: I'm lazy right now and this probably should be put in a separate header file to share with the CPU implementation.
+// But... since this is only happening in this file and the CPU implementation...
+
+#define FLAG_CARRY 0x01
+#define FLAG_ZERO 0x02
+#define FLAG_INTERRUPT 0x04
+#define FLAG_DECIMAL 0x08
+#define FLAG_BREAK 0x10
+#define FLAG_CONSTANT 0x20
+#define FLAG_OVERFLOW 0x40
+#define FLAG_SIGN 0x80
+
+	std::set<std::string> symbol_expression::s_cpu_symbols = {
+		".a",	// Accumulator
+		".x",   // Index register X
+		".y",   // Index register Y
+		".pc",  // Program Counter
+		".sp",  // Stack Pointer
+		".p",	// Processor status
+		".pcl", // Program Counter Low byte
+		".pch", // Program Counter High byte
+		".k",   // PC bank
+		"_n",   // Negative flag
+		"_c",   // Carry flag
+		"_z",   // Zero flag
+		"_i",   // Interrupt flag
+		"_b",   // Break flag
+		"_v",   // Overflow flag
+		"_d",   // Decimal flag
+	};
+
 	symbol_expression::symbol_expression(const std::string &symbol)
 	    : expression_base(expression_type::symbol),
 	      m_symbol(symbol)
@@ -92,7 +124,68 @@ namespace boxmon
 
 	int symbol_expression::evaluate() const
 	{
-		auto namelist = symbols_find(m_symbol);
+		if (const auto &cpu_symbol = s_cpu_symbols.find(m_symbol); cpu_symbol != s_cpu_symbols.end()) {
+			if (m_symbol[0] == '.') {
+				switch (m_symbol[1]) {
+					case 'a': // .a
+						return state6502.a;
+					case 'x': // .x
+						return state6502.x;
+					case 'y': // .y
+						return state6502.y;
+					case 'p': // .p, .pc, .pcl, or .pch
+						if (m_symbol.length() > 2) {
+							switch (m_symbol[2]) {
+								case 'c': // .pc
+									if (m_symbol.length() > 3) {
+										switch (m_symbol[3]) {
+											case 'l': // .pcl
+												return state6502.pc & 0xff;
+											case 'h': // .pch
+												return (state6502.pc >> 8) & 0xff;
+											default:
+												break;
+										}
+									} else {
+										return state6502.pc;
+									}
+								default:
+									break;
+							}
+						} else {
+							return state6502.status;
+						}
+						break;
+					case 's': // .sp
+						return state6502.sp;
+					case 'k': // .k
+						return bank6502(state6502.pc);
+					default:
+						break;
+				}
+			} else if (m_symbol[0] == '_') {
+				switch (m_symbol[1]) {
+					case 'n': // .n
+						return (state6502.status & FLAG_SIGN) ? 1 : 0;
+					case 'c': // .c
+						return (state6502.status & FLAG_CARRY) ? 1 : 0;
+					case 'z': // .z
+						return (state6502.status & FLAG_ZERO) ? 1 : 0;
+					case 'i': // .i
+						return (state6502.status & FLAG_INTERRUPT) ? 1 : 0;
+					case 'b': // .b
+						return (state6502.status & FLAG_BREAK) ? 1 : 0;
+					case 'v': // .v
+						return (state6502.status & FLAG_OVERFLOW) ? 1 : 0;
+					case 'd': // .d
+						return (state6502.status & FLAG_DECIMAL) ? 1 : 0;
+					default:
+						break;
+				}
+			}
+		}
+
+		auto &namelist = symbols_find(m_symbol);
 		if (namelist.empty()) {
 			return 0;
 		}
@@ -101,7 +194,11 @@ namespace boxmon
 
 	bool symbol_expression::is_valid() const
 	{
-		auto namelist = symbols_find(m_symbol);
+		if (const auto &cpu_symbol = s_cpu_symbols.find(m_symbol); cpu_symbol != s_cpu_symbols.end()) {
+			return true;
+		}
+
+		auto &namelist = symbols_find(m_symbol);
 		return !namelist.empty();
 	}
 

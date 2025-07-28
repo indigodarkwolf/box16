@@ -326,9 +326,7 @@ void hypercalls_update()
 					if (start == 0x0801) {
 						keyboard_add_text("RUN\r");
 					} else {
-						char sys_text[10];
-						sprintf(sys_text, "SYS$%04X\r", start);
-						keyboard_add_text(sys_text);
+						keyboard_add_text(fmt::format("SYS${:04X}", start));
 					}
 				}
 			}
@@ -341,9 +339,7 @@ void hypercalls_update()
 			}
 
 			if (Options.run_test) {
-				char test_text[256];
-				sprintf(test_text, "TEST %d\r", Options.test_number);
-				keyboard_add_text(test_text);
+				keyboard_add_text(fmt::format("TEST {:d}\r", Options.test_number));
 			}
 
 			Has_boot_tasks = false;
