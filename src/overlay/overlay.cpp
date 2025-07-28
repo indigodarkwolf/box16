@@ -1941,16 +1941,24 @@ public:
 		ImGui::EndGroup();
 	}
 
-	void import_settings_from_layer(int layer)
+void import_settings_from_layer(int layer)
 	{
 		auto props          = vera_video_get_layer_properties(layer);
 		active.mem_source   = 0;
 		active.color_depth  = props->color_depth;
 		active.view_address = props->tile_base;
 		if (props->bitmap_mode) {
-			active.tile_w_sel   = props->tilew == 320 ? 4 : 5;
-			active.tile_height  = 8;
-			active.view_size    = props->tilew * props->bits_per_pixel * 480 / 8;
+			active.tile_w_sel  = props->tilew == 320 ? 4 : 5;
+			active.tile_height = 8;
+
+			// Calculate max possible height based on VRAM size to show full VRAM with wrapping
+			const uint32_t max_vram_size       = 0x20000; // 128KB VRAM
+			const uint32_t bytes_per_line      = props->tilew * props->bits_per_pixel / 8;
+			const uint32_t total_bitmap_height = max_vram_size / bytes_per_line;
+
+			// Use the full VRAM height with wrapping, capped at a reasonable limit
+			active.view_size = props->tilew * props->bits_per_pixel * std::min(total_bitmap_height, 2048u) / 8;
+
 			active.view_columns = 1;
 			const uint8_t pal   = vera_video_get_layer_data(layer)[4] & 0x0F;
 			if (active.color_depth == 0) {
@@ -2014,17 +2022,26 @@ public:
 		ImGui::BeginChild("tiles", avail, false, ImGuiWindowFlags_HorizontalScrollbar);
 		{
 			const ImVec2 topleft = ImGui::GetCursorScreenPos();
-			ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), ImVec2(total_width, total_height));
-			if (!bitmap_mode) {
-				const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
-				ImDrawList  *draw_list = ImGui::GetWindowDrawList();
-				ImVec2       winsize   = ImGui::GetWindowSize();
-				winsize.x              = std::min((float)total_width, winsize.x);
-				winsize.y              = std::min((float)total_height, winsize.y);
-				ImVec2 wintopleft      = topleft;
-				wintopleft.x += scroll.x;
-				wintopleft.y += scroll.y;
-				ImVec2 winbotright(wintopleft.x + winsize.x, wintopleft.y + winsize.y);
+			ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), ImVec2((float)total_width, (float)total_height));
+
+			const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
+			ImDrawList  *draw_list = ImGui::GetWindowDrawList();
+			ImVec2       winsize   = ImGui::GetWindowSize();
+			winsize.x              = std::min((float)total_width, winsize.x);
+			winsize.y              = std::min((float)total_height, winsize.y);
+			ImVec2 wintopleft      = topleft;
+			wintopleft.x += scroll.x;
+			wintopleft.y += scroll.y;
+			ImVec2 winbotright(wintopleft.x + winsize.x, wintopleft.y + winsize.y);
+
+			draw_list->PushClipRect(wintopleft, winbotright, true);
+
+			if (bitmap_mode) {
+				if (view_mode == ViewMode::ShowFullVRAM && show_display_bounds) {
+					draw_bitmap_display_overlay(draw_list, topleft);
+				}
+			} else {
+				// Tile mode
 				ImVec2 mouse_pos = ImGui::GetMousePos();
 				mouse_pos.x -= topleft.x;
 				mouse_pos.y -= topleft.y;
@@ -2033,8 +2050,8 @@ public:
 						cur_tile = ((int)mouse_pos.x / tile_width) + ((int)mouse_pos.y / tile_height) * map_width;
 					}
 				}
-				draw_list->PushClipRect(wintopleft, winbotright, true);
-				if (!bitmap_mode && show_grid) {
+
+				if (show_grid) {
 					const uint32_t col  = IM_COL32(0x08, 0x7F, 0xF6, 0xFF);
 					float          hcnt = floorf(scroll.x / tile_width) * tile_width + topleft.x;
 					while (hcnt < winbotright.x) {
@@ -2047,7 +2064,7 @@ public:
 						vcnt += tile_height;
 					}
 				}
-				if (!bitmap_mode && show_scroll) {
+				if (show_scroll) {
 					auto screen_rect = [this, draw_list](float start_x, float start_y) -> void {
 						const ImVec2 p0(start_x, start_y);
 						const ImVec2 p1(start_x + screen_width, start_y + screen_height);
@@ -2061,24 +2078,44 @@ public:
 					screen_rect(base_x, base_y - total_height);
 					screen_rect(base_x, base_y);
 				}
-				draw_list->PopClipRect();
+
 				// selected tile indicator
 				const float sel_x = (cur_tile % map_width) * tile_width + topleft.x;
 				const float sel_y = (cur_tile / map_width) * tile_height + topleft.y;
-				add_selection_rect(draw_list, sel_x, sel_y, tile_width, tile_height);
+				add_selection_rect(draw_list, sel_x, sel_y, (float)tile_width, (float)tile_height);
 			}
+
+			draw_list->PopClipRect();
 			ImGui::EndChild();
 		}
-		ImGui::Checkbox("Show Tile Grid", &show_grid);
-		ImGui::SameLine();
-		ImGui::Checkbox("Show Scroll Overlay", &show_scroll);
+
+		// bitmap mode controls
+		if (bitmap_mode) {
+			// View mode selection
+			ImGui::Text("View Mode:");
+			ImGui::SameLine();
+			if (ImGui::RadioButton("Follow Display", view_mode == ViewMode::FollowDisplay)) {
+				view_mode = ViewMode::FollowDisplay;
+			}
+			ImGui::SameLine();
+			if (ImGui::RadioButton("Show Full VRAM", view_mode == ViewMode::ShowFullVRAM)) {
+				view_mode = ViewMode::ShowFullVRAM;
+			}
+
+			if (view_mode == ViewMode::ShowFullVRAM) {
+				ImGui::Checkbox("Show Display Bounds", &show_display_bounds);
+			}
+		} else {
+			ImGui::Checkbox("Show Tile Grid", &show_grid);
+			ImGui::SameLine();
+			ImGui::Checkbox("Show Scroll Overlay", &show_scroll);
+		}
 
 		ImGui::EndGroup();
 	}
 
 	void capture_vram()
 	{
-		uint8_t               tile_data[640 * 480]; // 640*480 > 16*16*1024
 		std::vector<uint32_t> pixels;
 		uint32_t              palette[256];
 		const uint32_t       *palette_argb = vera_video_get_palette_argb32();
@@ -2093,9 +2130,37 @@ public:
 		screen_height = (float)(vera_video_get_dc_vstop() - vera_video_get_dc_vstart()) * vera_video_get_dc_vscale() / 64.f;
 
 		if (bitmap_mode) {
-			const uint32_t num_dots = tile_width * 480;
+			uint32_t vram_start_addr, vram_size, actual_height;
+
+			if (view_mode == ViewMode::FollowDisplay) {
+				// "Follow Display" mode
+				const uint32_t max_vram_size            = 0x20000; // 128KB VRAM
+				const uint32_t bytes_per_line           = tile_width * bpp / 8;
+				const uint32_t available_vram_from_base = max_vram_size - tile_base;
+				const uint32_t max_possible_height      = available_vram_from_base / bytes_per_line;
+
+				vram_start_addr = tile_base;
+				actual_height   = std::min(max_possible_height, 2048u);
+				vram_size       = tile_width * actual_height;
+			} else {
+				// "Show Full VRAM" mode
+				const uint32_t max_vram_size       = 0x20000; // 128KB VRAM
+				const uint32_t bytes_per_line      = tile_width * bpp / 8;
+				const uint32_t total_bitmap_height = max_vram_size / bytes_per_line;
+
+				vram_start_addr = 0x00000; // Start from beginning of VRAM
+				actual_height   = std::min(total_bitmap_height, 2048u);
+				vram_size       = tile_width * actual_height;
+			}
+
+			const uint32_t num_dots = vram_size;
+
+			// Use a vector instead of C style array
+			std::vector<uint8_t> tile_data(num_dots);
 			pixels.resize(num_dots);
-			vera_video_get_expanded_vram_with_wraparound_handling(tile_base, bpp, tile_data, num_dots);
+
+			// Read from VRAM with wrapping
+			vera_video_get_expanded_vram_with_wraparound_handling(vram_start_addr, bpp, tile_data.data(), num_dots);
 
 			for (uint32_t i = 0; i < num_dots; i++) {
 				uint8_t tdat = tile_data[i];
@@ -2108,10 +2173,13 @@ public:
 				pixels[i] = palette[tdat];
 			}
 		} else {
-			const uint32_t num_dots = total_width * total_height;
-			uint8_t        map_data[256 * 256 * 2];
+			// Tile mode
+			const uint32_t       num_dots       = total_width * total_height;
+			const uint32_t       tile_data_size = tile_width * tile_height * 1024;
+			std::vector<uint8_t> tile_data(tile_data_size);
+			uint8_t              map_data[256 * 256 * 2];
 			pixels.resize(num_dots);
-			vera_video_get_expanded_vram_with_wraparound_handling(tile_base, bpp, tile_data, tile_width * tile_height * 1024);
+			vera_video_get_expanded_vram_with_wraparound_handling(tile_base, bpp, tile_data.data(), tile_data_size);
 			vera_video_space_read_range(map_data, map_base, map_width * map_height * 2);
 
 			int tidx = 0;
@@ -2170,6 +2238,7 @@ public:
 				}
 			}
 		}
+
 		if (pixels.data() != nullptr) {
 			tiles_preview.load_memory(pixels.data(), total_width, total_height, total_width, total_height);
 		}
@@ -2177,20 +2246,37 @@ public:
 
 	void set_params(const vera_video_layer_properties &props, int palette_offset_)
 	{
-		// Max height for bitmap mode is currently 480.
-		// Although the theoretical maximum is 1016 (HSTOP = 255, HSCALE = 255),
-		// there's currently no real hardware information about going above 480 lines
-		bitmap_mode    = props.bitmap_mode;
-		t256c          = props.text_mode_256c;
-		bpp            = props.bits_per_pixel;
-		tile_base      = props.tile_base;
-		tile_width     = props.tilew;
-		tile_height    = props.tileh;
-		map_base       = props.map_base;
-		map_width      = 1 << props.mapw_log2;
-		map_height     = 1 << props.maph_log2;
-		total_width    = bitmap_mode ? tile_width : tile_width * map_width;
-		total_height   = bitmap_mode ? 480 : tile_height * map_height;
+		bitmap_mode = props.bitmap_mode;
+		t256c       = props.text_mode_256c;
+		bpp         = props.bits_per_pixel;
+		tile_base   = props.tile_base;
+		tile_width  = props.tilew;
+		tile_height = props.tileh;
+		map_base    = props.map_base;
+		map_width   = 1 << props.mapw_log2;
+		map_height  = 1 << props.maph_log2;
+
+		if (bitmap_mode) {
+			const uint32_t max_vram_size  = 0x20000; // 128KB VRAM
+			const uint32_t bytes_per_line = tile_width * bpp / 8;
+
+			if (view_mode == ViewMode::FollowDisplay) {
+				// "Follow Display" mode: Height based on remaining VRAM from tile_base
+				const uint32_t available_vram_from_base = max_vram_size - tile_base;
+				const uint32_t max_possible_height      = available_vram_from_base / bytes_per_line;
+				total_height                            = std::min(max_possible_height, 2048u);
+			} else {
+				// "Show Full VRAM" mode: Height based on full VRAM
+				const uint32_t total_bitmap_height = max_vram_size / bytes_per_line;
+				total_height                       = std::min(total_bitmap_height, 2048u);
+			}
+
+			total_width = tile_width;
+		} else {
+			total_width  = tile_width * map_width;
+			total_height = tile_height * map_height;
+		}
+
 		scroll_x       = total_width > 0 ? (props.hscroll % total_width) : 0;
 		scroll_y       = total_height > 0 ? (props.vscroll % total_height) : 0;
 		palette_offset = palette_offset_;
@@ -2203,6 +2289,75 @@ public:
 	{
 		return cur_tile;
 	}
+
+private:
+	void draw_bitmap_display_overlay(ImDrawList *draw_list, const ImVec2 &topleft)
+	{
+		const uint32_t bytes_per_line = tile_width * bpp / 8;
+
+		// In Show Full VRAM mode, the view starts from 0x00000
+		const uint32_t display_start_line = tile_base / bytes_per_line;
+		const uint32_t display_start_x    = (tile_base % bytes_per_line) * 8 / bpp;
+
+		// Display dimensions
+		const float display_width  = std::min((float)tile_width, screen_width);
+		const float display_height = std::min((float)total_height - display_start_line, screen_height);
+
+		if (display_width > 0 && display_height > 0) {
+			// Check if wrapping
+			if (display_start_x + display_width > tile_width) {
+				// Right part wrapped
+				const float  right_width = (float)tile_width - display_start_x;
+				const ImVec2 right_topleft(
+				    topleft.x + display_start_x,
+				    topleft.y + display_start_line);
+				const ImVec2 right_bottomright(
+				    topleft.x + tile_width,
+				    right_topleft.y + display_height);
+
+				draw_list->AddRectFilled(right_topleft, right_bottomright, IM_COL32(255, 255, 255, 80));
+				draw_list->AddRect(right_topleft, right_bottomright, IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
+
+				// Left part
+				const float  left_width = display_width - right_width;
+				const ImVec2 left_topleft(
+				    topleft.x,
+				    topleft.y + display_start_line + 1 // Next line
+				);
+				const ImVec2 left_bottomright(
+				    topleft.x + left_width,
+				    left_topleft.y + display_height - 1 // Adjust height
+				);
+
+				if (left_topleft.y < topleft.y + total_height) { 
+					// Make sure we don't go past bottom
+					draw_list->AddRectFilled(left_topleft, left_bottomright, IM_COL32(255, 255, 255, 80));
+					draw_list->AddRect(left_topleft, left_bottomright, IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
+				}
+			} else {
+				// No wrapping
+				const ImVec2 display_topleft(
+				    topleft.x + display_start_x,
+				    topleft.y + display_start_line);
+				const ImVec2 display_bottomright(
+				    display_topleft.x + display_width,
+				    display_topleft.y + display_height);
+
+				draw_list->AddRectFilled(display_topleft, display_bottomright, IM_COL32(255, 255, 255, 80));
+				draw_list->AddRect(display_topleft, display_bottomright, IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
+			}
+
+			// text label at the start position
+			if (display_height > 20) { 
+				draw_list->AddText(ImVec2(topleft.x + display_start_x + 4, topleft.y + display_start_line + 4), IM_COL32(255, 255, 255, 255), fmt::format("Display (${:05X})", tile_base).c_str());
+			}
+		}
+	}
+
+	enum class ViewMode {
+		FollowDisplay,
+		ShowFullVRAM
+	};
 
 private:
 	icon_set tiles_preview;
@@ -2226,8 +2381,11 @@ private:
 	float screen_height;
 
 	uint16_t cur_tile = 0;
-	bool     show_grid;
-	bool     show_scroll;
+	bool     show_grid = false;
+	bool     show_scroll = false;
+
+	ViewMode view_mode           = ViewMode::ShowFullVRAM; 
+	bool     show_display_bounds = true;
 };
 
 static void draw_debugger_vera_layer()
