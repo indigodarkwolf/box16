@@ -750,7 +750,7 @@ static void draw_debugger_cpu_visualizer()
 	vis.load_memory(cpu_visualization_get_framebuffer(), SCAN_WIDTH, SCAN_HEIGHT, SCAN_WIDTH, SCAN_HEIGHT);
 
 	ImVec2 vis_imsize(SCAN_WIDTH, SCAN_HEIGHT);
-	ImGui::Image((void *)(intptr_t)vis.get_texture_id(), ImGui::GetContentRegionAvail(), vis.get_top_left(0), vis.get_bottom_right(0));
+	ImGui::Image((ImTextureID)(intptr_t)vis.get_texture_id(), ImGui::GetContentRegionAvail(), vis.get_top_left(0), vis.get_bottom_right(0));
 }
 
 static void draw_debugger_vera_vram_dump()
@@ -1380,7 +1380,7 @@ static void draw_debugger_vera_sprite()
 			wintopleft.y += scroll.y;
 			ImVec2 winbotright(wintopleft.x + winsize.x, wintopleft.y + winsize.y);
 
-			void *tex = (void *)(intptr_t)sprite_preview.get_texture_id();
+			ImTextureID tex = (ImTextureID)(intptr_t)sprite_preview.get_texture_id();
 
 			draw_list->AddRectFilled(topleft, ImVec2(topleft.x + screen_width, topleft.y + screen_height), IM_COL32(0x7F, 0x7F, 0x7F, 0x7F));
 			draw_list->PushClipRect(wintopleft, winbotright, true);
@@ -1511,7 +1511,7 @@ static void draw_debugger_vera_sprite()
 					ImGui::TableNextRow();
 					// Thumbnail
 					ImGui::TableNextColumn();
-					void        *tex    = (void *)(intptr_t)sprite_preview.get_texture_id();
+					ImTextureID  tex    = (ImTextureID)(intptr_t)sprite_preview.get_texture_id();
 					const float  flt_w  = (float)width;
 					const float  flt_h  = (float)height;
 					const ImVec2 th_pos = ImGui::GetCursorScreenPos();
@@ -1800,7 +1800,7 @@ public:
 				}
 			}
 			draw_list->PushClipRect(wintopleft, winbotright, true);
-			draw_list->AddImage((void *)(intptr_t)tiles_preview.get_texture_id(), ImVec2(topleft.x + (float)(starting_tile_x * tile_width_scaled), (float)(topleft.y + starting_tile_y * tile_height_scaled)), ImVec2(topleft.x + (float)((starting_tile_x + tiles_count_x) * tile_width_scaled), topleft.y + (float)((starting_tile_y + tiles_count_y) * tile_height_scaled)));
+			draw_list->AddImage((ImTextureID)(intptr_t)tiles_preview.get_texture_id(), ImVec2(topleft.x + (float)(starting_tile_x * tile_width_scaled), (float)(topleft.y + starting_tile_y * tile_height_scaled)), ImVec2(topleft.x + (float)((starting_tile_x + tiles_count_x) * tile_width_scaled), topleft.y + (float)((starting_tile_y + tiles_count_y) * tile_height_scaled)));
 			if (show_grid) {
 				const uint32_t col  = IM_COL32(0x08, 0x7F, 0xF6, 0xFF);
 				float          hcnt = starting_tile_x * tile_width_scaled + topleft.x;
@@ -2022,7 +2022,7 @@ public:
 		ImGui::BeginChild("tiles", avail, false, ImGuiWindowFlags_HorizontalScrollbar);
 		{
 			const ImVec2 topleft = ImGui::GetCursorScreenPos();
-			ImGui::Image((void *)(intptr_t)tiles_preview.get_texture_id(), ImVec2((float)total_width, (float)total_height));
+			ImGui::Image((ImTextureID)(intptr_t)tiles_preview.get_texture_id(), ImVec2((float)total_width, (float)total_height));
 
 			const ImVec2 scroll(ImGui::GetScrollX(), ImGui::GetScrollY());
 			ImDrawList  *draw_list = ImGui::GetWindowDrawList();
@@ -3519,7 +3519,7 @@ void overlay_draw()
 
 	draw_menu_bar();
 	ImGui::SetNextWindowBgAlpha(0.0f);
-	ImGuiID dock_id = ImGui::DockSpaceOverViewport(ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
+	ImGuiID dock_id = ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(), ImGuiDockNodeFlags_PassthruCentralNode);
 
 	if (Show_monitor_console) {
 		if (ImGui::Begin("Monitor", &Show_monitor_console)) {
