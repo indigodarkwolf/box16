@@ -5203,7 +5203,7 @@ void ImFont::AddRemapChar(ImWchar from_codepoint, ImWchar to_codepoint)
 // Find glyph, load if necessary, return fallback if missing
 ImFontGlyph* ImFontBaked::FindGlyph(ImWchar c)
 {
-    if (c < (size_t)IndexLookup.Size) IM_LIKELY
+    if (c < (size_t)IndexLookup.Size) //IM_LIKELY
     {
         const int i = (int)IndexLookup.Data[c];
         if (i == IM_FONTGLYPH_INDEX_NOT_FOUND)
@@ -5218,7 +5218,7 @@ ImFontGlyph* ImFontBaked::FindGlyph(ImWchar c)
 // Attempt to load but when missing, return NULL instead of FallbackGlyph
 ImFontGlyph* ImFontBaked::FindGlyphNoFallback(ImWchar c)
 {
-    if (c < (size_t)IndexLookup.Size) IM_LIKELY
+    if (c < (size_t)IndexLookup.Size) //IM_LIKELY
     {
         const int i = (int)IndexLookup.Data[c];
         if (i == IM_FONTGLYPH_INDEX_NOT_FOUND)
@@ -5234,7 +5234,7 @@ ImFontGlyph* ImFontBaked::FindGlyphNoFallback(ImWchar c)
 
 bool ImFontBaked::IsGlyphLoaded(ImWchar c)
 {
-    if (c < (size_t)IndexLookup.Size) IM_LIKELY
+    if (c < (size_t)IndexLookup.Size) //IM_LIKELY
     {
         const int i = (int)IndexLookup.Data[c];
         if (i == IM_FONTGLYPH_INDEX_NOT_FOUND)
