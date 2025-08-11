@@ -272,7 +272,7 @@ void display_video()
 
 	ImGui::SetCursorScreenPos(ImVec2(display_rect.x, display_rect.y));
 	ImGui::BeginChild("display video", ImVec2(display_rect.z, display_rect.w), false, ImGuiWindowFlags_NoMove);
-	ImGui::Image((void *)(intptr_t)Video_framebuffer_texture_handle, ImVec2(display_rect.z, display_rect.w));
+	ImGui::Image((ImTextureID)(intptr_t)Video_framebuffer_texture_handle, ImVec2(display_rect.z, display_rect.w));
 	display_focused = ImGui::IsWindowFocused();
 	ImGui::EndChild();
 }
@@ -642,7 +642,7 @@ void display_process()
 	}
 
 	ImGui_ImplOpenGL2_NewFrame();
-	ImGui_ImplSDL2_NewFrame(Display_window);
+	ImGui_ImplSDL2_NewFrame();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -746,9 +746,10 @@ namespace ImGui
 		PushID(icon);
 		bool result = [&]() {
 			if (enabled) {
-				return ImageButton((void *)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, 0, ImVec4(0, 0, 0, 0), tint);
+				const std::string title = fmt::format("##{}", (ImTextureID)(intptr_t)Icon_tilemap);
+				return ImageButton(title.c_str(), (ImTextureID)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, ImVec4(0, 0, 0, 0), tint);
 			} else {
-				Image((void *)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, tint);
+				ImageWithBg((ImTextureID)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, ImVec4(0, 0, 0, 0), tint);
 				return false;
 			}
 		}();
@@ -763,14 +764,14 @@ namespace ImGui
 	{
 		ImVec2 topleft{ (float)((int)icon % 16) / 16.0f, (float)((int)icon >> 4) / 16.0f };
 		ImVec2 botright{ topleft.x + 1.0f / 16.0f, topleft.y + 1.0f / 16.0f };
-		Image((void *)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, ImVec4(1, 1, 1, alpha));
+		ImageWithBg((ImTextureID)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, ImVec4(0, 0, 0, 0), ImVec4(1, 1, 1, alpha));
 	}
 
 	void Tile(display_icons icon, ImVec2 size, float alpha /* = 1.0f */)
 	{
 		ImVec2 topleft{ (float)((int)icon % 16) / 16.0f, (float)((int)icon >> 4) / 16.0f };
 		ImVec2 botright{ topleft.x + size.x / 256.0f, topleft.y + size.y / 256.0f };
-		Image((void *)(intptr_t)Icon_tilemap, size, topleft, botright, ImVec4(1, 1, 1, alpha));
+		ImageWithBg((ImTextureID)(intptr_t)Icon_tilemap, size, topleft, botright, ImVec4(0, 0, 0, 0), ImVec4(1, 1, 1, alpha));
 	}
 
 	void TileDisabled(display_icons icon)
@@ -778,7 +779,7 @@ namespace ImGui
 		ImVec2 topleft{ (float)((int)icon % 16) / 16.0f, (float)((int)icon >> 4) / 16.0f };
 		ImVec2 botright{ topleft.x + 1.0f / 16.0f, topleft.y + 1.0f / 16.0f };
 		ImVec4 tint = GetStyleColorVec4(ImGuiCol_TextDisabled);
-		Image((void *)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, tint);
+		ImageWithBg((ImTextureID)(intptr_t)Icon_tilemap, ImVec2(16.0f, 16.0f), topleft, botright, ImVec4(0, 0, 0, 0), tint);
 	}
 
 	bool InputLog2(char const *label, uint8_t *value, const char *format, ImGuiInputTextFlags flags)

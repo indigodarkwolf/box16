@@ -48,7 +48,7 @@ namespace ImGui
 	{
 		ImGuiContext &g = *GImGui;
 
-		BeginTooltipEx(ImGuiTooltipFlags_OverridePreviousTooltip, ImGuiWindowFlags_None);
+		BeginTooltipEx(ImGuiTooltipFlags_OverridePrevious, ImGuiWindowFlags_None);
 		const char *text_end = text ? FindRenderedTextEnd(text, NULL) : text;
 		if (text_end > text) {
 			TextEx(text, text_end);
