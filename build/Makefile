@@ -24,9 +24,9 @@ PKGCONFIG := pkg-config
 SDL2CONFIG := sdl2-config
 MKDIR := mkdir -p
 
-CFLAGS := -Werror $(DFLAGS)
+CFLAGS = -Werror -MMD -MP $(DFLAGS)
 CWARNS := -Wformat -Wformat-security -Wpedantic
-CXXFLAGS := --std=c++20 -Werror $(DFLAGS)
+CXXFLAGS = --std=c++20 -Werror -MMD -MP $(DFLAGS)
 CXXWARNS := -Wformat -Wformat-security -Wpedantic
 
 #
@@ -35,8 +35,11 @@ CXXWARNS := -Wformat -Wformat-security -Wpedantic
 NFD_SRCDIR := $(VENDORSRC)/nativefiledialog/src
 NFD_OBJDIR := $(OBJDIR)/nativefiledialog/obj
 
-NFD_CFLAGS := $(shell $(PKGCONFIG) --cflags gtk+-3.0) $(CFLAGS) -I$(NFD_SRCDIR) -I$(NFD_SRCDIR)/include $(MYFLAGS)
-NFD_LDFLAGS := $(shell $(PKGCONFIG) --libs gtk+-3.0)
+GTK3_CFLAGS := $(shell $(PKGCONFIG) --cflags gtk+-3.0)
+GTK3_LIBS := $(shell $(PKGCONFIG) --libs gtk+-3.0)
+
+NFD_CFLAGS = $(GTK3_CFLAGS) $(CFLAGS) -I$(NFD_SRCDIR) -I$(NFD_SRCDIR)/include $(MYFLAGS)
+NFD_LDFLAGS := $(GTK3_LIBS)
 
 NFD_SRCS := $(NFD_SRCDIR)/nfd_gtk.c $(NFD_SRCDIR)/nfd_common.c
 NFD_OBJS := $(NFD_OBJDIR)/nfd_gtk.o $(NFD_OBJDIR)/nfd_common.o
@@ -47,7 +50,7 @@ NFD_OBJS := $(NFD_OBJDIR)/nfd_gtk.o $(NFD_OBJDIR)/nfd_common.o
 LPNG_SRCDIR := $(VENDORSRC)/lodepng
 LPNG_OBJDIR := $(OBJDIR)/lodepng
 
-LPNG_CXXFLAGS := $(CXXFLAGS) $(CXXWARNS)
+LPNG_CXXFLAGS = $(CXXFLAGS) $(CXXWARNS)
 
 LPNG_SRCS := $(LPNG_SRCDIR)/lodepng.cpp
 LPNG_OBJS := $(LPNG_OBJDIR)/lodepng.o
@@ -58,7 +61,7 @@ LPNG_OBJS := $(LPNG_OBJDIR)/lodepng.o
 RTMIDI_SRCDIR := $(VENDORSRC)/rtmidi
 RTMIDI_OBJDIR := $(OBJDIR)/rtmidi
 
-RTMIDI_CXXFLAGS := $(CXXFLAGS) $(CXXWARNS)
+RTMIDI_CXXFLAGS = $(CXXFLAGS) $(CXXWARNS)
 
 RTMIDI_SRCS := $(RTMIDI_SRCDIR)/RtMidi.cpp
 RTMIDI_OBJS := $(RTMIDI_OBJDIR)/RtMidi.o
@@ -69,7 +72,7 @@ RTMIDI_OBJS := $(RTMIDI_OBJDIR)/RtMidi.o
 YMFM_SRCDIR := $(VENDORSRC)/ymfm/src
 YMFM_OBJDIR := $(OBJDIR)/ymfm
 
-YMFM_CXXFLAGS := $(CXXFLAGS) $(CXXWARNS)
+YMFM_CXXFLAGS = $(CXXFLAGS) $(CXXWARNS)
 
 YMFM_SRCS := $(YMFM_SRCDIR)/ymfm_opm.cpp
 YMFM_OBJS := $(patsubst $(YMFM_SRCDIR)/%.cpp,$(YMFM_OBJDIR)/%.o,$(YMFM_SRCS))
@@ -85,8 +88,14 @@ BOX16_INCDIRS := -I$(BOX16_SRCDIR) -I$(NFD_SRCDIR)/include -I$(VENDORSRC)/mINI/s
 
 BOX16_SRCS := $(wildcard $(BOX16_SRCDIR)/*.cpp) $(wildcard $(BOX16_SRCDIR)/boxmon/*.cpp) $(BOX16_SRCDIR)/compat/compat.cpp $(wildcard $(BOX16_SRCDIR)/cpu/*.cpp) $(wildcard $(BOX16_SRCDIR)/gif/*.cpp) $(wildcard $(BOX16_SRCDIR)/glad/*.cpp) $(wildcard $(BOX16_SRCDIR)/imgui/*.cpp) $(wildcard $(BOX16_SRCDIR)/overlay/*.cpp) $(wildcard $(BOX16_SRCDIR)/vera/*.cpp) $(wildcard $(BOX16_SRCDIR)/ym2151/*.cpp)
 BOX16_OBJS := $(patsubst $(BOX16_SRCDIR)/%.cpp,$(BOX16_OBJDIR)/%.o,$(BOX16_SRCS))
-BOX16_CXXFLAGS := $(shell $(PKGCONFIG) --cflags alsa gl zlib) $(shell $(SDL2CONFIG) --cflags) $(CXXFLAGS) $(CXXWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h -DFMT_HEADER_ONLY $(MYFLAGS)
-BOX16_LDFLAGS := $(DFLAGS) $(MYFLAGS) $(shell $(PKGCONFIG) --libs alsa gl zlib) $(shell $(SDL2CONFIG) --libs) -ldl
+
+ALSA_GL_ZLIB_CFLAGS := $(shell $(PKGCONFIG) --cflags alsa gl zlib)
+ALSA_GL_ZLIB_LIBS := $(shell $(PKGCONFIG) --libs alsa gl zlib)
+SDL2_CFLAGS := $(shell $(SDL2CONFIG) --cflags)
+SDL2_LIBS := $(shell $(SDL2CONFIG) --libs)
+
+BOX16_CXXFLAGS = $(ALSA_GL_ZLIB_CFLAGS) $(SDL2_CFLAGS) $(CXXFLAGS) $(CXXWARNS) $(BOX16_INCDIRS) -include $(BOX16_SRCDIR)/compat/compat.h -DFMT_HEADER_ONLY $(MYFLAGS)
+BOX16_LDFLAGS = $(DFLAGS) $(MYFLAGS) $(ALSA_GL_ZLIB_LIBS) $(SDL2_LIBS) -ldl
 
 # Detect if CXX is g++ or clang++, in this order.
 ifeq '' '$(findstring clang++,$(CXX))'
@@ -99,20 +108,19 @@ endif
 #
 #-------------------------
 
-default:
-	$(MAKE) all
+default: all
 
-debug:
-	$(MAKE) -j8 build DFLAGS="-g"
+debug: DFLAGS := -g
+debug: build
 
-trace:
-	$(MAKE) -j8 build DFLAGS="-O3 -DTRACE"
+trace: DFLAGS := -O3 -DTRACE
+trace: build
 
-profiling:
-	$(MAKE) -j8 build DFLAGS="-g -O3 -pg"
+profiling: DFLAGS := -g -O3 -pg
+profiling: build
 
-all:
-	$(MAKE) -j8 build DFLAGS="-O3"
+all: DFLAGS := -O3
+all: build
 
 verify:
 	$(MAKE) clean
@@ -210,3 +218,7 @@ $(OUTDIR)/box16: $(BOX16_OBJS) $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(YMFM_OB
 	$(CXX) $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS)
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
 	cp -r $(REPODIR)/resources/r48/* $(OUTDIR)/
+
+# Auto-generated header dependencies
+DEP_FILES := $(BOX16_OBJS:.o=.d) $(NFD_OBJS:.o=.d) $(LPNG_OBJS:.o=.d) $(RTMIDI_OBJS:.o=.d) $(YMFM_OBJS:.o=.d)
+-include $(DEP_FILES)
