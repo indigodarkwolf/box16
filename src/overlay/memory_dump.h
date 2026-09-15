@@ -61,14 +61,18 @@ protected:
 						const address_t addr = start_addr + i;
 
 						uint8_t mem = read(addr);
+						const bool is_selected = (addr == selected_address);
+						const bool is_zero     = (mem == 0);
 
-						if (addr == selected_address) {
+						if (is_selected) {
 							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 1, 0, 1));
+						} else if (is_zero) {
+							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
 						}
 						if (ImGui::InputHex<uint8_t>(addr, mem)) {
 							write(addr, mem);
 						}
-						if (addr == selected_address) {
+						if (is_selected || is_zero) {
 							ImGui::PopStyleColor();
 						}
 						if (ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
@@ -85,13 +89,26 @@ protected:
 					ImGui::SameLine();
 
 					char line[17];
+					bool dim_ascii[16] = { false };
 					for (int x = 0; x < 16; ++x) {
 						uint8_t c = read(line_addr);
-						line[x]   = isprint(c) ? c : '.';
+						line[x]   = isprint(c) ? static_cast<char>(c) : '.';
+						dim_ascii[x] = (c == 0);
 						++line_addr;
 					}
 					line[16] = 0;
-					ImGui::Text("%s", line);
+					for (int x = 0; x < 16; ++x) {
+						if (x > 0) {
+							ImGui::SameLine(0.0f, 0.0f);
+						}
+						if (dim_ascii[x]) {
+							ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyle().Colors[ImGuiCol_TextDisabled]);
+						}
+						ImGui::TextUnformatted(&line[x], &line[x] + 1);
+						if (dim_ascii[x]) {
+							ImGui::PopStyleColor();
+						}
+					}
 
 					ImGui::PopItemWidth();
 					ImGui::PopStyleVar();
