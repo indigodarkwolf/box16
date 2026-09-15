@@ -12,7 +12,7 @@ jobs:
       - name: Build Box16 (Ubuntu)
         run: |
           cd build
-          make
+          make -j$(nproc)
       - name: Archive Ubuntu build
         uses: actions/upload-artifact@v4
         with:
@@ -34,7 +34,7 @@ jobs:
           export CC=clang
           export CXX=clang++
           cd build
-          make
+          make -j$(nproc)
   build-ubuntu-trace:
     runs-on: ubuntu-22.04
     steps:
@@ -45,7 +45,7 @@ jobs:
       - name: Build Box16 (Ubuntu w/ Tracing)
         run: |
           cd build
-          make trace
+          make -j$(nproc) trace
       - name: Archive Ubuntu build
         uses: actions/upload-artifact@v4
         with:
@@ -61,7 +61,7 @@ jobs:
       - name: Build Box16 (Ubuntu)
         run: |
           cd build
-          make debug
+          make -j$(nproc) debug
   build-win32-debug:
     runs-on: windows-latest
     steps:
@@ -73,7 +73,7 @@ jobs:
       - name: Build Box16 (Win32 Debug)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Debug -property:Platform=x86
+          msbuild box16.vcxproj -t:rebuild -maxcpucount -verbosity:diag -property:Configuration=Debug -property:Platform=x86
   build-win32-release:
     runs-on: windows-latest
     steps:
@@ -85,7 +85,7 @@ jobs:
       - name: Build Box16 (Win32 Release)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Release -property:Platform=x86
+          msbuild box16.vcxproj -t:rebuild -maxcpucount -verbosity:diag -property:Configuration=Release -property:Platform=x86
           cd ..
           mkdir -p box16-Win32-Release
           cp vs2022/out/Win32/Release/Box16.exe box16-Win32-Release/
@@ -110,7 +110,7 @@ jobs:
       - name: Build Box16 (Win32 Release w/ Tracing)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration="Release (Trace)" -property:Platform=x86
+          msbuild box16.vcxproj -t:rebuild -maxcpucount -verbosity:diag -property:Configuration="Release (Trace)" -property:Platform=x86
           cd ..
           mkdir -p box16-Win32-Release-Trace
           cp "vs2022/out/Win32/Release (TRACE)/Box16.exe" box16-Win32-Release-Trace/
@@ -135,7 +135,7 @@ jobs:
       - name: Build Box16 (x64 Debug)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Debug -property:Platform=x64
+          msbuild box16.vcxproj -t:rebuild -maxcpucount -verbosity:diag -property:Configuration=Debug -property:Platform=x64
   build-x64-release:
     runs-on: windows-latest
     steps:
@@ -147,7 +147,7 @@ jobs:
       - name: Build Box16 (x64 Release)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration=Release -property:Platform=x64
+          msbuild box16.vcxproj -t:rebuild -maxcpucount -verbosity:diag -property:Configuration=Release -property:Platform=x64
           cd ..
           mkdir -p box16-x64-Release
           cp vs2022/out/x64/Release/Box16.exe box16-x64-Release/
@@ -172,7 +172,7 @@ jobs:
       - name: Build Box16 (x64 Release w/ Tracing)
         run: |
           cd build\vs2022
-          msbuild box16.vcxproj -t:rebuild -verbosity:diag -property:Configuration="Release (Trace)" -property:Platform=x64
+          msbuild box16.vcxproj -t:rebuild -maxcpucount -verbosity:diag -property:Configuration="Release (Trace)" -property:Platform=x64
           cd ..
           mkdir -p box16-x64-Release-Trace
           cp "vs2022/out/x64/Release (TRACE)/Box16.exe" box16-x64-Release-Trace/
