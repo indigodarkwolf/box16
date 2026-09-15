@@ -24,9 +24,9 @@ PKGCONFIG := pkg-config
 SDL2CONFIG := sdl2-config
 MKDIR := mkdir -p
 
-CFLAGS := -Werror $(DFLAGS)
+CFLAGS := -Werror -MMD -MP $(DFLAGS)
 CWARNS := -Wformat -Wformat-security -Wpedantic
-CXXFLAGS := --std=c++20 -Werror $(DFLAGS)
+CXXFLAGS := --std=c++20 -Werror -MMD -MP $(DFLAGS)
 CXXWARNS := -Wformat -Wformat-security -Wpedantic
 
 #
@@ -100,19 +100,19 @@ endif
 #-------------------------
 
 default:
-	$(MAKE) all
+	$(MAKE) build DFLAGS="-O3"
 
 debug:
-	$(MAKE) -j8 build DFLAGS="-g"
+	$(MAKE) build DFLAGS="-g"
 
 trace:
-	$(MAKE) -j8 build DFLAGS="-O3 -DTRACE"
+	$(MAKE) build DFLAGS="-O3 -DTRACE"
 
 profiling:
-	$(MAKE) -j8 build DFLAGS="-g -O3 -pg"
+	$(MAKE) build DFLAGS="-g -O3 -pg"
 
 all:
-	$(MAKE) -j8 build DFLAGS="-O3"
+	$(MAKE) build DFLAGS="-O3"
 
 verify:
 	$(MAKE) clean
@@ -210,3 +210,7 @@ $(OUTDIR)/box16: $(BOX16_OBJS) $(NFD_OBJS) $(LPNG_OBJS) $(RTMIDI_OBJS) $(YMFM_OB
 	$(CXX) $^ -o $@ $(BOX16_LDFLAGS) $(NFD_LDFLAGS)
 	cp $(REPODIR)/resources/*.png $(OUTDIR)/
 	cp -r $(REPODIR)/resources/r48/* $(OUTDIR)/
+
+# Auto-generated header dependencies
+DEP_FILES := $(BOX16_OBJS:.o=.d) $(NFD_OBJS:.o=.d) $(LPNG_OBJS:.o=.d) $(RTMIDI_OBJS:.o=.d) $(YMFM_OBJS:.o=.d)
+-include $(DEP_FILES)
