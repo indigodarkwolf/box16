@@ -538,6 +538,11 @@ static void render_sprite_line(const uint16_t y)
 			if ((uint16_t)sx >= SCREEN_WIDTH) {
 				continue;
 			}
+			// Hardware scales the native 640px-wide buffer: sprite pixels
+			// whose native position is past 640 are not visible.
+			if (scale && (((int32_t)sx * scale) >> 7) >= SCREEN_WIDTH) {
+				continue;
+			}
 
 			const uint16_t x = ((sx - scaled_x_start) * scale) >> 7;
 
@@ -626,6 +631,15 @@ static void render_layer_line_text(uint16_t y)
 
 	for (int i = 0; i < SCREEN_WIDTH; i++) {
 		const uint16_t x = scaled_x >> 7;
+
+		// Hardware scales the native 640px-wide buffer: once the scaled
+		// source position runs past 640, the composer outputs 0 (black)
+		// instead of wrapping into layer data.
+		if (x >= SCREEN_WIDTH) {
+			layer_line[layer][i] = 0;
+			scaled_x += scale;
+			continue;
+		}
 
 		// Scrolling
 		const int eff_x = calc_layer_eff_x(props, x);
@@ -727,6 +741,13 @@ static void render_layer_line_tile(uint16_t y)
 
 	for (int i = 0; i < SCREEN_WIDTH; i++) {
 		const uint16_t x     = scaled_x >> 7;
+		// Hardware scales the native 640px-wide buffer: once the scaled
+		// source position runs past 640, the composer outputs 0 (black).
+		if (x >= SCREEN_WIDTH) {
+			layer_line[layer][i] = 0;
+			scaled_x += scale;
+			continue;
+		}
 		const int      eff_x = calc_layer_eff_x(props, x);
 
 		if ((eff_x ^ last_eff_x) & ~max_pixels_per_byte) {
@@ -805,6 +826,13 @@ static void render_layer_line_bitmap(uint16_t y)
 	uint32_t       scaled_x = 0;
 	for (int i = 0; i < SCREEN_WIDTH; i++) {
 		const uint16_t x  = scaled_x >> 7;
+		// Hardware scales the native 640px-wide buffer: once the scaled
+		// source position runs past 640, the composer outputs 0 (black).
+		if (x >= SCREEN_WIDTH) {
+			layer_line[layer][i] = 0;
+			scaled_x += scale;
+			continue;
+		}
 		int            xx = x % props->tilew;
 
 		// extract all information from the map
@@ -865,7 +893,13 @@ static uint16_t render_line(uint16_t y, uint16_t vera_y)
 	const uint16_t vstart       = reg_composer[6] << 1;
 	const uint16_t vstop        = reg_composer[7] << 1;
 
-	const int eff_y = (reg_composer[2] * vera_y) >> 7;
+	int eff_y = (reg_composer[2] * vera_y) >> 7;
+	// Match hardware/x16-emulator: the native buffer is 480 lines tall.
+	// Once the scaled vertical position runs past it, keep rendering the
+	// last line instead of wrapping into layer data.
+	if (eff_y >= SCREEN_HEIGHT) {
+		eff_y = SCREEN_HEIGHT - (y & 1);
+	}
 
 	const uint8_t dc_video = reg_composer[0];
 
