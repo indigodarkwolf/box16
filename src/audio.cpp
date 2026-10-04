@@ -16,7 +16,7 @@
 
 static SDL_AudioDeviceID Audio_dev            = 0;
 static int               Obtained_sample_rate = 0;
-static int               Clocks_per_sample    = 0;
+static uint64_t          Sample_clock_accumulator = 0;
 
 static int16_t Ym_buffer[2 * SAMPLES_PER_BUFFER];
 static int16_t Psg_buffer[2 * SAMPLES_PER_BUFFER];
@@ -30,7 +30,6 @@ struct audio_buffer {
 static ring_allocator<audio_buffer, BACKBUFFER_COUNT> Audio_backbuffer;
 
 static constexpr size_t Low_buffer_threshold = 2;
-static int              Clocks_rendered      = 0;
 
 static uint32_t limiter_amp = 0;
 
@@ -125,7 +124,7 @@ void audio_init(const char *dev_name, int /*num_audio_buffers*/)
 	}
 
 	Obtained_sample_rate = obtained.freq;
-	Clocks_per_sample    = 8000000 / Obtained_sample_rate;
+	Sample_clock_accumulator = 0;
 	limiter_amp = (1 << 16);
 
 	fmt::print("INFO: Audio buffer is {} bytes\n", obtained.size);
@@ -159,12 +158,12 @@ void audio_render(int cpu_clocks)
 		return;
 	}
 
-	Clocks_rendered += cpu_clocks;
-	int samples_to_render = Clocks_rendered / Clocks_per_sample;
+	Sample_clock_accumulator += static_cast<uint64_t>(cpu_clocks) * Obtained_sample_rate;
+	uint64_t samples_to_render = Sample_clock_accumulator / 8000000;
 	while (samples_to_render >= SAMPLES_PER_BUFFER) {
 		audio_render_buffer();
 		samples_to_render -= SAMPLES_PER_BUFFER;
-		Clocks_rendered -= Clocks_per_sample * SAMPLES_PER_BUFFER;
+		Sample_clock_accumulator -= 8000000ULL * SAMPLES_PER_BUFFER;
 	}
 
 	while (Audio_backbuffer.count() < Low_buffer_threshold) {

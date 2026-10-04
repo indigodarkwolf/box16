@@ -218,7 +218,7 @@ public:
 
 		if (samples_used < m_backbuffer_used) {
 			memmove(&m_backbuffer[0], &m_backbuffer[samples_used], sizeof(ymfm::ym2151::output_data) * (m_backbuffer_used - samples_used));
-			m_backbuffer_used -= samples;
+			m_backbuffer_used -= samples_used;
 		} else {
 			m_backbuffer_used = 0;
 		}
@@ -359,15 +359,14 @@ static bool             Ym_strict_busy = false;
 
 void YM_prerender(uint32_t clocks)
 {
-	static uint32_t clocks_elapsed = 0;
-	clocks_elapsed += clocks;
+	static uint64_t sample_clock_accumulator = 0;
 
-	const uint32_t clocks_per_sample = 8000000 / Ym_interface.get_sample_rate();
-	const uint32_t samples_to_render = clocks_elapsed / clocks_per_sample;
+	sample_clock_accumulator += static_cast<uint64_t>(clocks) * Ym_interface.get_sample_rate();
+	const uint32_t samples_to_render = static_cast<uint32_t>(sample_clock_accumulator / 8000000);
 
 	if (samples_to_render > 0) {
 		Ym_interface.pregenerate(samples_to_render);
-		clocks_elapsed -= samples_to_render * clocks_per_sample;
+		sample_clock_accumulator -= static_cast<uint64_t>(samples_to_render) * 8000000;
 	}
 }
 
