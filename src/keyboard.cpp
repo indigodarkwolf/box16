@@ -96,25 +96,23 @@ static bool process_text_input(text_input_data &data)
 	while (*data.c && RAM[NDX] < 10) {
 		uint32_t c;
 		int      e = 0;
+		bool     hex_escape = false;
 
 		if (data.c[0] == '\\' && data.c[1] == 'X' && data.c[2] && data.c[3]) {
-			auto ctol = [](const char c) {
-				if (c >= '0' || c <= '9') {
-					return c - 0;
-				}
-				if (c >= 'A' || c <= 'F') {
-					return 10 + c - 'A';
-				}
-				if (c >= 'a' || c <= 'f') {
-					return 10 + c - 'a';
-				}
-				return 0;
+			auto hex_value = [](const char value) -> int {
+				return value >= '0' && value <= '9' ? value - '0' :
+				       value >= 'A' && value <= 'F' ? value - 'A' + 10 :
+				       value >= 'a' && value <= 'f' ? value - 'a' + 10 : -1;
 			};
-			uint8_t hi = ctol(data.c[2]);
-			uint8_t lo = ctol(data.c[3]);
-			c          = hi << 4 | lo;
-			data.c += 4;
-		} else {
+			const int hi = hex_value(data.c[2]);
+			const int lo = hex_value(data.c[3]);
+			if (hi >= 0 && lo >= 0) {
+				c = (hi << 4) | lo;
+				data.c += 4;
+				hex_escape = true;
+			}
+		}
+		if (!hex_escape) {
 			data.c = static_cast<const char *>(utf8_decode(data.c, &c, &e));
 			c      = iso8859_15_from_unicode(c);
 		}
