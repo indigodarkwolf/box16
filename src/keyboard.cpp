@@ -284,13 +284,13 @@ void mouse_send_state()
 		const int send_diff_x = (mouse_diff_x > 255) ? 255 : ((mouse_diff_x < -256) ? -256 : mouse_diff_x);
 		const int send_diff_y = (mouse_diff_y > 255) ? 255 : ((mouse_diff_y < -256) ? -256 : mouse_diff_y);
 
-		if (!mouse_send(mouse_diff_x, mouse_diff_y, buttons)) {
+		if (!mouse_send(send_diff_x, send_diff_y, buttons)) {
 			break;
 		}
 
 		mouse_diff_x -= send_diff_x;
 		mouse_diff_y -= send_diff_y;
-	} while (mouse_diff_x != 0 && mouse_diff_y != 0);
+	} while (mouse_diff_x != 0 || mouse_diff_y != 0);
 }
 
 uint8_t mouse_get_next_byte()
