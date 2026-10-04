@@ -218,7 +218,7 @@ public:
 
 		if (samples_used < m_backbuffer_used) {
 			memmove(&m_backbuffer[0], &m_backbuffer[samples_used], sizeof(ymfm::ym2151::output_data) * (m_backbuffer_used - samples_used));
-			m_backbuffer_used -= samples;
+			m_backbuffer_used -= samples_used;
 		} else {
 			m_backbuffer_used = 0;
 		}
