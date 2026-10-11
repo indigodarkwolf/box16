@@ -7,14 +7,13 @@
 
 #include "audio.h"
 
-static uint8_t  fifo[4096];
+static uint8_t  fifo[4096 - 1]; // Actual hardware FIFO is 4kB, but you can only use 4095 bytes.
 static unsigned fifo_wridx;
 static unsigned fifo_rdidx;
 static unsigned fifo_cnt;
 
 static uint8_t ctrl;
 static uint8_t rate;
-static bool    loop;
 
 static uint8_t volume_lut[16] = {0, 1, 2, 3, 4, 5, 6, 8, 11, 14, 18, 23, 30, 38, 49, 64};
 
@@ -38,7 +37,6 @@ void pcm_reset(void)
 	fifo_reset();
 	ctrl  = 0;
 	rate  = 0;
-	loop  = false;
 	cur_l = 0;
 	cur_r = 0;
 	phase = 0;
@@ -46,25 +44,17 @@ void pcm_reset(void)
 
 void pcm_write_ctrl(uint8_t val)
 {
-	if ((val & 0xc0) == 0xc0) {
-		loop = true;
-	} else {
-		loop = false;
-		if (val & 0x80) {
-			fifo_reset();
-		}
+	if (val & 0x80) {
+		fifo_reset();
 	}
-	if (val & 0x40) {
-		fifo_rdidx = 0;
-		fifo_cnt = fifo_wridx;
-	}
+
 	ctrl = val & 0x3F;
 }
 
 uint8_t pcm_read_ctrl(void)
 {
 	uint8_t result = ctrl;
-	if (fifo_cnt == sizeof(fifo) - 1) {
+	if (fifo_cnt == sizeof(fifo)) {
 		result |= 0x80;
 	}
 	if (fifo_cnt == 0) {
@@ -85,7 +75,7 @@ uint8_t pcm_read_rate(void)
 
 void pcm_write_fifo(uint8_t val)
 {
-	if (fifo_cnt < sizeof(fifo) - 1) {
+	if (fifo_cnt < sizeof(fifo)) {
 		fifo[fifo_wridx++] = val;
 		if (fifo_wridx == sizeof(fifo)) {
 			fifo_wridx = 0;
@@ -167,12 +157,8 @@ void pcm_render(int16_t *buf, unsigned num_samples)
 						}
 						break;
 					}
+				}
 			}
-			if (loop && fifo_cnt == 0) {
-				fifo_rdidx = 0;
-				fifo_cnt = fifo_wridx;
-			}
-		}
 		}
 
 		*(buf++) = ((int)cur_l * (int)volume_lut[ctrl & 0xF]) >> 6;
